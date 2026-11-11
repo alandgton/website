@@ -1,6 +1,14 @@
-# Garden Leave — Interactive 2D Travel Map (2026–2027)
+# alanton.at — Personal Website & Multi-Site Monolith
 
-An interactive, config-driven 2D vector travel map built with **React + TypeScript (Vite) + D3.js (`d3-geo`, `d3-zoom`) + Tailwind CSS + `lucide-react`**.
+The unified codebase for **alanton.at**, hosted on **Cloudflare Pages**. Built with **React 18 + TypeScript + Vite + Tailwind CSS**.
+
+The site serves multiple isolated sub-sites from one repository:
+1. **Landing Page (`/`)** — Interactive neural mesh background connecting to each section of the site.
+2. **Home (`/home/`)** — Personal home space (under active development).
+3. **Work (`/work/`)** — Professional portfolio & projects (under active development).
+4. **Garden Leave (`/gardenleave/`)** — Interactive 2D vector travel map (2026–2027) with D3 projection, journey playback, and mobile-optimized physics.
+
+---
 
 ## Quick Start
 
@@ -9,39 +17,78 @@ npm install
 npm run dev
 ```
 
-To build for Cloudflare Pages (`dist/` static output):
+To build for production static deployment on Cloudflare Pages (`dist/`):
 
 ```bash
 npm run build
 ```
 
-## Multi-Page Site Layout (alanton.at)
+To preview the production build locally:
 
-Vite builds several HTML entries (`rollupOptions.input` in `vite.config.ts`), each served from its own subpath on Cloudflare Pages:
+```bash
+npm run preview
+```
 
-| Entry HTML | React entry | URL |
-|---|---|---|
-| `index.html` | `src/sites/landing/main.tsx` | `/` |
-| `home/index.html` | `src/sites/home/main.tsx` | `/home/` |
-| `work/index.html` | `src/sites/work/main.tsx` | `/work/` |
-| `gardenleave/index.html` | `src/main.tsx` (travel map) | `/gardenleave/` |
+---
 
-To add a new subpath site: create `<name>/index.html` and `src/sites/<name>/main.tsx`, register it in `vite.config.ts` (`rollupOptions.input`) and `tailwind.config.js` (`content`), and add a link to `SITE_LINKS` in `src/sites/landing/LandingPage.tsx`.
+## Multi-Page Architecture (Cloudflare Pages)
 
-## Project Structure & Abstractions
+Vite is configured with a multi-page rollup (`rollupOptions.input` in `vite.config.ts`) outputting directly to `dist/`:
 
-- `src/config/types.ts` — Core TypeScript interfaces (`TravelMapConfig`, `CityConfig`, `ItineraryLegConfig`, `RegionCameraConfig`, `TransitModeStyleConfig`, `MapRenderConfig`).
-- `src/config/regions.config.ts` — `REGIONS_CONFIG` camera presets (`world`, `us`, `europe`, `mena`, `china`, `east_asia`, `shimanami`).
-- `src/config/itinerary.config.ts` — `ITINERARY_STOPS` ordered sequence of city stops (`[{ city: 'NYC' }, { startDate, endDate, city, transport }, ...]`); `resolveItineraryStops` automatically derives 1-based `id`, `source`, `dest`, and `nights` (`endDate - startDate`, supporting `0` for intraday stops).
-- `src/config/transit.config.ts` — `TRANSIT_MODES_CONFIG` for the 4 distinct SVG patterns (`Flight`, `Train`, `Drive`, `Bike`) and zoom-invariant `stroke-dasharray` scaling.
-- `src/config/map.config.ts` — `MAP_CONFIG` (`d3.geoNaturalEarth1().scale(225).translate([width / 2, height / 1.85]).rotate([-11, 0])`, `scaleExtent([1, 250])`, `countries-10m.json` high-res coastlines).
-- `src/config/presets.config.ts` — `DEFAULT_TRAVEL_MAP_CONFIG` combining all configuration modules.
-- `src/utils/cityGeocoder.ts` & `src/hooks/useResolvedCities.ts` — Automatic city coordinate resolution from itinerary `source` and `dest` names using a built-in gazetteer + Open-Meteo / Nominatim geocoding API fallback cached in `localStorage`.
-- `src/utils/topojsonDecoder.ts` — Zero-dependency TopoJSON decoder (`decodeTopoJSON`) with spherical winding verification (`d3.geoArea`).
-- `src/utils/regionHitTesting.ts` — Spatial point-in-polygon (`d3.geoContains` + coastal probing) and property matcher that highlights visited countries and Admin-1 states/provinces progressively.
-- `src/utils/labelLayout.ts` — Priority-based collision culling and 8-direction repulsion label placement (`computeSmartLabelLayout`) so city names never overlap.
-- `src/utils/arcMath.ts` — Directional straight line generator (`computeDirectionalTransitLine`) with perpendicular parallel offset for bidirectional pairs, Pacific antimeridian seam splitter (`Tokyo -> LA`), and arrowhead builder (`buildArrowheadPath`).
-- `src/utils/itineraryStats.ts` — Per-city stay aggregation (`computeAllCityStats`) and trip summary calculator (`computeJourneySummary`).
-- `src/hooks/useMapTopology.ts` — Fetches & caches adaptive LOD (`50m` below `6x` zoom, `10m` high-res at `>= 6x` zoom) country polygons and optional Admin-1 state/province boundaries.
-- `src/hooks/useMapCamera.ts` — Manages `d3-zoom` physics (`1x–250x`), direct DOM `<g>` transforms for `60–120fps` mobile pan/zoom, responsive mobile label/pin scaling, and two-stage `invScale`.
-- `src/components/` — Declarative SVG map (`TravelMapCanvas`), regional camera bar (`RegionSelectorBar`), transit legend (`TransitLegendBar`), opt-in journey playback (`JourneyPlayback`), and responsive city/leg detail drawer (`CityDetailDrawer`).
+| HTML Entry | React Entrypoint | Target URL | Description |
+|---|---|---|---|
+| `index.html` | `src/sites/landing/main.tsx` | `/` | Root portal with links to Home, Work, Garden Leave |
+| `home/index.html` | `src/sites/home/main.tsx` | `/home/` | Home section |
+| `work/index.html` | `src/sites/work/main.tsx` | `/work/` | Work section |
+| `gardenleave/index.html` | `src/sites/gardenleave/main.tsx` | `/gardenleave/` | Interactive travel map |
+
+Each section compiles to its own static subfolder (`dist/`, `dist/home/`, `dist/work/`, `dist/gardenleave/`), which Cloudflare Pages natively maps to clean subpaths without server-side redirects or URL rewrites.
+
+---
+
+## Repository Structure
+
+```
+website/
+├── index.html                      # Root landing page HTML
+├── home/
+│   └── index.html                  # /home/ HTML entry
+├── work/
+│   └── index.html                  # /work/ HTML entry
+├── gardenleave/
+│   └── index.html                  # /gardenleave/ HTML entry
+├── src/
+│   ├── index.css                   # Global Tailwind CSS and fonts
+│   └── sites/
+│       ├── landing/                # Root landing page
+│       │   ├── LandingPage.tsx     # Landing page UI & links
+│       │   ├── NeuralMeshBackground.tsx # Canvas neural network background
+│       │   └── main.tsx
+│       ├── home/                   # Home section
+│       │   └── main.tsx
+│       ├── work/                   # Work section
+│       │   └── main.tsx
+│       ├── gardenleave/            # Garden Leave 2D Travel Map
+│       │   ├── GardenLeaveApp.tsx  # Root travel map application
+│       │   ├── main.tsx
+│       │   ├── components/         # Map canvas, drawers, selectors, playback
+│       │   ├── config/             # Regions, itinerary, transit, map presets
+│       │   ├── hooks/              # LOD topology, resolved cities, camera zoom
+│       │   └── utils/              # TopoJSON, geocoding, collision culling, arc math
+│       └── shared/                 # Shared across sites
+│           ├── mountSite.tsx       # Standardized React root mount bootstrap
+│           └── PlaceholderPage.tsx # Reusable "Work in Progress" page
+├── tailwind.config.js
+├── tsconfig.json
+└── vite.config.ts
+```
+
+---
+
+## Adding New Sections
+
+To add a new sub-site (e.g. `blog`):
+1. Create `blog/index.html` pointing to `/src/sites/blog/main.tsx`.
+2. Create `src/sites/blog/main.tsx` and invoke `mountSite(<BlogApp />)`.
+3. Register the new entry point in `vite.config.ts` under `rollupOptions.input`.
+4. Add a navigation link to `SITE_LINKS` in `src/sites/landing/LandingPage.tsx`.
