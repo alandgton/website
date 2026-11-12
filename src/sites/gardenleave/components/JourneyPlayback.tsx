@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Pause,
   Play,
+  X,
 } from 'lucide-react';
 import {
   CityConfig,
@@ -52,52 +53,70 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
   const destCity = currentLeg ? cities[currentLeg.dest] : undefined;
   const modeStyle = currentLeg ? transitModes[currentLeg.transport] : undefined;
 
-  return (
-    <div className="pointer-events-auto w-full max-w-3xl rounded-2xl border border-slate-800/95 bg-slate-900/90 px-4 py-2.5 shadow-2xl backdrop-blur-md transition-all">
-      {/* Top Row: Opt-in Checkbox + Speed Selector (when enabled) */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="flex cursor-pointer items-center gap-2.5 text-xs font-medium text-slate-200 select-none">
-          <input
-            type="checkbox"
-            checked={isEnabled}
-            onChange={(e) => onToggleEnabled(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/40 cursor-pointer accent-sky-500"
-          />
-          <span>Journey Playback</span>
-        </label>
+  // When playback is idle/disabled, render a compact floating pill button
+  if (!isEnabled) {
+    return (
+      <button
+        type="button"
+        onClick={() => onToggleEnabled(true)}
+        className="pointer-events-auto flex items-center gap-2 rounded-xl bg-sky-500 hover:bg-sky-400 px-3.5 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-sky-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+        title="Start Interactive Journey Playback"
+      >
+        <Play className="h-3.5 w-3.5 fill-slate-950" aria-hidden="true" />
+        <span>Play Journey</span>
+      </button>
+    );
+  }
 
-        {isEnabled && (
-          <div className="flex flex-wrap items-center gap-3 text-xs">
-            {/* Playback Speed Selector */}
-            <div className="flex items-center rounded-lg border border-slate-800 bg-slate-950/60 p-0.5 font-mono text-[10px]">
-              {[
-                { label: '0.7x', ms: 2200 },
-                { label: '1x', ms: 1400 },
-                { label: '2x', ms: 750 },
-              ].map((opt) => (
-                <button
-                  key={opt.label}
-                  type="button"
-                  onClick={() => onChangeSpeed(opt.ms)}
-                  className={`rounded px-1.5 py-0.5 transition ${
-                    playbackSpeedMs === opt.ms
-                      ? 'bg-sky-500 text-slate-950 font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+  // Expanded playback controls
+  return (
+    <div className="pointer-events-auto w-full max-w-2xl rounded-2xl border border-slate-800/95 bg-slate-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-md transition-all">
+      {/* Top Row: Playback Title, Speed Selector & Close Button */}
+      <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-800/80 text-xs">
+        <div className="flex items-center gap-2 font-semibold text-white">
+          <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
+          <span>Journey Playback</span>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          {/* Speed Selector */}
+          <div className="flex items-center rounded-lg border border-slate-800 bg-slate-950/60 p-0.5 font-mono text-[10px]">
+            {[
+              { label: '0.7x', ms: 2200 },
+              { label: '1x', ms: 1400 },
+              { label: '2x', ms: 750 },
+            ].map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => onChangeSpeed(opt.ms)}
+                className={`rounded px-1.5 py-0.5 transition ${
+                  playbackSpeedMs === opt.ms
+                    ? 'bg-sky-500 text-slate-950 font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
-        )}
+
+          {/* Close / Minimize Button */}
+          <button
+            type="button"
+            onClick={() => onToggleEnabled(false)}
+            title="Close Playback"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
 
-      {/* Expanded Journey Playback Controls when Opt-In Checkbox is Checked */}
-      {isEnabled && currentLeg && (
-        <div className="mt-2.5 border-t border-slate-800/90 pt-2.5 flex flex-col gap-2">
+      {currentLeg && (
+        <div className="pt-2 flex flex-col gap-2">
           {/* Active Leg Metadata Banner */}
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-950/75 border border-slate-800/90 px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-950/75 border border-slate-800/90 px-3 py-1.5">
             <div className="flex flex-wrap items-center gap-2">
               {modeStyle && (
                 <span

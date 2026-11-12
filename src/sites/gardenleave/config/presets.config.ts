@@ -7,7 +7,7 @@ import { TravelMapConfig } from './types';
 export const DEFAULT_TRAVEL_MAP_CONFIG: TravelMapConfig = {
   id: 'garden-leave-full',
   title: 'Alan Ton @ Garden Leave',
-  subtitle: 'August 2026 – March 2027',
+  subtitle: 'August 2026 – April 2027',
   description:
     'Complete 8-month garden leave itinerary spanning North America, Europe, Egypt & the Gulf, Southwest & Coastal China, South Korea, and Japan.',
   regions: REGIONS_CONFIG,

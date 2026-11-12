@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GeoProjection } from 'd3-geo';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   DEFAULT_TRAVEL_MAP_CONFIG,
   ItineraryLegConfig,
@@ -145,9 +145,6 @@ export const App: React.FC = () => {
     computeBoundsFit,
     flyToCoordinates,
     flyToRegion,
-    zoomIn,
-    zoomOut,
-    resetCamera,
   } = useMapCamera(activeConfig.mapConfig);
 
   // Map Topology Hook (uses lightweight 50m below 6x zoom and upgrades to 10m high-res when zoomed >= 6x,
@@ -399,22 +396,18 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col">
-      {/* Top HUD: Title, Layer Toggles, Zoom Controls & Config-Driven Region Selector */}
+      {/* Top HUD: Title, Region Dropdown, Granularity & Drawer Trigger (Option B Centered Island) */}
       <RegionSelectorBar
         title={activeConfig.title}
         subtitle={activeConfig.subtitle}
         regions={effectiveRegions}
         activeRegionId={activeRegionId}
-        zoomK={zoomK}
         granularity={granularity}
         isLoadingAdmin1={isLoadingAdmin1}
         showGraticule={showGraticule}
         onSelectRegion={handleSelectRegion}
         onChangeGranularity={setGranularity}
         onToggleGraticule={() => setShowGraticule((v) => !v)}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onResetCamera={resetCamera}
         onOpenDirectoryDrawer={() => {
           setIsDrawerOpen(true);
         }}
@@ -474,35 +467,15 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Bottom HUD: Transit Legend + Opt-In Journey Playback */}
+      {/* Bottom HUD: Transit Legend + Opt-In Journey Playback (Layout 1) */}
       <footer className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 p-3 sm:p-4">
-        <div className="flex w-full max-w-5xl flex-col items-center gap-2">
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <TransitLegendBar
-              transitModes={activeConfig.transitModes}
-              visibleModes={visibleModes}
-              legsByMode={journeySummary.legsByMode}
-              onToggleMode={handleToggleMode}
-            />
-
-            {/* Quick Stats Pill */}
-            <div className="pointer-events-auto hidden xl:flex items-center gap-2.5 rounded-xl border border-slate-800/90 bg-slate-900/85 px-3 py-1.5 text-xs text-slate-300 shadow-lg backdrop-blur-md">
-              <Sparkles className="h-3.5 w-3.5 text-sky-400" />
-              <span>
-                <strong className="font-mono text-white">{journeySummary.totalCities}</strong> cities
-              </span>
-              <span className="text-slate-600">·</span>
-              <span>
-                <strong className="font-mono text-white">{journeySummary.totalCountries}</strong>{' '}
-                countries
-              </span>
-              <span className="text-slate-600">·</span>
-              <span>
-                <strong className="font-mono text-amber-300">{journeySummary.totalNights}</strong>{' '}
-                total nights
-              </span>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center justify-center gap-2 pointer-events-auto">
+          <TransitLegendBar
+            transitModes={activeConfig.transitModes}
+            visibleModes={visibleModes}
+            legsByMode={journeySummary.legsByMode}
+            onToggleMode={handleToggleMode}
+          />
 
           <JourneyPlayback
             isEnabled={isTimelineEnabled}
