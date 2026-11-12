@@ -9,7 +9,6 @@ import {
   Layers,
   ListFilter,
   RotateCcw,
-  Tag,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -24,11 +23,9 @@ interface RegionSelectorBarProps {
   granularity: MapGranularity;
   isLoadingAdmin1: boolean;
   showGraticule: boolean;
-  showLabels: boolean;
   onSelectRegion: (region: RegionCameraConfig) => void;
   onChangeGranularity: (granularity: MapGranularity) => void;
   onToggleGraticule: () => void;
-  onToggleLabels: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetCamera: () => void;
@@ -44,11 +41,9 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   granularity,
   isLoadingAdmin1,
   showGraticule,
-  showLabels,
   onSelectRegion,
   onChangeGranularity,
   onToggleGraticule,
-  onToggleLabels,
   onZoomIn,
   onZoomOut,
   onResetCamera,
@@ -111,20 +106,6 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
 
         {/* Right Controls: Map Layer Toggles, Directory, Config Switcher, Zoom */}
         <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-800/90 bg-slate-900/85 p-1.5 shadow-lg backdrop-blur-md">
-          <button
-            type="button"
-            onClick={onToggleLabels}
-            title="Toggle City Name Labels"
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
-              showLabels
-                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
-          >
-            <Tag className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Labels</span>
-          </button>
-
           {/* Granularity Dropdown (Option 2: Fixed Button Title "Granularity") */}
           <div ref={granularityMenuRef} className="relative z-50">
             <button

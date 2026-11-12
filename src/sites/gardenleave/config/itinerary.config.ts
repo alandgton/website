@@ -43,23 +43,6 @@ export function resolveItineraryStops(stops: ItineraryStopInput[]): ItineraryLeg
   return legs;
 }
 
-/**
- * Converts a resolved array of legs back into the ordered stops representation.
- */
-export function legsToStopsInput(legs: ItineraryLegConfig[]): ItineraryStopInput[] {
-  if (legs.length === 0) return [];
-  const stops: ItineraryStopInput[] = [{ city: legs[0].source }];
-  for (const leg of legs) {
-    stops.push({
-      startDate: leg.startDate,
-      endDate: leg.endDate,
-      city: leg.dest,
-      transport: leg.transport,
-    });
-  }
-  return stops;
-}
-
 export const ITINERARY_STOPS: ItineraryStopInput[] = [
   { city: 'NYC' },
   { startDate: '2026-08-20', endDate: '2026-08-24', city: 'SF', transport: 'Flight' },

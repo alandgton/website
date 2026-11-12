@@ -114,7 +114,6 @@ export const App: React.FC = () => {
   // Layer visibility & granularity controls
   const [granularity, setGranularity] = useState<MapGranularity>('subregion');
   const [showGraticule, setShowGraticule] = useState<boolean>(true);
-  const [showLabels, setShowLabels] = useState<boolean>(true);
 
   const [visibleModes, setVisibleModes] = useState<Record<TransitMode, boolean>>({
     Flight: true,
@@ -410,11 +409,9 @@ export const App: React.FC = () => {
         granularity={granularity}
         isLoadingAdmin1={isLoadingAdmin1}
         showGraticule={showGraticule}
-        showLabels={showLabels}
         onSelectRegion={handleSelectRegion}
         onChangeGranularity={setGranularity}
         onToggleGraticule={() => setShowGraticule((v) => !v)}
-        onToggleLabels={() => setShowLabels((v) => !v)}
         onZoomIn={zoomIn}
         onZoomOut={zoomOut}
         onResetCamera={resetCamera}
@@ -443,7 +440,6 @@ export const App: React.FC = () => {
           admin1GeoJson={admin1GeoJson}
           granularity={granularity}
           showGraticule={showGraticule}
-          showLabels={showLabels}
           selectedCityId={selectedCityId}
           selectedLegId={effectiveSelectedLegId}
           isTimelineEnabled={isTimelineEnabled}

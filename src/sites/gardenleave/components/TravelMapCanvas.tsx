@@ -43,7 +43,6 @@ interface TravelMapCanvasProps {
   admin1GeoJson: FeatureCollection<Geometry> | null;
   granularity: MapGranularity;
   showGraticule: boolean;
-  showLabels: boolean;
   selectedCityId: string | null;
   selectedLegId: number | null;
   isTimelineEnabled: boolean;
@@ -79,7 +78,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   admin1GeoJson,
   granularity,
   showGraticule,
-  showLabels,
   selectedCityId,
   selectedLegId,
   isTimelineEnabled,
@@ -244,8 +242,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
 
   // Compute collision-free multi-direction label placements for all projected cities
   const smartLabelPlacements = useMemo(() => {
-    if (!showLabels) return {};
-
     const nodes: LabelInputNode[] = Object.values(projectedCities).map(({ city, x, y }) => {
       const stats = cityStats[city.id];
       const totalNights = stats?.totalNights ?? 0;
@@ -304,7 +300,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
     labelFontSize,
     projectedCities,
     selectedCityId,
-    showLabels,
     zoomK,
   ]);
 
@@ -933,8 +928,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
                     );
 
                   const labelPlacement = smartLabelPlacements[city.id];
-                  const shouldShowLabel = Boolean(showLabels && labelPlacement?.visible);
-                  if (!shouldShowLabel || !labelPlacement) return null;
+                  if (!labelPlacement?.visible) return null;
 
                   const labelOpacity =
                     isTimelineEnabled && !isVisitedInTimeline
@@ -987,7 +981,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
               labelScaleBoost,
               projectedCities,
               selectedCityId,
-              showLabels,
               smartLabelPlacements,
               visitedCitiesInTimeline,
             ]

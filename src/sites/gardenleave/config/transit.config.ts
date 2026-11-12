@@ -35,10 +35,6 @@ export const TRANSIT_MODES_CONFIG: Record<TransitMode, TransitModeStyleConfig> =
   },
 };
 
-export function isValidTransitMode(mode: unknown): mode is TransitMode {
-  return mode === 'Flight' || mode === 'Train' || mode === 'Drive' || mode === 'Bike';
-}
-
 /**
  * Scales an SVG stroke-dasharray string inversely with the D3 zoom factor
  * so dashed/dotted/dash-dot patterns remain crisp and proportional at high zoom.
