@@ -57,16 +57,15 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   return (
     <header className="pointer-events-none absolute top-0 left-0 right-0 z-20 flex flex-col gap-2 p-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* Left Controls: Back to alanton.at + Title Pill */}
+        {/* Left Controls: Main + Title Pill */}
         <div className="flex flex-wrap items-center gap-2">
           <a
             href="/"
-            title="Back to alanton.at"
+            title="Main"
             className="pointer-events-auto flex items-center gap-2 rounded-xl border border-slate-800/90 bg-slate-900/85 px-3 py-2 text-xs font-medium text-slate-300 shadow-lg backdrop-blur-md transition-all hover:border-sky-500/60 hover:bg-slate-900 hover:text-sky-300 group"
           >
             <ArrowLeft className="h-4 w-4 text-slate-400 transition-colors group-hover:text-sky-400 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">Back to alanton.at</span>
-            <span className="sm:hidden font-mono text-[11px]">alanton.at</span>
+            <span>Main</span>
           </a>
 
           {/* Title & Trip Summary Pill */}

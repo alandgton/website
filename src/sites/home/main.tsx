@@ -1,4 +1,5 @@
+import { Home } from 'lucide-react';
 import { mountSite } from '../shared/mountSite';
 import { PlaceholderPage } from '../shared/PlaceholderPage';
 
-mountSite(<PlaceholderPage section="Home" />);
+mountSite(<PlaceholderPage section="Home" icon={Home} />);
