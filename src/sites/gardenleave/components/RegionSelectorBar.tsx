@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -49,6 +49,35 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
 
   const granularityMenuRef = useRef<HTMLDivElement>(null);
   const regionMenuRef = useRef<HTMLDivElement>(null);
+
+  const [regionMenuAlign, setRegionMenuAlign] = useState<'left' | 'right'>('left');
+  const [granularityAlign, setGranularityAlign] = useState<'left' | 'right'>('left');
+
+  useLayoutEffect(() => {
+    if (!isRegionMenuOpen || !regionMenuRef.current) return;
+    const updateAlign = () => {
+      if (!regionMenuRef.current) return;
+      const rect = regionMenuRef.current.getBoundingClientRect();
+      const menuWidth = 160; // w-40 is 160px
+      setRegionMenuAlign(rect.left + menuWidth > window.innerWidth - 12 ? 'right' : 'left');
+    };
+    updateAlign();
+    window.addEventListener('resize', updateAlign);
+    return () => window.removeEventListener('resize', updateAlign);
+  }, [isRegionMenuOpen]);
+
+  useLayoutEffect(() => {
+    if (!isGranularityOpen || !granularityMenuRef.current) return;
+    const updateAlign = () => {
+      if (!granularityMenuRef.current) return;
+      const rect = granularityMenuRef.current.getBoundingClientRect();
+      const menuWidth = 160;
+      setGranularityAlign(rect.left + menuWidth > window.innerWidth - 12 ? 'right' : 'left');
+    };
+    updateAlign();
+    window.addEventListener('resize', updateAlign);
+    return () => window.removeEventListener('resize', updateAlign);
+  }, [isGranularityOpen]);
 
   useEffect(() => {
     if (!isGranularityOpen && !isRegionMenuOpen) return;
@@ -127,9 +156,6 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
           >
             <Compass className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
             <span>{activeRegionLabel}</span>
-            <span className="font-mono text-[10px] text-slate-400">
-              {activeRegion?.zoom ? `${activeRegion.zoom}x` : ''}
-            </span>
             <ChevronDown
               className={`h-3 w-3 text-slate-400 transition-transform ${
                 isRegionMenuOpen ? 'rotate-180 text-sky-300' : ''
@@ -141,7 +167,9 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
           {isRegionMenuOpen && (
             <div
               role="listbox"
-              className="absolute left-0 mt-1.5 w-48 rounded-xl border border-slate-800 bg-slate-900/95 p-1 shadow-2xl backdrop-blur-md z-50 space-y-0.5 text-xs"
+              className={`absolute ${
+                regionMenuAlign === 'right' ? 'right-0' : 'left-0'
+              } mt-1.5 w-40 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-800 bg-slate-900/95 p-1 shadow-2xl backdrop-blur-md z-50 space-y-0.5 text-xs`}
             >
               <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-slate-500">
                 Camera Presets
@@ -160,7 +188,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
                     }}
                     title={
                       region.description ||
-                      `${region.label} (Center [${region.center[0]}, ${region.center[1]}], Zoom ${region.zoom}x)`
+                      `${region.label} (Center [${region.center[0]}, ${region.center[1]}])`
                     }
                     className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
                       isSelected
@@ -169,7 +197,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
                     }`}
                   >
                     <span>{region.shortLabel || region.label}</span>
-                    <span className="font-mono text-[10px] text-slate-500">{region.zoom}x</span>
+                    {isSelected && <Check className="h-3.5 w-3.5 text-sky-400 shrink-0" />}
                   </button>
                 );
               })}
@@ -213,7 +241,9 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
           {isGranularityOpen && (
             <div
               role="listbox"
-              className="absolute left-0 mt-1.5 w-40 rounded-xl border border-slate-800 bg-slate-900/95 p-1 shadow-2xl backdrop-blur-md z-50 space-y-0.5"
+              className={`absolute ${
+                granularityAlign === 'right' ? 'right-0' : 'left-0'
+              } mt-1.5 w-40 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-800 bg-slate-900/95 p-1 shadow-2xl backdrop-blur-md z-50 space-y-0.5`}
             >
               <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-slate-500">
                 Granularity
