@@ -96,7 +96,7 @@ export const ITINERARY_STOPS: ItineraryStopInput[] = [
   { startDate: '2026-11-09', endDate: '2026-11-12', city: 'HK', transport: 'Train' },
   { startDate: '2026-11-12', endDate: '2026-11-14', city: 'Chaozhou', transport: 'Train' },
   { startDate: '2026-11-14', endDate: '2026-11-17', city: 'Shanghai', transport: 'Flight' },
-  { startDate: '2026-11-17', endDate: '2026-11-18', city: 'Nanjing', transport: 'Train' },
+  { startDate: '2026-11-17', endDate: '2026-11-18', city: 'Suzhou', transport: 'Train' },
   { startDate: '2026-11-18', endDate: '2026-11-18', city: 'Shanghai', transport: 'Train' },
   { startDate: '2026-11-18', endDate: '2026-11-24', city: 'Seoul', transport: 'Flight' },
   { startDate: '2026-11-24', endDate: '2026-11-27', city: 'Busan', transport: 'Train' },

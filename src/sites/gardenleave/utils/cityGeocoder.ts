@@ -192,6 +192,11 @@ const BUILTIN_GAZETTEER: Record<string, GazetteerEntry> = {
     country: 'China',
     coordinates: [121.4737, 31.2304],
   },
+  Suzhou: {
+    name: 'Suzhou',
+    country: 'China',
+    coordinates: [120.5853, 31.2989],
+  },
   Seoul: {
     name: 'Seoul',
     country: 'South Korea',
@@ -223,7 +228,7 @@ const BUILTIN_GAZETTEER: Record<string, GazetteerEntry> = {
     coordinates: [133.205, 34.409],
   },
   Setoda: {
-    name: 'Setoda (Ikuchijima)',
+    name: 'Setoda',
     country: 'Japan',
     coordinates: [133.085, 34.305],
     aliases: ['Setoda (Ikuchijima)', 'Ikuchijima'],
