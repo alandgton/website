@@ -6,6 +6,7 @@ import {
   CityComputedStats,
   CityConfig,
   ItineraryLegConfig,
+  MapGranularity,
   MapRenderConfig,
   TransitMode,
   TransitModeStyleConfig,
@@ -40,7 +41,7 @@ interface TravelMapCanvasProps {
   visibleModes: Record<TransitMode, boolean>;
   countriesGeoJson: FeatureCollection<Geometry> | null;
   admin1GeoJson: FeatureCollection<Geometry> | null;
-  showAdmin1: boolean;
+  granularity: MapGranularity;
   showGraticule: boolean;
   showLabels: boolean;
   selectedCityId: string | null;
@@ -76,7 +77,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   visibleModes,
   countriesGeoJson,
   admin1GeoJson,
-  showAdmin1,
+  granularity,
   showGraticule,
   showLabels,
   selectedCityId,
@@ -87,6 +88,9 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   onSelectLeg,
   onClearSelection,
 }) => {
+  const isSubregion = granularity === 'subregion';
+  const isNone = granularity === 'none';
+
   const [hoverInfo, setHoverInfo] = useState<HoverTooltipState | null>(null);
   // Stable primitive so the arrow layer memo only recomputes when the hovered leg changes (not on every mousemove)
   const hoveredLegId = hoverInfo?.type === 'leg' ? (hoverInfo.leg?.id ?? null) : null;
@@ -108,8 +112,8 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   );
 
   const indexedAdmin1 = useMemo(
-    () => (showAdmin1 ? indexGeoJsonFeatures(admin1GeoJson) : []),
-    [admin1GeoJson, showAdmin1]
+    () => (isSubregion ? indexGeoJsonFeatures(admin1GeoJson) : []),
+    [admin1GeoJson, isSubregion]
   );
 
   const cityToCountryFeatureIds = useMemo(
@@ -133,7 +137,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   }, [indexedCountries, pathGenerator]);
 
   const admin1Paths = useMemo(() => {
-    if (!showAdmin1 || indexedAdmin1.length === 0) return [];
+    if (!isSubregion || indexedAdmin1.length === 0) return [];
     return indexedAdmin1
       .map((item) => ({
         id: item.id,
@@ -141,7 +145,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
         d: pathGenerator(item.feature) || '',
       }))
       .filter((item) => Boolean(item.d));
-  }, [indexedAdmin1, pathGenerator, showAdmin1]);
+  }, [indexedAdmin1, pathGenerator, isSubregion]);
 
   const setoIslandPaths = useMemo(() => {
     return SETO_INLAND_ISLANDS.features
@@ -435,14 +439,18 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
               <g className="countries-layer">
                 {countryPaths.map((country) => {
                   const isSubdividedInAdmin1 =
-                    showAdmin1 &&
+                    isSubregion &&
                     admin1Paths.length > 0 &&
                     Boolean(country.normName && subdividedCountryNames.has(country.normName));
 
                   const isVisitedCountry =
-                    !isSubdividedInAdmin1 && visitedCountryFeatureIds.has(country.id);
+                    !isNone &&
+                    !isSubdividedInAdmin1 &&
+                    visitedCountryFeatureIds.has(country.id);
                   const isActiveCountry =
-                    !isSubdividedInAdmin1 && activeCountryFeatureIds.has(country.id);
+                    !isNone &&
+                    !isSubdividedInAdmin1 &&
+                    activeCountryFeatureIds.has(country.id);
 
                   return (
                     <path
@@ -475,7 +483,8 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
               activeCountryFeatureIds,
               admin1Paths.length,
               countryPaths,
-              showAdmin1,
+              isNone,
+              isSubregion,
               subdividedCountryNames,
               visitedCountryFeatureIds,
             ]
@@ -484,7 +493,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
           {/* Optional Admin-1 State/Province Polygons & Boundary Lines */}
           {useMemo(
             () =>
-              showAdmin1 && admin1Paths.length > 0 ? (
+              isSubregion && admin1Paths.length > 0 ? (
                 <g className="admin1-layer pointer-events-none">
                   {admin1Paths.map((prov) => {
                     const isVisitedProv = visitedAdmin1FeatureIds.has(prov.id);
@@ -517,42 +526,47 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
                   })}
                 </g>
               ) : null,
-            [activeAdmin1FeatureIds, admin1Paths, showAdmin1, visitedAdmin1FeatureIds]
+            [activeAdmin1FeatureIds, admin1Paths, isSubregion, visitedAdmin1FeatureIds]
           )}
 
           {/* Seto Inland Sea Islands Layer (Onomichi -> Setoda -> Omishima -> Imabari -> Matsuyama corridor) */}
           {useMemo(
             () => (
               <g className="seto-islands-layer">
-                {setoIslandPaths.map((island) => (
-                  <path
-                    key={island.id}
-                    d={island.d}
-                    fill={
-                      isJapanActive
-                        ? '#203e66'
-                        : isJapanVisited
-                          ? '#183052'
-                          : '#111b2e'
-                    }
-                    stroke={
-                      isJapanActive
-                        ? '#38bdf8'
-                        : isJapanVisited
-                          ? '#2b5485'
-                          : '#26354d'
-                    }
-                    strokeWidth={isJapanActive ? 1.25 : isJapanVisited ? 0.95 : 0.7}
-                    vectorEffect="non-scaling-stroke"
-                    strokeLinejoin="round"
-                    data-bg="true"
-                  >
-                    <title>{island.name}</title>
-                  </path>
-                ))}
+                {setoIslandPaths.map((island) => {
+                  const isActiveIsland = !isNone && isJapanActive;
+                  const isVisitedIsland = !isNone && isJapanVisited;
+
+                  return (
+                    <path
+                      key={island.id}
+                      d={island.d}
+                      fill={
+                        isActiveIsland
+                          ? '#203e66'
+                          : isVisitedIsland
+                            ? '#183052'
+                            : '#111b2e'
+                      }
+                      stroke={
+                        isActiveIsland
+                          ? '#38bdf8'
+                          : isVisitedIsland
+                            ? '#2b5485'
+                            : '#26354d'
+                      }
+                      strokeWidth={isActiveIsland ? 1.25 : isVisitedIsland ? 0.95 : 0.7}
+                      vectorEffect="non-scaling-stroke"
+                      strokeLinejoin="round"
+                      data-bg="true"
+                    >
+                      <title>{island.name}</title>
+                    </path>
+                  );
+                })}
               </g>
             ),
-            [isJapanActive, isJapanVisited, setoIslandPaths]
+            [isJapanActive, isJapanVisited, isNone, setoIslandPaths]
           )}
 
           {/* Graticule Grid (Rendered above land/admin1 polygons so lat/lon lines remain visible across continents) */}

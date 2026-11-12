@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
+  Check,
+  ChevronDown,
   Compass,
   Globe,
   Grid,
@@ -11,7 +13,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { RegionCameraConfig } from '../config/types';
+import { MapGranularity, RegionCameraConfig } from '../config/types';
 
 interface RegionSelectorBarProps {
   title: string;
@@ -19,12 +21,12 @@ interface RegionSelectorBarProps {
   regions: Record<string, RegionCameraConfig>;
   activeRegionId: string | null;
   zoomK: number;
-  showAdmin1: boolean;
+  granularity: MapGranularity;
   isLoadingAdmin1: boolean;
   showGraticule: boolean;
   showLabels: boolean;
   onSelectRegion: (region: RegionCameraConfig) => void;
-  onToggleAdmin1: () => void;
+  onChangeGranularity: (granularity: MapGranularity) => void;
   onToggleGraticule: () => void;
   onToggleLabels: () => void;
   onZoomIn: () => void;
@@ -39,12 +41,12 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   regions,
   activeRegionId,
   zoomK,
-  showAdmin1,
+  granularity,
   isLoadingAdmin1,
   showGraticule,
   showLabels,
   onSelectRegion,
-  onToggleAdmin1,
+  onChangeGranularity,
   onToggleGraticule,
   onToggleLabels,
   onZoomIn,
@@ -53,10 +55,35 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   onOpenDirectoryDrawer,
 }) => {
   const regionList = Object.values(regions);
+  const [isGranularityOpen, setIsGranularityOpen] = useState<boolean>(false);
+  const granularityMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isGranularityOpen) return;
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      if (
+        granularityMenuRef.current &&
+        !granularityMenuRef.current.contains(e.target as Node)
+      ) {
+        setIsGranularityOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsGranularityOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isGranularityOpen]);
 
   return (
     <header className="pointer-events-none absolute top-0 left-0 right-0 z-20 flex flex-col gap-2 p-3 sm:p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="relative z-20 flex flex-wrap items-center justify-between gap-2">
         {/* Left Controls: Main + Title Pill */}
         <div className="flex flex-wrap items-center gap-2">
           <a
@@ -98,21 +125,79 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
             <span className="hidden md:inline">Labels</span>
           </button>
 
-          <button
-            type="button"
-            onClick={onToggleAdmin1}
-            title="Toggle Admin-1 State / Province Boundaries"
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
-              showAdmin1
-                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
-          >
-            <Layers className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">
-              {isLoadingAdmin1 ? 'Loading States…' : 'States/Provinces'}
-            </span>
-          </button>
+          {/* Granularity Dropdown (Option 2: Fixed Button Title "Granularity") */}
+          <div ref={granularityMenuRef} className="relative z-50">
+            <button
+              type="button"
+              onClick={() => setIsGranularityOpen((open) => !open)}
+              title={`Highlighting Granularity: ${
+                granularity === 'subregion'
+                  ? 'Subregion'
+                  : granularity === 'country'
+                    ? 'Country'
+                    : 'None'
+              } (Click to change)`}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+                granularity !== 'none'
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+              aria-expanded={isGranularityOpen}
+              aria-haspopup="listbox"
+            >
+              <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Granularity</span>
+              <ChevronDown
+                className={`h-3 w-3 text-slate-400 transition-transform ${
+                  isGranularityOpen ? 'rotate-180 text-sky-300' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+
+            {isGranularityOpen && (
+              <div
+                role="listbox"
+                className="absolute right-0 mt-1.5 w-40 rounded-xl border border-slate-800 bg-slate-900/95 p-1 shadow-2xl backdrop-blur-md z-50 space-y-0.5"
+              >
+                <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-slate-500">
+                  Granularity
+                </div>
+                {(
+                  [
+                    {
+                      id: 'subregion',
+                      label: isLoadingAdmin1 ? 'Subregion (Loading…)' : 'Subregion',
+                    },
+                    { id: 'country', label: 'Country' },
+                    { id: 'none', label: 'None' },
+                  ] as const
+                ).map((opt) => {
+                  const isSelected = granularity === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      onClick={() => {
+                        onChangeGranularity(opt.id);
+                        setIsGranularityOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
+                        isSelected
+                          ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {isSelected && <Check className="h-3.5 w-3.5 text-sky-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
@@ -176,7 +261,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
       </div>
 
       {/* Config-Driven Regional Quick-Zoom Camera Selector Bar (REGIONS_CONFIG) */}
-      <div className="pointer-events-auto flex items-center gap-1.5 overflow-x-auto rounded-xl border border-slate-800/90 bg-slate-900/85 px-2.5 py-1.5 shadow-lg backdrop-blur-md no-scrollbar w-fit max-w-full">
+      <div className="relative z-10 pointer-events-auto flex items-center gap-1.5 overflow-x-auto rounded-xl border border-slate-800/90 bg-slate-900/85 px-2.5 py-1.5 shadow-lg backdrop-blur-md no-scrollbar w-fit max-w-full">
         <div className="flex items-center gap-1 pr-1 text-[11px] font-medium text-slate-400 shrink-0">
           <Compass className="h-3.5 w-3.5 text-sky-400" />
           <span className="hidden sm:inline">Regions:</span>

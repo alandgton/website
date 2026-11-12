@@ -1,5 +1,7 @@
 export type TransitMode = 'Flight' | 'Train' | 'Drive' | 'Bike';
 
+export type MapGranularity = 'subregion' | 'country' | 'none';
+
 export interface TransitModeStyleConfig {
   mode: TransitMode;
   label: string;

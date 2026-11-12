@@ -4,6 +4,7 @@ import { Loader2, Sparkles } from 'lucide-react';
 import {
   DEFAULT_TRAVEL_MAP_CONFIG,
   ItineraryLegConfig,
+  MapGranularity,
   RegionCameraConfig,
   TransitMode,
 } from './config';
@@ -110,8 +111,8 @@ function getContextualZoomForLeg(
 export const App: React.FC = () => {
   const activeConfig = DEFAULT_TRAVEL_MAP_CONFIG;
 
-  // Layer visibility toggles
-  const [showAdmin1, setShowAdmin1] = useState<boolean>(false);
+  // Layer visibility & granularity controls
+  const [granularity, setGranularity] = useState<MapGranularity>('subregion');
   const [showGraticule, setShowGraticule] = useState<boolean>(true);
   const [showLabels, setShowLabels] = useState<boolean>(true);
 
@@ -161,7 +162,7 @@ export const App: React.FC = () => {
   } = useMapTopology(
     activeConfig.mapConfig.countriesTopoJsonUrl,
     activeConfig.mapConfig.admin1GeoJsonUrl,
-    showAdmin1,
+    granularity === 'subregion',
     zoomK >= 6 && !isPlayingTimeline
   );
 
@@ -406,12 +407,12 @@ export const App: React.FC = () => {
         regions={effectiveRegions}
         activeRegionId={activeRegionId}
         zoomK={zoomK}
-        showAdmin1={showAdmin1}
+        granularity={granularity}
         isLoadingAdmin1={isLoadingAdmin1}
         showGraticule={showGraticule}
         showLabels={showLabels}
         onSelectRegion={handleSelectRegion}
-        onToggleAdmin1={() => setShowAdmin1((v) => !v)}
+        onChangeGranularity={setGranularity}
         onToggleGraticule={() => setShowGraticule((v) => !v)}
         onToggleLabels={() => setShowLabels((v) => !v)}
         onZoomIn={zoomIn}
@@ -440,7 +441,7 @@ export const App: React.FC = () => {
           visibleModes={visibleModes}
           countriesGeoJson={countriesGeoJson}
           admin1GeoJson={admin1GeoJson}
-          showAdmin1={showAdmin1}
+          granularity={granularity}
           showGraticule={showGraticule}
           showLabels={showLabels}
           selectedCityId={selectedCityId}
