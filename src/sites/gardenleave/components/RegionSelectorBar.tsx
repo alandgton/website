@@ -23,6 +23,7 @@ interface RegionSelectorBarProps {
   onChangeGranularity: (granularity: MapGranularity) => void;
   onToggleGraticule: () => void;
   onOpenDirectoryDrawer: () => void;
+  containerRef?: React.RefObject<HTMLElement>;
 }
 
 export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
@@ -37,6 +38,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   onChangeGranularity,
   onToggleGraticule,
   onOpenDirectoryDrawer,
+  containerRef,
 }) => {
   const regionList = Object.values(regions);
   const activeRegion = activeRegionId
@@ -114,7 +116,10 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   }, [isGranularityOpen, isRegionMenuOpen]);
 
   return (
-    <header className="pointer-events-none absolute top-0 left-0 right-0 z-20 flex justify-center p-3 sm:p-4">
+    <header
+      ref={containerRef}
+      className="pointer-events-none absolute top-0 left-0 right-0 z-20 flex justify-center p-3 sm:p-4"
+    >
       {/* Centered Floating Island */}
       <div className="relative z-20 pointer-events-auto flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 rounded-2xl border border-slate-800/90 bg-slate-900/85 px-3.5 py-1.5 shadow-2xl backdrop-blur-md text-xs">
         {/* Navigation & Identity (Mobile Row 1 / Desktop Left) */}

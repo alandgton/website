@@ -30,7 +30,8 @@ export interface UseMapCameraReturn {
     coords: [number, number],
     targetZoom?: number,
     durationMs?: number,
-    regionId?: string | null
+    regionId?: string | null,
+    viewportCenter?: [number, number] | null
   ) => void;
   flyToBounds: (coordsList: [number, number][], options?: FlyToBoundsOptions) => void;
   flyToRegion: (
@@ -259,7 +260,8 @@ export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
       coords: [number, number],
       targetZoom: number = 5.5,
       durationMs: number = 850,
-      regionId: string | null = null
+      regionId: string | null = null,
+      viewportCenter?: [number, number] | null
     ) => {
       const svgEl = svgRef.current;
       const zoomBehavior = zoomBehaviorRef.current;
@@ -278,8 +280,10 @@ export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
         const projected = projection(coords);
         if (!projected) return;
         const [px, py] = projected;
-        const tx = mapConfig.width / 2 - px * clampedZoom;
-        const ty = mapConfig.height / 2 - py * clampedZoom;
+        const targetCenterX = viewportCenter?.[0] ?? mapConfig.width / 2;
+        const targetCenterY = viewportCenter?.[1] ?? mapConfig.height / 2;
+        const tx = targetCenterX - px * clampedZoom;
+        const ty = targetCenterY - py * clampedZoom;
         nextTransform = zoomIdentity.translate(tx, ty).scale(clampedZoom);
       }
 

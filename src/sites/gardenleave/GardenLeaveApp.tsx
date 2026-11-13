@@ -127,6 +127,11 @@ export const App: React.FC = () => {
   const [selectedLegId, setSelectedLegId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
+  // HUD overlay refs for dynamic unobstructed-viewport centering during Journey Playback
+  const headerRef = useRef<HTMLElement>(null);
+  const footerRef = useRef<HTMLElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+
   // Opt-In Journey Playback State
   const [isTimelineEnabled, setIsTimelineEnabled] = useState<boolean>(false);
   const [isPlayingTimeline, setIsPlayingTimeline] = useState<boolean>(false);
@@ -216,6 +221,62 @@ export const App: React.FC = () => {
     currentZoomKRef.current = zoomK;
   }, [zoomK]);
 
+  // Computes the SVG viewBox center of the remaining unobstructed map area
+  // after excluding the top floating bar, bottom playback/legend footer, and open itinerary drawer.
+  const getPlaybackViewportCenter = useCallback((): [number, number] | null => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return null;
+
+    const svgRect = svgEl.getBoundingClientRect();
+    if (svgRect.width <= 0 || svgRect.height <= 0) return null;
+
+    const { width: mapW, height: mapH } = activeConfig.mapConfig;
+    const svgScale = Math.min(svgRect.width / mapW, svgRect.height / mapH);
+    if (svgScale <= 0) return null;
+
+    let topInset = 0;
+    let bottomInset = 0;
+    let rightInset = 0;
+
+    if (headerRef.current) {
+      const headerRect = headerRef.current.getBoundingClientRect();
+      topInset = Math.max(0, headerRect.bottom - svgRect.top);
+    }
+
+    if (footerRef.current) {
+      const footerRect = footerRef.current.getBoundingClientRect();
+      bottomInset = Math.max(0, svgRect.bottom - footerRect.top);
+    }
+
+    if (drawerRef.current) {
+      const drawerRect = drawerRef.current.getBoundingClientRect();
+      if (drawerRect.width < svgRect.width * 0.85) {
+        rightInset = Math.max(0, svgRect.right - drawerRect.left);
+      } else {
+        bottomInset = Math.max(bottomInset, svgRect.bottom - drawerRect.top);
+      }
+    }
+
+    const availLeft = svgRect.left;
+    const availRight = svgRect.right - rightInset;
+    const availTop = svgRect.top + topInset;
+    const availBottom = svgRect.bottom - bottomInset;
+
+    if (availRight - availLeft < 40 || availBottom - availTop < 40) {
+      return null;
+    }
+
+    const availCenterX = (availLeft + availRight) / 2;
+    const availCenterY = (availTop + availBottom) / 2;
+    const svgCenterX = svgRect.left + svgRect.width / 2;
+    const svgCenterY = svgRect.top + svgRect.height / 2;
+
+    return [
+      mapW / 2 + (availCenterX - svgCenterX) / svgScale,
+      mapH / 2 + (availCenterY - svgCenterY) / svgScale,
+    ];
+  }, [activeConfig.mapConfig, svgRef]);
+
   // Follow camera effect when timeline index advances (always enabled)
   const followLegDestination = useCallback(
     (legIndex: number) => {
@@ -250,12 +311,19 @@ export const App: React.FC = () => {
         isApproachingMicroCluster
       );
       currentZoomKRef.current = targetZoom;
-      flyToCoordinates(destCity.coordinates, targetZoom, Math.min(850, playbackSpeedMs * 0.75));
+      flyToCoordinates(
+        destCity.coordinates,
+        targetZoom,
+        Math.min(850, playbackSpeedMs * 0.75),
+        null,
+        getPlaybackViewportCenter()
+      );
     },
     [
       resolvedCities,
       activeConfig.itinerary,
       flyToCoordinates,
+      getPlaybackViewportCenter,
       playbackSpeedMs,
       projection,
       shimanamiClusterZoom,
@@ -285,14 +353,14 @@ export const App: React.FC = () => {
     ? (activeConfig.itinerary[currentTimelineIndex]?.id ?? selectedLegId)
     : selectedLegId;
 
-  // Trigger camera follow whenever currentTimelineIndex changes while timeline is enabled
+  // Trigger camera follow whenever currentTimelineIndex or drawer open state changes while timeline is enabled
   useEffect(() => {
     if (!isTimelineEnabled) return;
     const rafId = window.requestAnimationFrame(() => {
       followLegDestination(currentTimelineIndex);
     });
     return () => window.cancelAnimationFrame(rafId);
-  }, [currentTimelineIndex, followLegDestination, isTimelineEnabled]);
+  }, [currentTimelineIndex, followLegDestination, isDrawerOpen, isTimelineEnabled]);
 
   // Handlers
   const handleSelectRegion = useCallback(
@@ -398,6 +466,7 @@ export const App: React.FC = () => {
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col">
       {/* Top HUD: Title, Region Dropdown, Granularity & Drawer Trigger (Option B Centered Island) */}
       <RegionSelectorBar
+        containerRef={headerRef}
         title={activeConfig.title}
         subtitle={activeConfig.subtitle}
         regions={effectiveRegions}
@@ -468,7 +537,10 @@ export const App: React.FC = () => {
       </main>
 
       {/* Bottom HUD: Transit Legend + Opt-In Journey Playback (Layout 1) */}
-      <footer className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 p-3 sm:p-4">
+      <footer
+        ref={footerRef}
+        className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 p-3 sm:p-4"
+      >
         <div className="flex flex-wrap items-center justify-center gap-2 pointer-events-auto">
           <TransitLegendBar
             transitModes={activeConfig.transitModes}
@@ -512,6 +584,7 @@ export const App: React.FC = () => {
 
       {/* Responsive Detail Drawer (Bottom sheet on mobile, right sidebar on desktop) */}
       <CityDetailDrawer
+        containerRef={drawerRef}
         isOpen={isDrawerOpen}
         selectedCityId={selectedCityId}
         selectedLegId={effectiveSelectedLegId}

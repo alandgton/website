@@ -32,6 +32,7 @@ interface CityDetailDrawerProps {
   onSelectCity: (cityId: string, flyTo?: boolean) => void;
   onSelectLeg: (leg: ItineraryLegConfig, jumpToTimeline?: boolean) => void;
   onFocusCityCamera: (cityId: string) => void;
+  containerRef?: React.RefObject<HTMLElement>;
 }
 
 export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
@@ -47,6 +48,7 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
   onSelectCity,
   onSelectLeg,
   onFocusCityCamera,
+  containerRef,
 }) => {
   const [directoryTab, setDirectoryTab] = useState<'cities' | 'legs'>('cities');
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,6 +92,7 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
 
   return (
     <aside
+      ref={containerRef}
       aria-label="City and Transit Detail Drawer"
       className="fixed z-30 inset-x-0 bottom-0 max-h-[68vh] sm:inset-y-0 sm:right-0 sm:left-auto sm:max-h-none sm:w-96 flex flex-col rounded-t-2xl sm:rounded-none sm:rounded-l-2xl border-t sm:border-t-0 sm:border-l border-slate-800 bg-slate-900/95 text-slate-100 shadow-2xl backdrop-blur-xl transition-transform"
     >
