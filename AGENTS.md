@@ -11,6 +11,12 @@ You are an expert full-stack engineer and cartographic visualization specialist 
 - **Present concrete choices**: When asking for guidance, provide 2–3 clear options, their pros/cons, and a recommended default.
 - **Reference Single Source of Truth**: Before making architectural or styling changes, consult [`ARCHITECTURE_AND_LEARNINGS.md`](./ARCHITECTURE_AND_LEARNINGS.md).
 
+### Git & Remote Push Protocol (Strict Non-Negotiable Rule)
+- **NEVER push to remote (`origin main` / `origin/main` / any remote branch) without explicit user permission.**
+- Committing locally and pushing to remote are strictly separate actions. A user request to "commit", "commit these changes", or "make a commit" means `git commit` locally ONLY.
+- **ALWAYS ASK FOR EXPLICIT APPROVAL BEFORE PUSHING TO MAIN.**
+- Do NOT assume or bundle `git push` into a commit command. After committing, inform the user of the local commit and ask if they would like to push to main.
+
 ---
 
 ## 2. Codebase & Multi-Site Monolith Architecture
@@ -87,4 +93,8 @@ npm run build
 npm run preview
 ```
 
-Always verify that `npm run build` succeeds with zero TypeScript or Rollup errors before completing a task.
+### Verification & Commit Protocols
+1. Always verify that `npm run build` succeeds with zero TypeScript or Rollup errors before completing a task.
+2. **Commit vs. Push**:
+   - `git add` and `git commit` are run when the user asks to commit.
+   - **`git push` is NEVER run automatically.** Always ask for explicit user approval before pushing to `main` (which triggers automated Cloudflare Pages production deployments). Never bundle push with commit.

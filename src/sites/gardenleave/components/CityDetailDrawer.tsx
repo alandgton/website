@@ -178,12 +178,7 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
       {/* Selected Leg Highlight Banner (if a transit line was clicked) */}
       {activeLeg && (
         <div className="border-b border-slate-800/90 bg-sky-950/30 px-4 py-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-[11px] font-semibold text-sky-400">
-              Selected Transit Line · Leg #{activeLeg.id}
-            </span>
-          </div>
-          <div className="mt-1 flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-xs">
             <div className="font-semibold text-white">
               <button
                 type="button"
@@ -242,11 +237,11 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
               </div>
             </div>
 
-            {/* Arrival Legs Section */}
+            {/* Arrival Section */}
             <div>
               <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Arrival Legs ({activeStats.arrivals.length})</span>
+                <span>Arrival</span>
               </h3>
 
               {activeStats.arrivals.length === 0 ? (
@@ -269,34 +264,30 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-[11px] text-slate-400">
-                            Leg #{leg.id}
-                          </span>
-                          <span
-                            className="rounded px-2 py-0.5 text-[10px] font-semibold"
-                            style={{
-                              backgroundColor: `${style.color}20`,
-                              color: style.color,
-                              border: `1px solid ${style.color}40`,
-                            }}
-                          >
-                            {leg.transport}
-                          </span>
-                        </div>
-
-                        <div className="mt-1.5 flex items-center justify-between gap-2">
-                          <div className="text-xs font-semibold text-white">
-                            From{' '}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectCity(leg.source, true);
+                          <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                            <span>
+                              From{' '}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectCity(leg.source, true);
+                                }}
+                                className="text-sky-400 hover:underline"
+                              >
+                                {fromCity?.name ?? leg.source}
+                              </button>
+                            </span>
+                            <span
+                              className="rounded px-2 py-0.5 text-[10px] font-semibold"
+                              style={{
+                                backgroundColor: `${style.color}20`,
+                                color: style.color,
+                                border: `1px solid ${style.color}40`,
                               }}
-                              className="text-sky-400 hover:underline"
                             >
-                              {fromCity?.name ?? leg.source}
-                            </button>
+                              {leg.transport}
+                            </span>
                           </div>
                           <span className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px] text-amber-300">
                             {leg.nights === 0
@@ -305,21 +296,11 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
                           </span>
                         </div>
 
-                        <div className="mt-1 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                        <div className="mt-1.5 flex items-center text-[11px] text-slate-400 font-mono">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-slate-500" />
                             {leg.startDate} → {leg.endDate}
                           </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSelectLeg(leg, true);
-                            }}
-                            className="text-sky-400 hover:text-sky-300 font-sans text-[11px]"
-                          >
-                            Playback →
-                          </button>
                         </div>
                       </div>
                     );
@@ -328,11 +309,11 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
               )}
             </div>
 
-            {/* Departure Legs Section */}
+            {/* Departure Section */}
             <div>
               <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 <ArrowUpRight className="h-3.5 w-3.5 text-sky-400" />
-                <span>Departure Legs ({activeStats.departures.length})</span>
+                <span>Departure</span>
               </h3>
 
               {activeStats.departures.length === 0 ? (
@@ -355,55 +336,41 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono text-[11px] text-slate-400">
-                            Leg #{leg.id}
-                          </span>
-                          <span
-                            className="rounded px-2 py-0.5 text-[10px] font-semibold"
-                            style={{
-                              backgroundColor: `${style.color}20`,
-                              color: style.color,
-                              border: `1px solid ${style.color}40`,
-                            }}
-                          >
-                            {leg.transport}
-                          </span>
-                        </div>
-
-                        <div className="mt-1.5 flex items-center justify-between gap-2">
-                          <div className="text-xs font-semibold text-white">
-                            To{' '}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectCity(leg.dest, true);
+                          <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                            <span>
+                              To{' '}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectCity(leg.dest, true);
+                                }}
+                                className="text-sky-400 hover:underline"
+                              >
+                                {toCity?.name ?? leg.dest}
+                              </button>
+                            </span>
+                            <span
+                              className="rounded px-2 py-0.5 text-[10px] font-semibold"
+                              style={{
+                                backgroundColor: `${style.color}20`,
+                                color: style.color,
+                                border: `1px solid ${style.color}40`,
                               }}
-                              className="text-sky-400 hover:underline"
                             >
-                              {toCity?.name ?? leg.dest}
-                            </button>
+                              {leg.transport}
+                            </span>
                           </div>
                           <span className="font-mono text-[11px] text-slate-400">
                             ({leg.nights === 0 ? 'intraday' : `${leg.nights}n`} at dest)
                           </span>
                         </div>
 
-                        <div className="mt-1 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                        <div className="mt-1.5 flex items-center text-[11px] text-slate-400 font-mono">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-slate-500" />
                             Departs {leg.startDate}
                           </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSelectLeg(leg, true);
-                            }}
-                            className="text-sky-400 hover:text-sky-300 font-sans text-[11px]"
-                          >
-                            Playback →
-                          </button>
                         </div>
                       </div>
                     );
