@@ -4,10 +4,10 @@ import {
   Check,
   ChevronDown,
   Compass,
-  Globe,
   Grid,
   Layers,
   ListFilter,
+  Palmtree,
 } from 'lucide-react';
 import { MapGranularity, RegionCameraConfig } from '../config/types';
 
@@ -136,7 +136,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
             className="flex items-center gap-1.5 font-bold text-white select-none"
             title={`${title} — ${subtitle}`}
           >
-            <Globe className="h-3.5 w-3.5 text-sky-400 shrink-0" aria-hidden="true" />
+            <Palmtree className="h-3.5 w-3.5 text-sky-400 shrink-0" aria-hidden="true" />
             <span className="hidden sm:inline">Alan Ton @ Garden Leave</span>
             <span className="sm:hidden">Garden Leave</span>
           </div>
