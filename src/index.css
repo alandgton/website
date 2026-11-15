@@ -22,3 +22,57 @@ body {
   background-color: #060913;
   color: #f1f5f9;
 }
+
+@keyframes postcardStackRecede {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 7%, 0) scale(0.91) rotate(-1.2deg);
+  }
+}
+
+@keyframes postcardStackDealEven {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -11%, 0) scale(0.94) rotate(2.2deg);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes postcardStackDealOdd {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -11%, 0) scale(0.94) rotate(-2.2deg);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+}
+
+.animate-postcard-recede {
+  animation: postcardStackRecede 440ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-postcard-deal-even {
+  animation: postcardStackDealEven 440ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-postcard-deal-odd {
+  animation: postcardStackDealOdd 440ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}

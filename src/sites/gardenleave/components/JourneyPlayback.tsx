@@ -17,7 +17,7 @@ import {
   TransitMode,
   TransitModeStyleConfig,
 } from '../config/types';
-import { CityPhotoCarousel } from './CityPhotoCarousel';
+import { CityPhotoCarousel, PostcardStackImage } from './CityPhotoCarousel';
 
 interface JourneyPlaybackProps {
   isEnabled: boolean;
@@ -191,19 +191,9 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                     style={{ width: '4.5rem' }}
                     title="Tap to enlarge photo"
                   >
-                    <img
-                      key={activePhoto.id}
-                      src={activePhoto.src}
-                      alt={
-                        activePhoto.caption
-                          ? `${destCity?.name ?? currentLeg.dest} — ${activePhoto.caption}`
-                          : (destCity?.name ?? currentLeg.dest)
-                      }
-                      width={activePhoto.width}
-                      height={activePhoto.height}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover"
+                    <PostcardStackImage
+                      photo={activePhoto}
+                      cityName={destCity?.name ?? currentLeg.dest}
                     />
                   </button>
 
