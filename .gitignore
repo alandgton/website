@@ -5,3 +5,5 @@ dist/
 *.local
 ARCHITECTURE_AND_LEARNINGS.md
 prompt.md
+photos/raw/*
+!photos/raw/README.md

@@ -3,6 +3,7 @@ import { GeoProjection } from 'd3-geo';
 import { Loader2 } from 'lucide-react';
 import {
   DEFAULT_TRAVEL_MAP_CONFIG,
+  getPhotosForCity,
   ItineraryLegConfig,
   MapGranularity,
   RegionCameraConfig,
@@ -10,9 +11,11 @@ import {
 } from './config';
 import { useMapCamera } from './hooks/useMapCamera';
 import { useMapTopology } from './hooks/useMapTopology';
+import { usePhotoPreloader } from './hooks/usePhotoPreloader';
 import { useResolvedCities } from './hooks/useResolvedCities';
 import { computeAllCityStats, computeJourneySummary } from './utils/itineraryStats';
 import { CityDetailDrawer } from './components/CityDetailDrawer';
+import { CityPhotoPostcard } from './components/CityPhotoPostcard';
 import { RegionSelectorBar } from './components/RegionSelectorBar';
 import { JourneyPlayback } from './components/JourneyPlayback';
 import { TransitLegendBar } from './components/TransitLegendBar';
@@ -131,12 +134,24 @@ export const App: React.FC = () => {
   const headerRef = useRef<HTMLElement>(null);
   const footerRef = useRef<HTMLElement>(null);
   const drawerRef = useRef<HTMLElement>(null);
+  const postcardRef = useRef<HTMLElement>(null);
 
   // Opt-In Journey Playback State
   const [isTimelineEnabled, setIsTimelineEnabled] = useState<boolean>(false);
   const [isPlayingTimeline, setIsPlayingTimeline] = useState<boolean>(false);
   const [currentTimelineIndex, setCurrentTimelineIndex] = useState<number>(0);
   const [playbackSpeedMs, setPlaybackSpeedMs] = useState<number>(1400);
+  const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
+  const [isPostcardHovered, setIsPostcardHovered] = useState<boolean>(false);
+
+  // Lookahead & hover-intent photo preloader (0 bytes on initial load)
+  const { preloadCity } = usePhotoPreloader(
+    activeConfig.cityPhotos,
+    activeConfig.itinerary,
+    isTimelineEnabled,
+    currentTimelineIndex,
+    selectedCityId
+  );
 
   const {
     svgRef,
@@ -221,9 +236,14 @@ export const App: React.FC = () => {
     currentZoomKRef.current = zoomK;
   }, [zoomK]);
 
-  // Computes the SVG viewBox center of the remaining unobstructed map area
-  // after excluding the top floating bar, bottom playback/legend footer, and open itinerary drawer.
-  const getPlaybackViewportCenter = useCallback((): [number, number] | null => {
+  // Computes the SVG viewBox center and usable dimensions of the remaining unobstructed map area
+  // after excluding the top floating bar, bottom playback/legend footer, open itinerary drawer,
+  // and (on narrower desktop/tablet viewports) the top-left photo postcard.
+  const getPlaybackViewportMetrics = useCallback((): {
+    center: [number, number];
+    availSvgW: number;
+    availSvgH: number;
+  } | null => {
     const svgEl = svgRef.current;
     if (!svgEl) return null;
 
@@ -236,6 +256,7 @@ export const App: React.FC = () => {
 
     let topInset = 0;
     let bottomInset = 0;
+    let leftInset = 0;
     let rightInset = 0;
 
     if (headerRef.current) {
@@ -257,7 +278,14 @@ export const App: React.FC = () => {
       }
     }
 
-    const availLeft = svgRect.left;
+    if (postcardRef.current && svgRect.width < 1150) {
+      const postcardRect = postcardRef.current.getBoundingClientRect();
+      if (postcardRect.width > 0 && postcardRect.height > 0) {
+        leftInset = Math.max(0, postcardRect.right - svgRect.left);
+      }
+    }
+
+    const availLeft = svgRect.left + leftInset;
     const availRight = svgRect.right - rightInset;
     const availTop = svgRect.top + topInset;
     const availBottom = svgRect.bottom - bottomInset;
@@ -271,10 +299,14 @@ export const App: React.FC = () => {
     const svgCenterX = svgRect.left + svgRect.width / 2;
     const svgCenterY = svgRect.top + svgRect.height / 2;
 
-    return [
-      mapW / 2 + (availCenterX - svgCenterX) / svgScale,
-      mapH / 2 + (availCenterY - svgCenterY) / svgScale,
-    ];
+    return {
+      center: [
+        mapW / 2 + (availCenterX - svgCenterX) / svgScale,
+        mapH / 2 + (availCenterY - svgCenterY) / svgScale,
+      ],
+      availSvgW: (availRight - availLeft) / svgScale,
+      availSvgH: (availBottom - availTop) / svgScale,
+    };
   }, [activeConfig.mapConfig, svgRef]);
 
   // Follow camera effect when timeline index advances (always enabled)
@@ -311,28 +343,62 @@ export const App: React.FC = () => {
         isApproachingMicroCluster
       );
       currentZoomKRef.current = targetZoom;
+
+      const metrics = getPlaybackViewportMetrics();
+
+      // Frame both source and destination pins within the unobstructed viewport whenever
+      // the leg does not cross the antimeridian, clamping the shift so the destination pin
+      // and its city label always remain comfortably inside the safe zone.
+      let focusCoords: [number, number] = destCity.coordinates;
+      if (sourceCity && metrics && projection.invert) {
+        const rawDLon = Math.abs(sourceCity.coordinates[0] - destCity.coordinates[0]);
+        const pSource = projection(sourceCity.coordinates);
+        const pDest = projection(destCity.coordinates);
+        if (pSource && pDest && rawDLon < 180) {
+          const midOffsetX = (pSource[0] - pDest[0]) * 0.5;
+          const midOffsetY = (pSource[1] - pDest[1]) * 0.5;
+          const maxShiftX = (metrics.availSvgW / targetZoom) * 0.28;
+          const maxShiftY = (metrics.availSvgH / targetZoom) * 0.26;
+          const clampedShiftX = Math.max(-maxShiftX, Math.min(maxShiftX, midOffsetX));
+          const clampedShiftY = Math.max(-maxShiftY, Math.min(maxShiftY, midOffsetY));
+          const inverted = projection.invert([
+            pDest[0] + clampedShiftX,
+            pDest[1] + clampedShiftY,
+          ]);
+          if (inverted) {
+            focusCoords = inverted;
+          }
+        }
+      }
+
       flyToCoordinates(
-        destCity.coordinates,
+        focusCoords,
         targetZoom,
         Math.min(850, playbackSpeedMs * 0.75),
         null,
-        getPlaybackViewportCenter()
+        metrics?.center ?? null
       );
     },
     [
       resolvedCities,
       activeConfig.itinerary,
       flyToCoordinates,
-      getPlaybackViewportCenter,
+      getPlaybackViewportMetrics,
       playbackSpeedMs,
       projection,
       shimanamiClusterZoom,
     ]
   );
 
-  // Auto-advance timer when timeline playback is active
+  // Reset active photo index whenever the timeline leg or selected city changes
   useEffect(() => {
-    if (!isTimelineEnabled || !isPlayingTimeline) return;
+    setActivePhotoIndex(0);
+  }, [currentTimelineIndex, selectedCityId]);
+
+  // Auto-advance timer when timeline playback is active (shows the city's primary cover photo
+  // without auto-cycling multiple photos; pauses while hovered/touched for manual browsing)
+  useEffect(() => {
+    if (!isTimelineEnabled || !isPlayingTimeline || isPostcardHovered) return;
 
     const timer = window.setInterval(() => {
       setCurrentTimelineIndex((prev) => {
@@ -346,7 +412,13 @@ export const App: React.FC = () => {
     }, playbackSpeedMs);
 
     return () => window.clearInterval(timer);
-  }, [activeConfig.itinerary.length, isPlayingTimeline, isTimelineEnabled, playbackSpeedMs]);
+  }, [
+    activeConfig.itinerary.length,
+    isPlayingTimeline,
+    isPostcardHovered,
+    isTimelineEnabled,
+    playbackSpeedMs,
+  ]);
 
   // Derive effective selected leg ID so advancing currentTimelineIndex does not require a second cascading state update
   const effectiveSelectedLegId = isTimelineEnabled
@@ -449,6 +521,7 @@ export const App: React.FC = () => {
   const handleToggleTimelineEnabled = useCallback(
     (enabled: boolean) => {
       setIsTimelineEnabled(enabled);
+      setActivePhotoIndex(0);
       if (!enabled) {
         setIsPlayingTimeline(false);
         setSelectedLegId(null);
@@ -461,6 +534,39 @@ export const App: React.FC = () => {
     },
     [activeConfig.itinerary, currentTimelineIndex]
   );
+
+  const handlePlaybackLayoutHeightChange = useCallback(() => {
+    if (!isTimelineEnabled) return;
+    window.requestAnimationFrame(() => {
+      followLegDestination(currentTimelineIndex);
+    });
+  }, [currentTimelineIndex, followLegDestination, isTimelineEnabled]);
+
+  // Determine active city and photo gallery for the floating postcard HUD
+  const activeTimelineLeg = isTimelineEnabled
+    ? activeConfig.itinerary[currentTimelineIndex]
+    : null;
+  const postcardCityId = isTimelineEnabled
+    ? (activeTimelineLeg?.dest ?? null)
+    : !isDrawerOpen
+      ? selectedCityId
+      : null;
+  const isPostcardHiddenByOpenDrawer =
+    isDrawerOpen && selectedCityId !== null && selectedCityId === postcardCityId;
+  const postcardPhotos = useMemo(
+    () =>
+      isPostcardHiddenByOpenDrawer
+        ? []
+        : getPhotosForCity(postcardCityId, activeConfig.cityPhotos),
+    [activeConfig.cityPhotos, isPostcardHiddenByOpenDrawer, postcardCityId]
+  );
+  const postcardSubtitle = activeTimelineLeg
+    ? `${activeTimelineLeg.startDate} → ${activeTimelineLeg.endDate}`
+    : postcardCityId && cityStats[postcardCityId]
+      ? `${cityStats[postcardCityId].totalNights} ${
+          cityStats[postcardCityId].totalNights === 1 ? 'night' : 'nights'
+        } stayed`
+      : undefined;
 
   return (
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col">
@@ -495,6 +601,7 @@ export const App: React.FC = () => {
           mapConfig={activeConfig.mapConfig}
           cities={resolvedCities}
           cityStats={cityStats}
+          cityPhotos={activeConfig.cityPhotos}
           itinerary={activeConfig.itinerary}
           transitModes={activeConfig.transitModes}
           visibleModes={visibleModes}
@@ -509,7 +616,26 @@ export const App: React.FC = () => {
           onSelectCity={handleCanvasSelectCity}
           onSelectLeg={handleCanvasSelectLeg}
           onClearSelection={handleClearSelection}
+          onHoverCity={preloadCity}
         />
+
+        {/* Floating Photo Postcard HUD (Desktop >= 640px during playback; mobile uses docked strip in JourneyPlayback) */}
+        {postcardCityId && postcardPhotos.length > 0 && (
+          <CityPhotoPostcard
+            containerRef={postcardRef}
+            city={resolvedCities[postcardCityId]}
+            photos={postcardPhotos}
+            activePhotoIndex={activePhotoIndex}
+            onChangePhotoIndex={setActivePhotoIndex}
+            subtitle={postcardSubtitle}
+            isTimelineEnabled={isTimelineEnabled}
+            isPlayingTimeline={isPlayingTimeline}
+            isPausedByHover={isPostcardHovered}
+            onHoverChange={setIsPostcardHovered}
+            onOpenCityDetails={(cid) => handleSelectCity(cid, false)}
+            onDismiss={!isTimelineEnabled ? () => setSelectedCityId(null) : undefined}
+          />
+        )}
 
         {/* Loading / Geocoding Status Banners */}
         {(isLoadingCountries || isGeocoding) && (
@@ -557,6 +683,11 @@ export const App: React.FC = () => {
             cities={resolvedCities}
             transitModes={activeConfig.transitModes}
             playbackSpeedMs={playbackSpeedMs}
+            destPhotos={postcardPhotos}
+            activePhotoIndex={activePhotoIndex}
+            onChangePhotoIndex={setActivePhotoIndex}
+            onPhotoHoverChange={setIsPostcardHovered}
+            onLayoutHeightChange={handlePlaybackLayoutHeightChange}
             onToggleEnabled={handleToggleTimelineEnabled}
             onTogglePlay={() => {
               if (!isPlayingTimeline && currentTimelineIndex >= activeConfig.itinerary.length - 1) {
@@ -591,6 +722,7 @@ export const App: React.FC = () => {
         homeCityId={activeConfig.itinerary[0]?.source ?? 'NYC'}
         cities={resolvedCities}
         cityStats={cityStats}
+        cityPhotos={activeConfig.cityPhotos}
         itinerary={activeConfig.itinerary}
         transitModes={activeConfig.transitModes}
         onClose={() => setIsDrawerOpen(false)}

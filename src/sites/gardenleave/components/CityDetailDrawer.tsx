@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   BedDouble,
   Calendar,
+  Camera,
   Crosshair,
   Flag,
   MapPin,
@@ -11,13 +12,16 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { getPhotosForCity } from '../config/photos.config';
 import {
   CityComputedStats,
   CityConfig,
+  CityPhotoConfig,
   ItineraryLegConfig,
   TransitMode,
   TransitModeStyleConfig,
 } from '../config/types';
+import { CityPhotoCarousel } from './CityPhotoCarousel';
 
 interface CityDetailDrawerProps {
   isOpen: boolean;
@@ -26,6 +30,7 @@ interface CityDetailDrawerProps {
   homeCityId?: string;
   cities: Record<string, CityConfig>;
   cityStats: Record<string, CityComputedStats>;
+  cityPhotos?: Record<string, CityPhotoConfig[]>;
   itinerary: ItineraryLegConfig[];
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
   onClose: () => void;
@@ -42,6 +47,7 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
   homeCityId = 'NYC',
   cities,
   cityStats,
+  cityPhotos,
   itinerary,
   transitModes,
   onClose,
@@ -52,6 +58,16 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
 }) => {
   const [directoryTab, setDirectoryTab] = useState<'cities' | 'legs'>('cities');
   const [searchQuery, setSearchQuery] = useState('');
+  const [drawerPhotoIndex, setDrawerPhotoIndex] = useState(0);
+
+  useEffect(() => {
+    setDrawerPhotoIndex(0);
+  }, [selectedCityId]);
+
+  const activeCityPhotos = useMemo(
+    () => getPhotosForCity(selectedCityId, cityPhotos),
+    [cityPhotos, selectedCityId]
+  );
 
   const activeStats = selectedCityId ? cityStats[selectedCityId] : null;
   const activeLeg = useMemo(
@@ -210,6 +226,16 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {activeStats ? (
           <>
+            {/* City Photos Carousel (shown when the city has associated photos) */}
+            {activeCityPhotos.length > 0 && (
+              <CityPhotoCarousel
+                photos={activeCityPhotos}
+                cityName={activeStats.city.name}
+                activeIndex={drawerPhotoIndex}
+                onChangeIndex={setDrawerPhotoIndex}
+              />
+            )}
+
             {/* Key Stay Metrics */}
             <div className="grid grid-cols-2 gap-2.5">
               <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
@@ -425,35 +451,47 @@ export const CityDetailDrawer: React.FC<CityDetailDrawerProps> = ({
 
             {directoryTab === 'cities' ? (
               <div className="space-y-1.5">
-                {filteredCities.map((item) => (
-                  <button
-                    key={item.city.id}
-                    type="button"
-                    onClick={() => onSelectCity(item.city.id, true)}
-                    className="flex w-full items-center justify-between rounded-xl border border-slate-800/80 bg-slate-950/60 px-3 py-2 text-left hover:border-slate-700 hover:bg-slate-800/60 transition"
-                  >
-                    <div>
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
-                        <span>{item.city.name}</span>
-                        {item.city.id === homeCityId && (
-                          <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 border border-amber-400/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
-                            <Flag className="h-2.5 w-2.5" />
-                            <span>Home Base</span>
-                          </span>
-                        )}
+                {filteredCities.map((item) => {
+                  const itemPhotosCount = getPhotosForCity(item.city.id, cityPhotos).length;
+                  return (
+                    <button
+                      key={item.city.id}
+                      type="button"
+                      onClick={() => onSelectCity(item.city.id, true)}
+                      className="flex w-full items-center justify-between rounded-xl border border-slate-800/80 bg-slate-950/60 px-3 py-2 text-left hover:border-slate-700 hover:bg-slate-800/60 transition"
+                    >
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                          <span>{item.city.name}</span>
+                          {item.city.id === homeCityId && (
+                            <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 border border-amber-400/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
+                              <Flag className="h-2.5 w-2.5" />
+                              <span>Home Base</span>
+                            </span>
+                          )}
+                          {itemPhotosCount > 0 && (
+                            <span
+                              title={`${itemPhotosCount} ${itemPhotosCount === 1 ? 'photo' : 'photos'}`}
+                              className="inline-flex items-center gap-1 rounded bg-sky-500/15 border border-sky-400/30 px-1.5 py-0.5 font-mono text-[10px] font-medium text-sky-300"
+                            >
+                              <Camera className="h-2.5 w-2.5" />
+                              <span>{itemPhotosCount}</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-400">{item.city.country}</div>
                       </div>
-                      <div className="text-[11px] text-slate-400">{item.city.country}</div>
-                    </div>
-                    <div className="text-right font-mono">
-                      <div className="text-xs font-semibold text-sky-400">
-                        {item.totalNights} {item.totalNights === 1 ? 'night' : 'nights'}
+                      <div className="text-right font-mono">
+                        <div className="text-xs font-semibold text-sky-400">
+                          {item.totalNights} {item.totalNights === 1 ? 'night' : 'nights'}
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {item.arrivals.length} in · {item.departures.length} out
+                        </div>
                       </div>
-                      <div className="text-[10px] text-slate-500">
-                        {item.arrivals.length} in · {item.departures.length} out
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <div className="space-y-1.5">

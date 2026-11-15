@@ -20,6 +20,21 @@ export interface CityConfig {
   coordinates: [number, number];
 }
 
+export interface CityPhotoConfig {
+  /** Stable identifier for the photo (e.g. 'Kyoto-01_fushimi-inari') */
+  id: string;
+  /** Public URL path to the optimized WebP image */
+  src: string;
+  /** Optional human-readable caption */
+  caption?: string;
+  /** Optional display or ISO date string (e.g. '2026-12-04') */
+  date?: string;
+  /** Intrinsic image width in pixels (prevents layout shift) */
+  width?: number;
+  /** Intrinsic image height in pixels (prevents layout shift) */
+  height?: number;
+}
+
 export interface ItineraryOriginStopInput {
   city: string;
   startDate?: string;
@@ -96,6 +111,8 @@ export interface TravelMapConfig {
   itinerary: ItineraryLegConfig[];
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
   mapConfig: MapRenderConfig;
+  /** Optional per-city photo gallery map (keyed by cityId) */
+  cityPhotos?: Record<string, CityPhotoConfig[]>;
 }
 
 export interface CityComputedStats {

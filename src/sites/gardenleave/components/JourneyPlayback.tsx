@@ -1,18 +1,23 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Calendar,
+  Camera,
   ChevronLeft,
   ChevronRight,
+  Maximize2,
+  Minimize2,
   Pause,
   Play,
   X,
 } from 'lucide-react';
 import {
   CityConfig,
+  CityPhotoConfig,
   ItineraryLegConfig,
   TransitMode,
   TransitModeStyleConfig,
 } from '../config/types';
+import { CityPhotoCarousel } from './CityPhotoCarousel';
 
 interface JourneyPlaybackProps {
   isEnabled: boolean;
@@ -22,6 +27,11 @@ interface JourneyPlaybackProps {
   cities: Record<string, CityConfig>;
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
   playbackSpeedMs: number;
+  destPhotos?: CityPhotoConfig[];
+  activePhotoIndex?: number;
+  onChangePhotoIndex?: (index: number) => void;
+  onPhotoHoverChange?: (hovered: boolean) => void;
+  onLayoutHeightChange?: () => void;
   onToggleEnabled: (enabled: boolean) => void;
   onTogglePlay: () => void;
   onPrev: () => void;
@@ -39,6 +49,11 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
   cities,
   transitModes,
   playbackSpeedMs,
+  destPhotos = [],
+  activePhotoIndex = 0,
+  onChangePhotoIndex,
+  onPhotoHoverChange,
+  onLayoutHeightChange,
   onToggleEnabled,
   onTogglePlay,
   onPrev,
@@ -47,11 +62,26 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
   onChangeSpeed,
   onInspectCity,
 }) => {
+  const [isMobilePhotoExpanded, setIsMobilePhotoExpanded] = useState(false);
+
   const currentLeg = itinerary[currentIndex] ?? itinerary[0];
   const totalLegs = itinerary.length;
   const sourceCity = currentLeg ? cities[currentLeg.source] : undefined;
   const destCity = currentLeg ? cities[currentLeg.dest] : undefined;
   const modeStyle = currentLeg ? transitModes[currentLeg.transport] : undefined;
+
+  const hasPhotos = destPhotos.length > 0;
+  const safePhotoIndex = hasPhotos
+    ? ((activePhotoIndex % destPhotos.length) + destPhotos.length) % destPhotos.length
+    : 0;
+  const activePhoto = hasPhotos ? destPhotos[safePhotoIndex] : undefined;
+
+  // Notify parent when docked mobile photo strip appears/disappears or expands/collapses
+  // so Follow Camera can re-center the map in the unobstructed viewport.
+  useEffect(() => {
+    if (!isEnabled) return;
+    onLayoutHeightChange?.();
+  }, [hasPhotos, isEnabled, isMobilePhotoExpanded, onLayoutHeightChange]);
 
   // When playback is idle/disabled, render a compact floating pill button
   if (!isEnabled) {
@@ -70,9 +100,9 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
 
   // Expanded playback controls
   return (
-    <div className="pointer-events-auto w-full max-w-2xl rounded-2xl border border-slate-800/95 bg-slate-900/95 px-4 py-2.5 shadow-2xl backdrop-blur-md transition-all">
+    <div className="pointer-events-auto w-full max-w-2xl rounded-2xl border border-slate-800/95 bg-slate-900/95 px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-2xl backdrop-blur-md transition-all">
       {/* Top Row: Playback Title, Speed Selector & Close Button */}
-      <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-800/80 text-xs">
+      <div className="flex items-center justify-between gap-3 pb-1.5 sm:pb-2 border-b border-slate-800/80 text-xs">
         <div className="flex items-center gap-2 font-semibold text-white">
           <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
           <span>Journey Playback</span>
@@ -114,7 +144,145 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
       </div>
 
       {currentLeg && (
-        <div className="pt-2 flex flex-col gap-2">
+        <div className="pt-1.5 sm:pt-2 flex flex-col gap-1.5 sm:gap-2">
+          {/* Docked Mobile Photo Strip (sm:hidden) — keeps the upper map canvas 100% unobstructed on iPhone */}
+          {hasPhotos && activePhoto && (
+            <div
+              className="sm:hidden rounded-xl border border-slate-800/90 bg-slate-950/85 p-1.5"
+              onTouchStart={() => onPhotoHoverChange?.(true)}
+              onTouchEnd={() => onPhotoHoverChange?.(false)}
+              onMouseEnter={() => onPhotoHoverChange?.(true)}
+              onMouseLeave={() => onPhotoHoverChange?.(false)}
+            >
+              {isMobilePhotoExpanded ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between px-1 text-[11px]">
+                    <span className="flex items-center gap-1.5 font-semibold text-white">
+                      <Camera className="h-3 w-3 text-sky-400" />
+                      <span>{destCity?.name ?? currentLeg.dest}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMobilePhotoExpanded(false);
+                        onPhotoHoverChange?.(false);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-slate-700/80 bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-slate-300"
+                    >
+                      <Minimize2 className="h-3 w-3 text-sky-400" />
+                      <span>Compact</span>
+                    </button>
+                  </div>
+                  <CityPhotoCarousel
+                    photos={destPhotos}
+                    cityName={destCity?.name ?? currentLeg.dest}
+                    activeIndex={safePhotoIndex}
+                    onChangeIndex={(idx) => onChangePhotoIndex?.(idx)}
+                    compact
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  {/* Compact Thumbnail (Tap to expand in-place) */}
+                  <button
+                    type="button"
+                    onClick={() => setIsMobilePhotoExpanded(true)}
+                    className="relative h-12 w-18 shrink-0 overflow-hidden rounded-lg border border-slate-700/80 bg-slate-900"
+                    style={{ width: '4.5rem' }}
+                    title="Tap to enlarge photo"
+                  >
+                    <img
+                      key={activePhoto.id}
+                      src={activePhoto.src}
+                      alt={
+                        activePhoto.caption
+                          ? `${destCity?.name ?? currentLeg.dest} — ${activePhoto.caption}`
+                          : (destCity?.name ?? currentLeg.dest)
+                      }
+                      width={activePhoto.width}
+                      height={activePhoto.height}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+
+                  {/* Caption & Multi-Photo Progress */}
+                  <div
+                    onClick={() => setIsMobilePhotoExpanded(true)}
+                    className="min-w-0 flex-1 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white">
+                      <Camera className="h-3 w-3 shrink-0 text-sky-400" />
+                      <span className="truncate">{destCity?.name ?? currentLeg.dest}</span>
+                      {destPhotos.length > 1 && (
+                        <span className="shrink-0 rounded bg-sky-500/15 border border-sky-400/30 px-1 py-0.2 font-mono text-[9px] text-sky-300">
+                          {safePhotoIndex + 1}/{destPhotos.length}
+                        </span>
+                      )}
+                    </div>
+                    <p className="truncate text-[11px] text-slate-300">
+                      {activePhoto.caption || 'Tap to expand photo'}
+                    </p>
+                    {destPhotos.length > 1 && (
+                      <div className="mt-1 flex items-center gap-1">
+                        {destPhotos.map((p, idx) => (
+                          <span
+                            key={p.id}
+                            className={`h-1 rounded-full transition-all ${
+                              idx === safePhotoIndex ? 'w-3 bg-sky-400' : 'w-1 bg-slate-600'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Prev / Next & Expand Controls */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {destPhotos.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onChangePhotoIndex?.(
+                              (safePhotoIndex - 1 + destPhotos.length) % destPhotos.length
+                            );
+                          }}
+                          aria-label="Previous photo"
+                          className="rounded-lg border border-slate-800 bg-slate-900 p-1 text-slate-300 active:bg-slate-800"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onChangePhotoIndex?.((safePhotoIndex + 1) % destPhotos.length);
+                          }}
+                          aria-label="Next photo"
+                          className="rounded-lg border border-slate-800 bg-slate-900 p-1 text-slate-300 active:bg-slate-800"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsMobilePhotoExpanded(true)}
+                      aria-label="Expand photo"
+                      title="Expand photo"
+                      className="rounded-lg border border-slate-800 bg-slate-900 p-1 text-sky-400 active:bg-slate-800"
+                    >
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Active Leg Metadata Banner */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-950/75 border border-slate-800/90 px-3 py-1.5">
             <div className="flex flex-wrap items-center gap-2">

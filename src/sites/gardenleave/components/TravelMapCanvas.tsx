@@ -2,9 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { geoGraticule, geoPath, GeoProjection } from 'd3-geo';
 import { ZoomTransform } from 'd3-zoom';
 import type { FeatureCollection, Geometry } from 'geojson';
+import { Camera } from 'lucide-react';
+import { getPhotosForCity } from '../config/photos.config';
 import {
   CityComputedStats,
   CityConfig,
+  CityPhotoConfig,
   ItineraryLegConfig,
   MapGranularity,
   MapRenderConfig,
@@ -36,6 +39,7 @@ interface TravelMapCanvasProps {
   mapConfig: MapRenderConfig;
   cities: Record<string, CityConfig>;
   cityStats: Record<string, CityComputedStats>;
+  cityPhotos?: Record<string, CityPhotoConfig[]>;
   itinerary: ItineraryLegConfig[];
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
   visibleModes: Record<TransitMode, boolean>;
@@ -50,6 +54,7 @@ interface TravelMapCanvasProps {
   onSelectCity: (cityId: string) => void;
   onSelectLeg: (leg: ItineraryLegConfig) => void;
   onClearSelection: () => void;
+  onHoverCity?: (cityId: string | null) => void;
 }
 
 interface HoverTooltipState {
@@ -71,6 +76,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   mapConfig,
   cities,
   cityStats,
+  cityPhotos,
   itinerary,
   transitModes,
   visibleModes,
@@ -85,6 +91,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   onSelectCity,
   onSelectLeg,
   onClearSelection,
+  onHoverCity,
 }) => {
   const isSubregion = granularity === 'subregion';
   const isNone = granularity === 'none';
@@ -754,6 +761,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
                         onSelectCity(city.id);
                       }}
                       onMouseEnter={(e) => {
+                        onHoverCity?.(city.id);
                         const rect = svgRef.current?.getBoundingClientRect();
                         if (rect) {
                           setHoverInfo({
@@ -775,7 +783,10 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
                           });
                         }
                       }}
-                      onMouseLeave={() => setHoverInfo(null)}
+                      onMouseLeave={() => {
+                        onHoverCity?.(null);
+                        setHoverInfo(null);
+                      }}
                     >
                       {/* Invisible hit circle for easy clicking */}
                       <circle r={Math.max(8 * invScale, radius * 2.2)} fill="transparent" />
@@ -825,6 +836,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
               invScale,
               isTimelineEnabled,
               itinerary,
+              onHoverCity,
               onSelectCity,
               projectedCities,
               selectedCityId,
@@ -1008,10 +1020,18 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
                     </span>
                   )}
                 </span>
-                <span className="rounded bg-sky-500/20 px-1.5 py-0.5 font-mono text-[10px] text-sky-300">
-                  {cityStats[hoverInfo.cityId].totalNights === 0
-                    ? '0 nights (intraday)'
-                    : `${cityStats[hoverInfo.cityId].totalNights} nights`}
+                <span className="flex items-center gap-1">
+                  {getPhotosForCity(hoverInfo.cityId, cityPhotos).length > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded bg-sky-500/20 border border-sky-400/30 px-1.5 py-0.5 font-mono text-[10px] text-sky-300">
+                      <Camera className="h-2.5 w-2.5" />
+                      <span>{getPhotosForCity(hoverInfo.cityId, cityPhotos).length}</span>
+                    </span>
+                  )}
+                  <span className="rounded bg-sky-500/20 px-1.5 py-0.5 font-mono text-[10px] text-sky-300">
+                    {cityStats[hoverInfo.cityId].totalNights === 0
+                      ? '0 nights (intraday)'
+                      : `${cityStats[hoverInfo.cityId].totalNights} nights`}
+                  </span>
                 </span>
               </div>
               <div className="mt-1 text-[11px] text-slate-400 flex items-center gap-3">
