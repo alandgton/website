@@ -107,14 +107,14 @@ Refocusing and feature changes are driven via a **Live Multi-Agent Swarm** (usin
 | :--- | :--- | :--- |
 | **`coordinator`** | Lead Orchestrator (Main Agent) | Translates user goals into swarm tasks, enforces the Clarification First rule (pausing for user approval on UX options when trade-offs exist), coordinates handoffs (`@ux` → `@eng` → `@qa`), summarizes completed changes with before/after debloat metrics (files removed, bundle size delta), creates clean atomic local `git commit`s once `@qa` passes, and asks for explicit user approval before `git push`. Never writes application code directly while running the swarm. |
 | **`ux`** | UX Designer | **Scope Gatekeeper & Interaction Critic.** Audits components against the 3 Core Essentials. Designs ways to remove bloat (`CityDetailDrawer`) and simplify remaining UI (`CityPhotoPostcard`, `CityPhotoCarousel`, `JourneyPlayback`) so desktop and mobile viewports stay uncluttered and playback never obscures source/destination cities. **Read-only: never edits source code.** |
-| **`eng`** | Software Engineer | **React/TS/D3 Implementation Specialist.** Implements `@ux`'s approved spec. Deletes deprecated files, props, and state cleanly without leaving dead imports. Preserves 60–120fps DOM-transform panning, unobstructed source+dest playback framing, and `-169°W` seam math. Syncs `ARCHITECTURE_AND_LEARNINGS.md` when features are removed and verifies `npm run build` before handing off to `@qa`. |
-| **`qa`** | QA Tester | **Viewport, Performance & Regression Verifier.** Runs `npm run build` and inspects the live app on **Desktop (`1280×800`)** and **Mobile (`390×844`)** browsers (delegating live UI checks to the `browser` subagent). Must verify: (1) clean, uncluttered UI on desktop & mobile, (2) **both source and destination cities are visible and unobstructed during Journey Playback**, and (3) loading, panning, zooming, and playback movements are smooth and lag-free with zero console/runtime errors. **Never patches application code directly; reports defects back to `@eng`.** |
+| **`eng`** | Software Engineer | **React/TS/D3 Implementation Specialist.** Implements `@ux`'s approved spec. Deletes deprecated files, props, and state cleanly without leaving dead imports. Preserves 60–120fps DOM-transform panning, unobstructed source+dest playback framing, and `-169°W` seam math. Syncs `ARCHITECTURE_AND_LEARNINGS.md` when features are removed and verifies `npm run build` and `npm test` before handing off to `@qa`. |
+| **`qa`** | QA Tester | **Viewport, Performance & Regression Verifier.** Runs `npm run build` and `npm test` (Playwright headless Desktop `1280×800` + Mobile `390×844` E2E suite), and inspects the live app on **Desktop (`1280×800`)** and **Mobile (`390×844`)** browsers (delegating live UI checks to the `browser` subagent when available). Must verify: (1) clean, uncluttered UI on desktop & mobile, (2) **both source and destination cities are visible and unobstructed during Journey Playback**, (3) **expanding and compacting the mobile photo strip during active Journey Playback never pauses playback**, and (4) loading, panning, zooming, and playback movements are smooth and lag-free with zero console/runtime errors. **Never patches application code directly; reports defects back to `@eng`.** |
 
 ### Standard Swarm Pipeline
 1. **UX Audit & Spec (`@ux`)**: `@ux` inspects the target feature/files and posts a concise UX Simplification Spec (plus 2–3 options if design choices exist).
 2. **User Alignment (`@coordinator`)**: If `@ux` surfaces design options, `@coordinator` presents them to the user for approval before engineering begins.
-3. **Implementation (`@eng`)**: `@eng` executes the approved spec, cleans up dead code, verifies `npm run build`, and tags `@qa`.
-4. **QA Verification (`@qa`)**: `@qa` verifies the build and tests both desktop and mobile viewports in the live browser (checking uncluttered layout, source/destination visibility during playback, and lag-free pan/zoom), then posts a pass/fail QA report to `@coordinator` (or back to `@eng` if fixes are needed).
+3. **Implementation (`@eng`)**: `@eng` executes the approved spec, cleans up dead code, verifies `npm run build && npm test`, and tags `@qa`.
+4. **QA Verification (`@qa`)**: `@qa` verifies `npm run build && npm test` and tests both desktop and mobile viewports (checking uncluttered layout, source/destination visibility during playback, mobile photo expand/compact during active playback, and lag-free pan/zoom), then posts a pass/fail QA report to `@coordinator` (or back to `@eng` if fixes are needed).
 
 ---
 
@@ -133,12 +133,15 @@ npm run dev
 # Run TypeScript type-checking and production build
 npm run build
 
+# Run Playwright headless E2E regression tests (Desktop 1280x800 & Mobile 390x844)
+npm test
+
 # Preview production build locally
 npm run preview
 ```
 
 ### Verification & Commit Protocols
-1. Always verify that `npm run build` succeeds with zero TypeScript or Rollup errors before completing or committing a task.
+1. Always verify that `npm run build` and `npm test` succeed with zero TypeScript, Rollup, or Playwright errors before completing or committing a task.
 2. **Proactive Local Commit vs. Gated Remote Push**:
-   - Follow software engineering best practices: automatically create clean, atomic local commits (`git add` and `git commit`) when a logical unit of work is complete and verified (`npm run build` and `@qa` pass).
+   - Follow software engineering best practices: automatically create clean, atomic local commits (`git add` and `git commit`) when a logical unit of work is complete and verified (`npm run build`, `npm test`, and `@qa` pass).
    - **`git push` is NEVER run automatically.** Always ask for explicit user approval before pushing to `main` (which triggers automated Cloudflare Pages production deployments). Never bundle push with commit.

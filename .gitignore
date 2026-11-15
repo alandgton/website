@@ -7,3 +7,5 @@ ARCHITECTURE_AND_LEARNINGS.md
 prompt.md
 photos/raw/*
 !photos/raw/README.md
+test-results/
+playwright-report/
