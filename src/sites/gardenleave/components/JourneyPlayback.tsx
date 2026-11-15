@@ -17,7 +17,11 @@ import {
   TransitMode,
   TransitModeStyleConfig,
 } from '../config/types';
-import { CityPhotoCarousel, PostcardStackImage } from './CityPhotoCarousel';
+import {
+  CityPhotoCarousel,
+  getDisplayPhotoCaption,
+  PostcardStackImage,
+} from './CityPhotoCarousel';
 
 interface JourneyPlaybackProps {
   isEnabled: boolean;
@@ -38,7 +42,6 @@ interface JourneyPlaybackProps {
   onNext: () => void;
   onScrub: (index: number) => void;
   onChangeSpeed: (ms: number) => void;
-  onInspectCity: (cityId: string) => void;
 }
 
 export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
@@ -60,7 +63,6 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
   onNext,
   onScrub,
   onChangeSpeed,
-  onInspectCity,
 }) => {
   const [isMobilePhotoExpanded, setIsMobilePhotoExpanded] = useState(false);
 
@@ -211,8 +213,8 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                         </span>
                       )}
                     </div>
-                    <p className="truncate text-[11px] text-slate-300">
-                      {activePhoto.caption || 'Tap to expand photo'}
+                    <p className="truncate text-[11px] text-slate-400">
+                      {getDisplayPhotoCaption(activePhoto.caption) || 'Tap to expand photo'}
                     </p>
                     {destPhotos.length > 1 && (
                       <div className="mt-1 flex items-center gap-1">
@@ -290,21 +292,9 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
               )}
 
               <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white">
-                <button
-                  type="button"
-                  onClick={() => onInspectCity(currentLeg.source)}
-                  className="hover:text-sky-400 underline decoration-slate-600 underline-offset-2 transition"
-                >
-                  {sourceCity?.name ?? currentLeg.source}
-                </button>
+                <span>{sourceCity?.name ?? currentLeg.source}</span>
                 <span className="text-slate-500">→</span>
-                <button
-                  type="button"
-                  onClick={() => onInspectCity(currentLeg.dest)}
-                  className="text-sky-300 hover:text-sky-200 underline decoration-sky-500/50 underline-offset-2 transition"
-                >
-                  {destCity?.name ?? currentLeg.dest}
-                </button>
+                <span className="text-sky-300">{destCity?.name ?? currentLeg.dest}</span>
               </div>
             </div>
 

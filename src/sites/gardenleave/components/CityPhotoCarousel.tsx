@@ -1,6 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { CityPhotoConfig } from '../config/types';
+
+/**
+ * Suppresses auto-generated placeholder captions (e.g. "Tokyo Placeholder")
+ * so photos are only overlaid by a caption band when a real user caption exists.
+ */
+export function getDisplayPhotoCaption(caption?: string): string | undefined {
+  if (!caption) return undefined;
+  const trimmed = caption.trim();
+  if (!trimmed || /placeholder$/i.test(trimmed)) return undefined;
+  return trimmed;
+}
 
 interface StackTransitionState {
   current: CityPhotoConfig;
@@ -100,6 +111,7 @@ export const CityPhotoCarousel: React.FC<CityPhotoCarouselProps> = ({
   const safeIndex = ((activeIndex % photos.length) + photos.length) % photos.length;
   const activePhoto = photos[safeIndex];
   const hasMultiple = photos.length > 1;
+  const displayCaption = getDisplayPhotoCaption(activePhoto.caption);
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -117,13 +129,10 @@ export const CityPhotoCarousel: React.FC<CityPhotoCarouselProps> = ({
       <div className={`relative w-full ${compact ? 'aspect-[16/10]' : 'aspect-[4/3]'} bg-slate-950`}>
         <PostcardStackImage photo={activePhoto} cityName={cityName} />
 
-        {/* Top-Right Counter Badge */}
+        {/* Top-Right Counter Badge (only when multiple photos exist) */}
         {hasMultiple && (
-          <div className="pointer-events-none absolute top-2 right-2 z-20 flex items-center gap-1 rounded-md border border-slate-700/70 bg-slate-950/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-200 shadow backdrop-blur-md">
-            <Camera className="h-2.5 w-2.5 text-sky-400" />
-            <span>
-              {safeIndex + 1} / {photos.length}
-            </span>
+          <div className="pointer-events-none absolute top-2 right-2 z-20 rounded-md border border-slate-700/70 bg-slate-950/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-200 shadow backdrop-blur-md">
+            {safeIndex + 1} / {photos.length}
           </div>
         )}
 
@@ -151,25 +160,13 @@ export const CityPhotoCarousel: React.FC<CityPhotoCarouselProps> = ({
           </>
         )}
 
-        {/* Bottom Caption / Date / Dots Overlay */}
-        {(activePhoto.caption || activePhoto.date || hasMultiple) && (
-          <div className="inset-x-0 bottom-0 absolute z-20 bg-gradient-to-t from-slate-950/95 via-slate-950/65 to-transparent px-2.5 pt-5 pb-2 flex flex-col gap-1">
-            {(activePhoto.caption || activePhoto.date) && (
-              <div className="flex items-end justify-between gap-2 text-[11px]">
-                {activePhoto.caption ? (
-                  <p className="text-slate-100 font-medium leading-snug line-clamp-2">
-                    {activePhoto.caption}
-                  </p>
-                ) : (
-                  <span />
-                )}
-                {activePhoto.date && (
-                  <span className="shrink-0 flex items-center gap-1 font-mono text-[10px] text-slate-300">
-                    <Calendar className="h-2.5 w-2.5 text-sky-400" />
-                    {activePhoto.date}
-                  </span>
-                )}
-              </div>
+        {/* Bottom Caption / Dots Overlay */}
+        {(displayCaption || hasMultiple) && (
+          <div className="inset-x-0 bottom-0 absolute z-20 bg-gradient-to-t from-slate-950/95 via-slate-950/65 to-transparent px-2.5 pt-4 pb-2 flex flex-col gap-1">
+            {displayCaption && (
+              <p className="text-[11px] text-slate-100 font-medium leading-snug line-clamp-2">
+                {displayCaption}
+              </p>
             )}
 
             {/* Dot Scrubber for Multi-Photo Cities */}

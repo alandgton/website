@@ -6,7 +6,6 @@ import {
   Compass,
   Grid,
   Layers,
-  ListFilter,
   Palmtree,
 } from 'lucide-react';
 import { MapGranularity, RegionCameraConfig } from '../config/types';
@@ -22,7 +21,6 @@ interface RegionSelectorBarProps {
   onSelectRegion: (region: RegionCameraConfig) => void;
   onChangeGranularity: (granularity: MapGranularity) => void;
   onToggleGraticule: () => void;
-  onOpenDirectoryDrawer: () => void;
   containerRef?: React.RefObject<HTMLElement>;
 }
 
@@ -37,7 +35,6 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   onSelectRegion,
   onChangeGranularity,
   onToggleGraticule,
-  onOpenDirectoryDrawer,
   containerRef,
 }) => {
   const regionList = Object.values(regions);
@@ -309,19 +306,6 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
           >
             <Grid className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden md:inline">Grid</span>
-          </button>
-
-          <span className="h-3.5 w-px bg-slate-800" aria-hidden="true" />
-
-          {/* Directory / Itinerary Drawer Trigger */}
-          <button
-            type="button"
-            onClick={onOpenDirectoryDrawer}
-            title="Browse All Cities & Legs"
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-emerald-400 hover:bg-slate-800 transition"
-          >
-            <ListFilter className="h-3.5 w-3.5 text-emerald-400" />
-            <span>Itinerary</span>
           </button>
         </div>
       </div>

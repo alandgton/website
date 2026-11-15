@@ -439,7 +439,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
           {useMemo(
             () => (
               <g className="countries-layer">
-                {countryPaths.map((country) => {
+                {countryPaths.map((country, idx) => {
                   const isSubdividedInAdmin1 =
                     isSubregion &&
                     admin1Paths.length > 0 &&
@@ -456,7 +456,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
 
                   return (
                     <path
-                      key={country.id}
+                      key={`${country.id}-${idx}`}
                       d={country.d}
                       fill={
                         isActiveCountry
@@ -497,13 +497,13 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
             () =>
               isSubregion && admin1Paths.length > 0 ? (
                 <g className="admin1-layer pointer-events-none">
-                  {admin1Paths.map((prov) => {
+                  {admin1Paths.map((prov, idx) => {
                     const isVisitedProv = visitedAdmin1FeatureIds.has(prov.id);
                     const isActiveProv = activeAdmin1FeatureIds.has(prov.id);
 
                     return (
                       <path
-                        key={prov.id}
+                        key={`${prov.id}-${idx}`}
                         d={prov.d}
                         fill={
                           isActiveProv
@@ -1039,7 +1039,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
                 <span>·</span>
                 <span>{cityStats[hoverInfo.cityId].departures.length} departure(s)</span>
               </div>
-              <div className="mt-0.5 text-[10px] text-sky-400/90">Click pin to inspect legs</div>
             </div>
           )}
 

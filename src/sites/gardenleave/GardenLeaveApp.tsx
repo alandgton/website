@@ -14,7 +14,6 @@ import { useMapTopology } from './hooks/useMapTopology';
 import { usePhotoPreloader } from './hooks/usePhotoPreloader';
 import { useResolvedCities } from './hooks/useResolvedCities';
 import { computeAllCityStats, computeJourneySummary } from './utils/itineraryStats';
-import { CityDetailDrawer } from './components/CityDetailDrawer';
 import { CityPhotoPostcard } from './components/CityPhotoPostcard';
 import { RegionSelectorBar } from './components/RegionSelectorBar';
 import { JourneyPlayback } from './components/JourneyPlayback';
@@ -125,15 +124,13 @@ export const App: React.FC = () => {
     Bike: true,
   });
 
-  // Selection & Drawer State
+  // Selection State
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [selectedLegId, setSelectedLegId] = useState<number | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
 
   // HUD overlay refs for dynamic unobstructed-viewport centering during Journey Playback
   const headerRef = useRef<HTMLElement>(null);
   const footerRef = useRef<HTMLElement>(null);
-  const drawerRef = useRef<HTMLElement>(null);
   const postcardRef = useRef<HTMLElement>(null);
 
   // Opt-In Journey Playback State
@@ -237,8 +234,7 @@ export const App: React.FC = () => {
   }, [zoomK]);
 
   // Computes the SVG viewBox center and usable dimensions of the remaining unobstructed map area
-  // after excluding the top floating bar, bottom playback/legend footer, open itinerary drawer,
-  // and (on narrower desktop/tablet viewports) the top-left photo postcard.
+  // after excluding the top floating bar, bottom playback/legend footer, and top-left photo postcard.
   const getPlaybackViewportMetrics = useCallback((): {
     center: [number, number];
     availSvgW: number;
@@ -257,7 +253,6 @@ export const App: React.FC = () => {
     let topInset = 0;
     let bottomInset = 0;
     let leftInset = 0;
-    let rightInset = 0;
 
     if (headerRef.current) {
       const headerRect = headerRef.current.getBoundingClientRect();
@@ -269,16 +264,7 @@ export const App: React.FC = () => {
       bottomInset = Math.max(0, svgRect.bottom - footerRect.top);
     }
 
-    if (drawerRef.current) {
-      const drawerRect = drawerRef.current.getBoundingClientRect();
-      if (drawerRect.width < svgRect.width * 0.85) {
-        rightInset = Math.max(0, svgRect.right - drawerRect.left);
-      } else {
-        bottomInset = Math.max(bottomInset, svgRect.bottom - drawerRect.top);
-      }
-    }
-
-    if (postcardRef.current && svgRect.width < 1150) {
+    if (postcardRef.current) {
       const postcardRect = postcardRef.current.getBoundingClientRect();
       if (postcardRect.width > 0 && postcardRect.height > 0) {
         leftInset = Math.max(0, postcardRect.right - svgRect.left);
@@ -286,7 +272,7 @@ export const App: React.FC = () => {
     }
 
     const availLeft = svgRect.left + leftInset;
-    const availRight = svgRect.right - rightInset;
+    const availRight = svgRect.right;
     const availTop = svgRect.top + topInset;
     const availBottom = svgRect.bottom - bottomInset;
 
@@ -333,7 +319,7 @@ export const App: React.FC = () => {
         : false;
       const isApproachingMicroCluster = !isCurrMicro && isNextMicro;
 
-      const targetZoom = getContextualZoomForLeg(
+      let targetZoom = getContextualZoomForLeg(
         sourceCity?.coordinates,
         destCity.coordinates,
         leg.transport,
@@ -342,34 +328,38 @@ export const App: React.FC = () => {
         shimanamiClusterZoom,
         isApproachingMicroCluster
       );
-      currentZoomKRef.current = targetZoom;
 
       const metrics = getPlaybackViewportMetrics();
 
-      // Frame both source and destination pins within the unobstructed viewport whenever
-      // the leg does not cross the antimeridian, clamping the shift so the destination pin
-      // and its city label always remain comfortably inside the safe zone.
+      // Frame both source and destination pins within the unobstructed safe zone for every leg
+      // (including transpacific legs and long vertical/horizontal legs) by capping targetZoom
+      // to fit |pDest - pSource| inside (availSvgW, availSvgH) and centering on their midpoint.
       let focusCoords: [number, number] = destCity.coordinates;
       if (sourceCity && metrics && projection.invert) {
-        const rawDLon = Math.abs(sourceCity.coordinates[0] - destCity.coordinates[0]);
         const pSource = projection(sourceCity.coordinates);
         const pDest = projection(destCity.coordinates);
-        if (pSource && pDest && rawDLon < 180) {
-          const midOffsetX = (pSource[0] - pDest[0]) * 0.5;
-          const midOffsetY = (pSource[1] - pDest[1]) * 0.5;
-          const maxShiftX = (metrics.availSvgW / targetZoom) * 0.28;
-          const maxShiftY = (metrics.availSvgH / targetZoom) * 0.26;
-          const clampedShiftX = Math.max(-maxShiftX, Math.min(maxShiftX, midOffsetX));
-          const clampedShiftY = Math.max(-maxShiftY, Math.min(maxShiftY, midOffsetY));
-          const inverted = projection.invert([
-            pDest[0] + clampedShiftX,
-            pDest[1] + clampedShiftY,
-          ]);
+        if (pSource && pDest) {
+          const spanX = Math.abs(pDest[0] - pSource[0]);
+          const spanY = Math.abs(pDest[1] - pSource[1]);
+          const maxFitZoom = Math.max(
+            activeConfig.mapConfig.scaleExtent[0],
+            Math.min(
+              (metrics.availSvgW * 0.72) / Math.max(spanX, 1),
+              (metrics.availSvgH * 0.68) / Math.max(spanY, 1)
+            )
+          );
+          targetZoom = Math.min(targetZoom, maxFitZoom);
+
+          const midX = (pSource[0] + pDest[0]) * 0.5;
+          const midY = (pSource[1] + pDest[1]) * 0.5;
+          const inverted = projection.invert([midX, midY]);
           if (inverted) {
             focusCoords = inverted;
           }
         }
       }
+
+      currentZoomKRef.current = targetZoom;
 
       flyToCoordinates(
         focusCoords,
@@ -382,6 +372,7 @@ export const App: React.FC = () => {
     [
       resolvedCities,
       activeConfig.itinerary,
+      activeConfig.mapConfig.scaleExtent,
       flyToCoordinates,
       getPlaybackViewportMetrics,
       playbackSpeedMs,
@@ -425,14 +416,14 @@ export const App: React.FC = () => {
     ? (activeConfig.itinerary[currentTimelineIndex]?.id ?? selectedLegId)
     : selectedLegId;
 
-  // Trigger camera follow whenever currentTimelineIndex or drawer open state changes while timeline is enabled
+  // Trigger camera follow whenever currentTimelineIndex changes while timeline is enabled
   useEffect(() => {
     if (!isTimelineEnabled) return;
     const rafId = window.requestAnimationFrame(() => {
       followLegDestination(currentTimelineIndex);
     });
     return () => window.cancelAnimationFrame(rafId);
-  }, [currentTimelineIndex, followLegDestination, isDrawerOpen, isTimelineEnabled]);
+  }, [currentTimelineIndex, followLegDestination, isTimelineEnabled]);
 
   // Handlers
   const handleSelectRegion = useCallback(
@@ -452,71 +443,25 @@ export const App: React.FC = () => {
     }));
   }, []);
 
-  const handleSelectCity = useCallback(
-    (cityId: string, shouldFly: boolean = false) => {
-      if (!cityId) {
-        setSelectedCityId(null);
-        setSelectedLegId(null);
-        setIsDrawerOpen(true);
-        return;
-      }
-      setSelectedCityId(cityId);
-      setIsDrawerOpen(true);
-      if (shouldFly && resolvedCities[cityId]) {
-        const targetZoom = Math.max(zoomK, 5.5);
-        flyToCoordinates(resolvedCities[cityId].coordinates, targetZoom, 750);
-      }
-    },
-    [resolvedCities, flyToCoordinates, zoomK]
-  );
+  const handleSelectCity = useCallback((cityId: string) => {
+    if (!cityId) {
+      setSelectedCityId(null);
+      setSelectedLegId(null);
+      return;
+    }
+    setSelectedCityId(cityId);
+    setSelectedLegId(null);
+  }, []);
 
-  const handleFocusCityCamera = useCallback(
-    (cityId: string) => {
-      const city = resolvedCities[cityId];
-      if (!city) return;
-      const isShimanami = ['Onomichi', 'Setoda', 'Omishima', 'Imabari', 'Matsuyama'].includes(cityId);
-      flyToCoordinates(city.coordinates, isShimanami ? shimanamiClusterZoom : 7.5, 750);
-    },
-    [resolvedCities, flyToCoordinates, shimanamiClusterZoom]
-  );
-
-  const handleSelectLeg = useCallback(
-    (leg: ItineraryLegConfig, jumpToTimeline: boolean = false) => {
-      setSelectedLegId(leg.id);
-      setSelectedCityId(leg.dest);
-      setIsDrawerOpen(true);
-
-      if (jumpToTimeline) {
-        const idx = activeConfig.itinerary.findIndex((l) => l.id === leg.id);
-        if (idx !== -1) {
-          setIsTimelineEnabled(true);
-          setIsPlayingTimeline(false);
-          setCurrentTimelineIndex(idx);
-        }
-      }
-    },
-    [activeConfig.itinerary]
-  );
+  const handleSelectLeg = useCallback((leg: ItineraryLegConfig) => {
+    setSelectedLegId(leg.id);
+    setSelectedCityId(leg.dest);
+  }, []);
 
   const handleClearSelection = useCallback(() => {
     setSelectedCityId(null);
     setSelectedLegId(null);
-    setIsDrawerOpen(false);
   }, []);
-
-  const handleCanvasSelectCity = useCallback(
-    (cityId: string) => {
-      handleSelectCity(cityId, false);
-    },
-    [handleSelectCity]
-  );
-
-  const handleCanvasSelectLeg = useCallback(
-    (leg: ItineraryLegConfig) => {
-      handleSelectLeg(leg, false);
-    },
-    [handleSelectLeg]
-  );
 
   const handleToggleTimelineEnabled = useCallback(
     (enabled: boolean) => {
@@ -548,17 +493,10 @@ export const App: React.FC = () => {
     : null;
   const postcardCityId = isTimelineEnabled
     ? (activeTimelineLeg?.dest ?? null)
-    : !isDrawerOpen
-      ? selectedCityId
-      : null;
-  const isPostcardHiddenByOpenDrawer =
-    isDrawerOpen && selectedCityId !== null && selectedCityId === postcardCityId;
+    : selectedCityId;
   const postcardPhotos = useMemo(
-    () =>
-      isPostcardHiddenByOpenDrawer
-        ? []
-        : getPhotosForCity(postcardCityId, activeConfig.cityPhotos),
-    [activeConfig.cityPhotos, isPostcardHiddenByOpenDrawer, postcardCityId]
+    () => getPhotosForCity(postcardCityId, activeConfig.cityPhotos),
+    [activeConfig.cityPhotos, postcardCityId]
   );
   const postcardSubtitle = activeTimelineLeg
     ? `${activeTimelineLeg.startDate} → ${activeTimelineLeg.endDate}`
@@ -570,7 +508,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col">
-      {/* Top HUD: Title, Region Dropdown, Granularity & Drawer Trigger (Option B Centered Island) */}
+      {/* Top HUD: Title, Region Dropdown, Granularity & Grid Toggle (Centered Island) */}
       <RegionSelectorBar
         containerRef={headerRef}
         title={activeConfig.title}
@@ -583,9 +521,6 @@ export const App: React.FC = () => {
         onSelectRegion={handleSelectRegion}
         onChangeGranularity={setGranularity}
         onToggleGraticule={() => setShowGraticule((v) => !v)}
-        onOpenDirectoryDrawer={() => {
-          setIsDrawerOpen(true);
-        }}
       />
 
       {/* Main Declarative SVG Map Canvas */}
@@ -613,8 +548,8 @@ export const App: React.FC = () => {
           selectedLegId={effectiveSelectedLegId}
           isTimelineEnabled={isTimelineEnabled}
           currentTimelineLegIndex={currentTimelineIndex}
-          onSelectCity={handleCanvasSelectCity}
-          onSelectLeg={handleCanvasSelectLeg}
+          onSelectCity={handleSelectCity}
+          onSelectLeg={handleSelectLeg}
           onClearSelection={handleClearSelection}
           onHoverCity={preloadCity}
         />
@@ -632,7 +567,6 @@ export const App: React.FC = () => {
             isPlayingTimeline={isPlayingTimeline}
             isPausedByHover={isPostcardHovered}
             onHoverChange={setIsPostcardHovered}
-            onOpenCityDetails={(cid) => handleSelectCity(cid, false)}
             onDismiss={!isTimelineEnabled ? () => setSelectedCityId(null) : undefined}
           />
         )}
@@ -662,7 +596,7 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Bottom HUD: Transit Legend + Opt-In Journey Playback (Layout 1) */}
+      {/* Bottom HUD: Transit Legend + Opt-In Journey Playback */}
       <footer
         ref={footerRef}
         className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 p-3 sm:p-4"
@@ -708,28 +642,9 @@ export const App: React.FC = () => {
               setCurrentTimelineIndex(idx);
             }}
             onChangeSpeed={setPlaybackSpeedMs}
-            onInspectCity={(cityId) => handleSelectCity(cityId, false)}
           />
         </div>
       </footer>
-
-      {/* Responsive Detail Drawer (Bottom sheet on mobile, right sidebar on desktop) */}
-      <CityDetailDrawer
-        containerRef={drawerRef}
-        isOpen={isDrawerOpen}
-        selectedCityId={selectedCityId}
-        selectedLegId={effectiveSelectedLegId}
-        homeCityId={activeConfig.itinerary[0]?.source ?? 'NYC'}
-        cities={resolvedCities}
-        cityStats={cityStats}
-        cityPhotos={activeConfig.cityPhotos}
-        itinerary={activeConfig.itinerary}
-        transitModes={activeConfig.transitModes}
-        onClose={() => setIsDrawerOpen(false)}
-        onSelectCity={handleSelectCity}
-        onSelectLeg={handleSelectLeg}
-        onFocusCityCamera={handleFocusCityCamera}
-      />
     </div>
   );
 };
