@@ -15,7 +15,7 @@ export const REGIONS_CONFIG: Record<string, RegionCameraConfig> = {
     shortLabel: 'North America',
     center: [-98, 38],
     zoom: 3.2,
-    description: 'United States coast-to-coast flights (NYC, San Francisco, Los Angeles)',
+    description: 'North America flights & drives across the US & Canada (NYC, SF, LA, Vail, Vancouver, Whistler)',
   },
   europe: {
     id: 'europe',

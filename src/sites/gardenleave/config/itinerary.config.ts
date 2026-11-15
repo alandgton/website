@@ -79,7 +79,7 @@ export const ITINERARY_STOPS: ItineraryStopInput[] = [
   { startDate: '2026-11-09', endDate: '2026-11-12', city: 'HK', transport: 'Train' },
   { startDate: '2026-11-12', endDate: '2026-11-14', city: 'Chaozhou', transport: 'Train' },
   { startDate: '2026-11-14', endDate: '2026-11-17', city: 'Shanghai', transport: 'Flight' },
-  { startDate: '2026-11-17', endDate: '2026-11-18', city: 'Suzhou', transport: 'Train' },
+  { startDate: '2026-11-17', endDate: '2026-11-18', city: 'Nanjing', transport: 'Train' },
   { startDate: '2026-11-18', endDate: '2026-11-18', city: 'Shanghai', transport: 'Train' },
   { startDate: '2026-11-18', endDate: '2026-11-24', city: 'Seoul', transport: 'Flight' },
   { startDate: '2026-11-24', endDate: '2026-11-27', city: 'Busan', transport: 'Train' },
@@ -97,7 +97,13 @@ export const ITINERARY_STOPS: ItineraryStopInput[] = [
   { startDate: '2026-12-18', endDate: '2026-12-20', city: 'Sapporo', transport: 'Drive' },
   { startDate: '2026-12-20', endDate: '2026-12-27', city: 'Tokyo', transport: 'Flight' },
   { startDate: '2026-12-27', endDate: '2027-01-04', city: 'LA', transport: 'Flight' },
-  { startDate: '2027-01-04', endDate: '2027-01-14', city: 'NYC', transport: 'Flight' },
+  { startDate: '2027-01-04', endDate: '2027-01-16', city: 'NYC', transport: 'Flight' },
+  { startDate: '2027-01-16', endDate: '2027-01-20', city: 'Vail', transport: 'Flight' },
+  { startDate: '2027-01-20', endDate: '2027-01-20', city: 'Vancouver', transport: 'Flight' },
+  { startDate: '2027-01-20', endDate: '2027-01-24', city: 'Whistler', transport: 'Drive' },
+  { startDate: '2027-01-24', endDate: '2027-01-24', city: 'Vancouver', transport: 'Drive' },
+  { startDate: '2027-01-24', endDate: '2027-01-26', city: 'Sapporo', transport: 'Flight' },
+  { startDate: '2027-01-26', endDate: '2027-01-30', city: 'Rusutsu', transport: 'Drive' },
 ];
 
 export const ITINERARY: ItineraryLegConfig[] = resolveItineraryStops(ITINERARY_STOPS);

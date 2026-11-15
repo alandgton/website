@@ -192,10 +192,10 @@ const BUILTIN_GAZETTEER: Record<string, GazetteerEntry> = {
     country: 'China',
     coordinates: [121.4737, 31.2304],
   },
-  Suzhou: {
-    name: 'Suzhou',
+  Nanjing: {
+    name: 'Nanjing',
     country: 'China',
-    coordinates: [120.5853, 31.2989],
+    coordinates: [118.7969, 32.0603],
   },
   Seoul: {
     name: 'Seoul',
@@ -262,6 +262,21 @@ const BUILTIN_GAZETTEER: Record<string, GazetteerEntry> = {
     name: 'Sapporo',
     country: 'Japan',
     coordinates: [141.3545, 43.0618],
+  },
+  Rusutsu: {
+    name: 'Rusutsu',
+    country: 'Japan',
+    coordinates: [140.8969, 42.7353],
+  },
+  Vail: {
+    name: 'Vail',
+    country: 'USA',
+    coordinates: [-106.3742, 39.6403],
+  },
+  Whistler: {
+    name: 'Whistler',
+    country: 'Canada',
+    coordinates: [-122.9574, 50.1163],
   },
   // Additional common global hubs for instant offline preset testing
   London: { name: 'London', country: 'UK', coordinates: [-0.1276, 51.5072] },
