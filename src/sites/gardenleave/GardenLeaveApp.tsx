@@ -469,6 +469,7 @@ export const App: React.FC = () => {
       setActivePhotoIndex(0);
       if (!enabled) {
         setIsPlayingTimeline(false);
+        setIsPostcardHovered(false);
         setSelectedLegId(null);
       } else {
         const leg = activeConfig.itinerary[currentTimelineIndex];
@@ -498,6 +499,13 @@ export const App: React.FC = () => {
     () => getPhotosForCity(postcardCityId, activeConfig.cityPhotos),
     [activeConfig.cityPhotos, postcardCityId]
   );
+
+  // Ensure desktop postcard hover state never stays stuck when the postcard is hidden or unmounted
+  useEffect(() => {
+    if (!isTimelineEnabled || !postcardCityId || postcardPhotos.length === 0) {
+      setIsPostcardHovered(false);
+    }
+  }, [isTimelineEnabled, postcardCityId, postcardPhotos.length]);
   const postcardSubtitle = activeTimelineLeg
     ? `${activeTimelineLeg.startDate} → ${activeTimelineLeg.endDate}`
     : postcardCityId && cityStats[postcardCityId]
@@ -620,7 +628,6 @@ export const App: React.FC = () => {
             destPhotos={postcardPhotos}
             activePhotoIndex={activePhotoIndex}
             onChangePhotoIndex={setActivePhotoIndex}
-            onPhotoHoverChange={setIsPostcardHovered}
             onLayoutHeightChange={handlePlaybackLayoutHeightChange}
             onToggleEnabled={handleToggleTimelineEnabled}
             onTogglePlay={() => {

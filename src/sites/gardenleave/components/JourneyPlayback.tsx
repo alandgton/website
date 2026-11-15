@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Calendar,
   Camera,
@@ -34,7 +34,6 @@ interface JourneyPlaybackProps {
   destPhotos?: CityPhotoConfig[];
   activePhotoIndex?: number;
   onChangePhotoIndex?: (index: number) => void;
-  onPhotoHoverChange?: (hovered: boolean) => void;
   onLayoutHeightChange?: () => void;
   onToggleEnabled: (enabled: boolean) => void;
   onTogglePlay: () => void;
@@ -55,7 +54,6 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
   destPhotos = [],
   activePhotoIndex = 0,
   onChangePhotoIndex,
-  onPhotoHoverChange,
   onLayoutHeightChange,
   onToggleEnabled,
   onTogglePlay,
@@ -78,12 +76,17 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
     : 0;
   const activePhoto = hasPhotos ? destPhotos[safePhotoIndex] : undefined;
 
+  const onLayoutHeightChangeRef = useRef(onLayoutHeightChange);
+  useEffect(() => {
+    onLayoutHeightChangeRef.current = onLayoutHeightChange;
+  }, [onLayoutHeightChange]);
+
   // Notify parent when docked mobile photo strip appears/disappears or expands/collapses
   // so Follow Camera can re-center the map in the unobstructed viewport.
   useEffect(() => {
     if (!isEnabled) return;
-    onLayoutHeightChange?.();
-  }, [hasPhotos, isEnabled, isMobilePhotoExpanded, onLayoutHeightChange]);
+    onLayoutHeightChangeRef.current?.();
+  }, [hasPhotos, isEnabled, isMobilePhotoExpanded]);
 
   // When playback is idle/disabled, render a compact floating pill button
   if (!isEnabled) {
@@ -149,13 +152,7 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
         <div className="pt-1.5 sm:pt-2 flex flex-col gap-1.5 sm:gap-2">
           {/* Docked Mobile Photo Strip (sm:hidden) — keeps the upper map canvas 100% unobstructed on iPhone */}
           {hasPhotos && activePhoto && (
-            <div
-              className="sm:hidden rounded-xl border border-slate-800/90 bg-slate-950/85 p-1.5"
-              onTouchStart={() => onPhotoHoverChange?.(true)}
-              onTouchEnd={() => onPhotoHoverChange?.(false)}
-              onMouseEnter={() => onPhotoHoverChange?.(true)}
-              onMouseLeave={() => onPhotoHoverChange?.(false)}
-            >
+            <div className="sm:hidden rounded-xl border border-slate-800/90 bg-slate-950/85 p-1.5">
               {isMobilePhotoExpanded ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between px-1 text-[11px]">
@@ -165,10 +162,7 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsMobilePhotoExpanded(false);
-                        onPhotoHoverChange?.(false);
-                      }}
+                      onClick={() => setIsMobilePhotoExpanded(false)}
                       className="inline-flex items-center gap-1 rounded-md border border-slate-700/80 bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-slate-300"
                     >
                       <Minimize2 className="h-3 w-3 text-sky-400" />
