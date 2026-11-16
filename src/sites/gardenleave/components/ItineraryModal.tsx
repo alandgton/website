@@ -41,20 +41,49 @@ const MONTH_NAMES = [
   'December',
 ] as const;
 
-const SHORT_MONTHS = [
-  'JAN',
-  'FEB',
-  'MAR',
-  'APR',
-  'MAY',
-  'JUN',
-  'JUL',
-  'AUG',
-  'SEP',
-  'OCT',
-  'NOV',
-  'DEC',
-] as const;
+const COUNTRY_FLAGS: Record<string, string> = {
+  usa: '🇺🇸',
+  'united states': '🇺🇸',
+  sweden: '🇸🇪',
+  denmark: '🇩🇰',
+  switzerland: '🇨🇭',
+  austria: '🇦🇹',
+  hungary: '🇭🇺',
+  czechia: '🇨🇿',
+  'czech republic': '🇨🇿',
+  germany: '🇩🇪',
+  egypt: '🇪🇬',
+  uae: '🇦🇪',
+  'united arab emirates': '🇦🇪',
+  singapore: '🇸🇬',
+  china: '🇨🇳',
+  'china (sar)': '🇭🇰',
+  'hong kong': '🇭🇰',
+  'south korea': '🇰🇷',
+  'korea, republic of': '🇰🇷',
+  japan: '🇯🇵',
+  canada: '🇨🇦',
+  uk: '🇬🇧',
+  'united kingdom': '🇬🇧',
+  france: '🇫🇷',
+  italy: '🇮🇹',
+  spain: '🇪🇸',
+  netherlands: '🇳🇱',
+  turkey: '🇹🇷',
+  thailand: '🇹🇭',
+  taiwan: '🇹🇼',
+  australia: '🇦🇺',
+};
+
+/**
+ * Resolves a country flag emoji from a city's country name (or city ID fallback).
+ */
+export function getCountryFlag(country?: string, cityId?: string): string {
+  if (cityId?.trim().toUpperCase() === 'HK') return '🇭🇰';
+  const normalized = country?.trim().toLowerCase();
+  if (!normalized) return '🌐';
+  return COUNTRY_FLAGS[normalized] ?? '🌐';
+}
 
 function toIsoDateUtc(date: Date): string {
   const y = date.getUTCFullYear();
@@ -80,10 +109,16 @@ export function formatShortDayDate(iso: string): string {
 }
 
 /**
- * Formats a start/end ISO date pair as `Weekday M/D → Weekday M/D`.
+ * Formats a start/end ISO date pair as `Weekday M/D – Weekday M/D`,
+ * collapsing intraday stops (`startIso === endIso`) to a single `Weekday M/D`.
  */
 export function formatDateRange(startIso: string, endIso: string): string {
-  return `${formatShortDayDate(startIso)} → ${formatShortDayDate(endIso)}`;
+  const start = startIso.trim();
+  const end = endIso.trim();
+  if (start === end) {
+    return formatShortDayDate(start);
+  }
+  return `${formatShortDayDate(start)} – ${formatShortDayDate(end)}`;
 }
 
 function getWeeksForMonth(year: number, month: number): CalendarDayCell[][] {
@@ -459,12 +494,9 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 </div>
                 <div className="divide-y divide-slate-800/50">
                   {legs.map((leg) => {
-                    const monthIndex = Number(leg.startDate.slice(5, 7)) - 1;
-                    const shortMon = SHORT_MONTHS[monthIndex] ?? '';
-                    const dayNum = Number(leg.startDate.slice(8, 10));
-                    const cityName = cities[leg.dest]?.name ?? leg.dest;
-                    const barPct =
-                      leg.nights === 0 ? 8 : Math.min(100, Math.round((leg.nights / 12) * 100));
+                    const city = cities[leg.dest];
+                    const cityName = city?.name ?? leg.dest;
+                    const flag = getCountryFlag(city?.country, leg.dest);
                     const isCurrentLeg = leg.id === currentLegId;
 
                     return (
@@ -472,15 +504,15 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                         key={leg.id}
                         ref={isCurrentLeg ? currentLegRowRef : undefined}
                         aria-current={isCurrentLeg ? 'date' : undefined}
-                        className={`flex items-center justify-between gap-2 px-3.5 py-2 text-xs ${
+                        className={`flex items-center justify-between gap-3 px-3.5 py-2 text-xs ${
                           isCurrentLeg
                             ? 'bg-sky-500/10 ring-2 ring-inset ring-sky-400/90'
                             : ''
                         }`}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="w-14 sm:w-16 shrink-0 rounded-md border border-slate-800 bg-slate-950 px-1.5 py-0.5 text-center font-mono text-[11px] sm:text-xs text-sky-300">
-                            {shortMon} {dayNum}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm leading-none shrink-0" aria-hidden="true">
+                            {flag}
                           </span>
                           <span
                             className={`font-semibold truncate ${
@@ -497,22 +529,9 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2.5 shrink-0">
-                          <div
-                            className="hidden sm:block w-14 h-1.5 rounded-full bg-slate-800 overflow-hidden"
-                            aria-hidden="true"
-                          >
-                            <div
-                              className={`h-full rounded-full ${
-                                leg.nights === 0 ? 'bg-amber-400' : 'bg-sky-400'
-                              }`}
-                              style={{ width: `${barPct}%` }}
-                            />
-                          </div>
-                          <span className="w-[152px] sm:w-[168px] text-right tabular-nums font-mono text-[11px] sm:text-xs text-slate-300">
-                            {formatDateRange(leg.startDate, leg.endDate)}
-                          </span>
-                        </div>
+                        <span className="font-mono text-[11px] sm:text-xs text-slate-300 tabular-nums shrink-0">
+                          {formatDateRange(leg.startDate, leg.endDate)}
+                        </span>
                       </div>
                     );
                   })}
