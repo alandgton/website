@@ -27,7 +27,7 @@ test.describe('Garden Leave Travel Map — Mobile (390x844, touch)', () => {
 
     const playJourneyBtn = page.locator('button[title="Start Interactive Journey Playback"]');
     await expect(playJourneyBtn).toBeVisible();
-    await expect(page.getByRole('button', { name: /Itinerary/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Itinerary' })).toBeVisible();
 
     await playJourneyBtn.tap();
 
@@ -79,7 +79,7 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
 
     const playJourneyBtn = page.locator('button[title="Start Interactive Journey Playback"]');
     await expect(playJourneyBtn).toBeVisible();
-    await expect(page.getByRole('button', { name: /Itinerary/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Itinerary' })).toBeVisible();
 
     await playJourneyBtn.click();
     await page.getByRole('button', { name: '2x', exact: true }).click();
@@ -106,6 +106,75 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
     const indexAfterUnhover = Number(await scrubber.inputValue());
 
     expect(indexAfterUnhover).toBeGreaterThan(indexBeforeUnhover);
+    expect(errors).toEqual([]);
+  });
+
+  test('Centered Itinerary modal opens on current month Calendar, switches to List with Weekday M/D dates, and stays read-only', async ({
+    page,
+  }) => {
+    const errors = trackRuntimeErrors(page);
+
+    await page.goto('/gardenleave/');
+
+    const itineraryBtn = page.getByRole('button', { name: 'Itinerary' });
+    await itineraryBtn.click();
+
+    const dialog = page.getByRole('dialog', { name: 'Itinerary' });
+    await expect(dialog).toBeVisible();
+
+    const calendarTab = dialog.getByRole('tab', { name: 'Calendar' });
+    const listTab = dialog.getByRole('tab', { name: 'List' });
+    await expect(calendarTab).toHaveAttribute('aria-selected', 'true');
+    await expect(listTab).toHaveAttribute('aria-selected', 'false');
+
+    // Compute expected default month name matching getInitialMonthIndex logic
+    const tripMonths = [
+      { ym: '2026-08', month: 7, name: 'August' },
+      { ym: '2026-09', month: 8, name: 'September' },
+      { ym: '2026-10', month: 9, name: 'October' },
+      { ym: '2026-11', month: 10, name: 'November' },
+      { ym: '2026-12', month: 11, name: 'December' },
+      { ym: '2027-01', month: 0, name: 'January' },
+    ];
+    const now = new Date();
+    const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const expectedMonth =
+      tripMonths.find((m) => m.ym === currentYm) ??
+      tripMonths.find((m) => m.month === now.getMonth()) ??
+      tripMonths[0];
+
+    await expect(dialog.getByText(expectedMonth.name, { exact: true })).toBeVisible();
+    await expect(dialog.getByText(`${expectedMonth.name} ${expectedMonth.ym.slice(0, 4)}`)).toHaveCount(0);
+
+    // Step months via Next/Previous controls
+    const nextBtn = dialog.getByRole('button', { name: 'Next month' });
+    const prevBtn = dialog.getByRole('button', { name: 'Previous month' });
+    if (expectedMonth.ym !== '2027-01') {
+      await nextBtn.click();
+      await prevBtn.click();
+      await expect(dialog.getByText(expectedMonth.name, { exact: true })).toBeVisible();
+    }
+
+    // Switch to List view (Monthly Agenda Timeline)
+    await listTab.click();
+    await expect(listTab).toHaveAttribute('aria-selected', 'true');
+    await expect(dialog.getByText('August', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Thu 8/20 → Mon 8/24')).toBeVisible();
+
+    // Clicking a row keeps the modal open (read-only)
+    await dialog.getByText('Thu 8/20 → Mon 8/24').click();
+    await expect(dialog).toBeVisible();
+
+    // Close via Escape
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+
+    // Reopen and close via Close button
+    await itineraryBtn.click();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Close Itinerary' }).click();
+    await expect(dialog).toHaveCount(0);
+
     expect(errors).toEqual([]);
   });
 });

@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
+  Calendar,
   Check,
   ChevronDown,
   Compass,
@@ -18,9 +19,11 @@ interface RegionSelectorBarProps {
   granularity: MapGranularity;
   isLoadingAdmin1: boolean;
   showGraticule: boolean;
+  isItineraryOpen?: boolean;
   onSelectRegion: (region: RegionCameraConfig) => void;
   onChangeGranularity: (granularity: MapGranularity) => void;
   onToggleGraticule: () => void;
+  onOpenItinerary: () => void;
   containerRef?: React.RefObject<HTMLElement>;
 }
 
@@ -32,9 +35,11 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   granularity,
   isLoadingAdmin1,
   showGraticule,
+  isItineraryOpen = false,
   onSelectRegion,
   onChangeGranularity,
   onToggleGraticule,
+  onOpenItinerary,
   containerRef,
 }) => {
   const regionList = Object.values(regions);
@@ -292,6 +297,26 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
               </div>
             )}
           </div>
+
+          {/* Itinerary Modal Trigger */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegionMenuOpen(false);
+              setIsGranularityOpen(false);
+              onOpenItinerary();
+            }}
+            title="View Full Itinerary"
+            aria-expanded={isItineraryOpen}
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+              isItineraryOpen
+                ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Calendar className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
+            <span>Itinerary</span>
+          </button>
 
           {/* Grid Toggle */}
           <button

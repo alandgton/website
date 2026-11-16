@@ -15,6 +15,7 @@ import { usePhotoPreloader } from './hooks/usePhotoPreloader';
 import { useResolvedCities } from './hooks/useResolvedCities';
 import { computeAllCityStats, computeJourneySummary } from './utils/itineraryStats';
 import { CityPhotoPostcard } from './components/CityPhotoPostcard';
+import { ItineraryModal } from './components/ItineraryModal';
 import { RegionSelectorBar } from './components/RegionSelectorBar';
 import { JourneyPlayback } from './components/JourneyPlayback';
 import { TransitLegendBar } from './components/TransitLegendBar';
@@ -127,6 +128,7 @@ export const App: React.FC = () => {
   // Selection State
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [selectedLegId, setSelectedLegId] = useState<number | null>(null);
+  const [isItineraryModalOpen, setIsItineraryModalOpen] = useState<boolean>(false);
 
   // HUD overlay refs for dynamic unobstructed-viewport centering during Journey Playback
   const headerRef = useRef<HTMLElement>(null);
@@ -516,7 +518,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col">
-      {/* Top HUD: Title, Region Dropdown, Granularity & Grid Toggle (Centered Island) */}
+      {/* Top HUD: Title, Region Dropdown, Granularity, Itinerary & Grid Toggle (Centered Island) */}
       <RegionSelectorBar
         containerRef={headerRef}
         title={activeConfig.title}
@@ -526,9 +528,11 @@ export const App: React.FC = () => {
         granularity={granularity}
         isLoadingAdmin1={isLoadingAdmin1}
         showGraticule={showGraticule}
+        isItineraryOpen={isItineraryModalOpen}
         onSelectRegion={handleSelectRegion}
         onChangeGranularity={setGranularity}
         onToggleGraticule={() => setShowGraticule((v) => !v)}
+        onOpenItinerary={() => setIsItineraryModalOpen((v) => !v)}
       />
 
       {/* Main Declarative SVG Map Canvas */}
@@ -578,6 +582,14 @@ export const App: React.FC = () => {
             onDismiss={!isTimelineEnabled ? () => setSelectedCityId(null) : undefined}
           />
         )}
+
+        {/* Read-Only Centered Itinerary Modal (Calendar & Monthly List) */}
+        <ItineraryModal
+          isOpen={isItineraryModalOpen}
+          itinerary={activeConfig.itinerary}
+          cities={resolvedCities}
+          onClose={() => setIsItineraryModalOpen(false)}
+        />
 
         {/* Loading / Geocoding Status Banners */}
         {(isLoadingCountries || isGeocoding) && (
