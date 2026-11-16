@@ -155,14 +155,15 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
       await expect(dialog.getByText(expectedMonth.name, { exact: true })).toBeVisible();
     }
 
-    // Switch to List view (Monthly Agenda Timeline)
+    // Switch to List view (Monthly Agenda Timeline) and verify it centers on the current city row
     await listTab.click();
     await expect(listTab).toHaveAttribute('aria-selected', 'true');
-    await expect(dialog.getByText('August', { exact: true })).toBeVisible();
-    await expect(dialog.getByText('Thu 8/20 → Mon 8/24')).toBeVisible();
+    const currentRow = dialog.locator('[aria-current="date"]');
+    await expect(currentRow).toBeVisible();
+    await expect(dialog.getByText(expectedMonth.name, { exact: true })).toBeVisible();
 
-    // Clicking a row keeps the modal open (read-only)
-    await dialog.getByText('Thu 8/20 → Mon 8/24').click();
+    // Clicking the centered current row keeps the modal open (read-only)
+    await currentRow.click();
     await expect(dialog).toBeVisible();
 
     // Close via Escape

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
 import { CityConfig, ItineraryLegConfig } from '../config/types';
 
@@ -151,6 +151,14 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const [activeMode, setActiveMode] = useState<'calendar' | 'list'>('calendar');
   const [monthIdx, setMonthIdx] = useState<number>(() => getInitialMonthIndex(months));
 
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const currentLegRowRef = useRef<HTMLDivElement>(null);
+
+  const now = new Date();
+  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate()
+  ).padStart(2, '0')}`;
+
   useEffect(() => {
     if (!isOpen) return;
     setActiveMode('calendar');
@@ -200,17 +208,48 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
     });
   }, [itinerary]);
 
+  const currentLegId = useMemo<number | null>(() => {
+    const activeMatch = legsWithSpan.find(
+      (item) => todayIso >= item.barStart && todayIso <= item.barEnd
+    );
+    if (activeMatch) return activeMatch.leg.id;
+
+    const rangeMatch = itinerary.find(
+      (leg) => todayIso >= leg.startDate && todayIso <= leg.endDate
+    );
+    if (rangeMatch) return rangeMatch.id;
+
+    const initialMonth = months[getInitialMonthIndex(months)];
+    if (initialMonth) {
+      const monthLeg = itinerary.find((leg) => leg.startDate.startsWith(initialMonth.ym));
+      if (monthLeg) return monthLeg.id;
+    }
+
+    return itinerary[0]?.id ?? null;
+  }, [itinerary, legsWithSpan, months, todayIso]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || activeMode !== 'list') return;
+    const container = listContainerRef.current;
+    const row = currentLegRowRef.current;
+    if (!container || !row) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const targetScrollTop =
+      container.scrollTop +
+      (rowRect.top - containerRect.top) -
+      containerRect.height / 2 +
+      rowRect.height / 2;
+    container.scrollTop = Math.max(0, targetScrollTop);
+  }, [isOpen, activeMode, currentLegId]);
+
   if (!isOpen) return null;
 
   const safeMonthIdx = Math.min(monthIdx, Math.max(0, months.length - 1));
   const currentMonth = months[safeMonthIdx];
   const weeks = currentMonth ? getWeeksForMonth(currentMonth.year, currentMonth.month) : [];
   const rowHeightClass = weeks.length >= 6 ? 'min-h-[52px]' : 'min-h-[60px]';
-
-  const now = new Date();
-  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-    now.getDate()
-  ).padStart(2, '0')}`;
 
   return (
     <div
@@ -412,7 +451,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
           </div>
         ) : (
           /* List View (Monthly Agenda Timeline with Weekday M/D Dates) */
-          <div className="overflow-y-auto flex-1">
+          <div ref={listContainerRef} className="overflow-y-auto flex-1">
             {groupedByMonth.map(({ ym, monthName, legs }) => (
               <div key={ym}>
                 <div className="sticky top-0 z-10 bg-slate-950/95 px-3.5 py-1.5 border-y border-slate-800 text-xs font-bold text-sky-400 backdrop-blur-sm">
@@ -426,17 +465,36 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                     const cityName = cities[leg.dest]?.name ?? leg.dest;
                     const barPct =
                       leg.nights === 0 ? 8 : Math.min(100, Math.round((leg.nights / 12) * 100));
+                    const isCurrentLeg = leg.id === currentLegId;
 
                     return (
                       <div
                         key={leg.id}
-                        className="flex items-center justify-between gap-2 px-3.5 py-2 text-xs"
+                        ref={isCurrentLeg ? currentLegRowRef : undefined}
+                        aria-current={isCurrentLeg ? 'date' : undefined}
+                        className={`flex items-center justify-between gap-2 px-3.5 py-2 text-xs ${
+                          isCurrentLeg
+                            ? 'bg-sky-500/10 ring-2 ring-inset ring-sky-400/90'
+                            : ''
+                        }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <span className="w-14 sm:w-16 shrink-0 rounded-md border border-slate-800 bg-slate-950 px-1.5 py-0.5 text-center font-mono text-[11px] sm:text-xs text-sky-300">
                             {shortMon} {dayNum}
                           </span>
-                          <span className="font-semibold text-white truncate">{cityName}</span>
+                          <span
+                            className={`font-semibold truncate ${
+                              isCurrentLeg ? 'text-sky-300' : 'text-white'
+                            }`}
+                          >
+                            {cityName}
+                          </span>
+                          {isCurrentLeg && (
+                            <span
+                              className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0"
+                              aria-hidden="true"
+                            />
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2.5 shrink-0">
