@@ -207,6 +207,11 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const weeks = currentMonth ? getWeeksForMonth(currentMonth.year, currentMonth.month) : [];
   const rowHeightClass = weeks.length >= 6 ? 'min-h-[52px]' : 'min-h-[60px]';
 
+  const now = new Date();
+  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate()
+  ).padStart(2, '0')}`;
+
   return (
     <div
       role="dialog"
@@ -316,6 +321,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
               {weeks.map((week) => {
                 const wStart = week[0].iso;
                 const wEnd = week[6].iso;
+                const todayCol = week.findIndex((day) => day.iso === todayIso);
                 const weekBars = legsWithSpan.filter(
                   (item) => item.barEnd >= wStart && item.barStart <= wEnd
                 );
@@ -323,23 +329,49 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 return (
                   <div
                     key={wStart}
-                    className={`${rowHeightClass} rounded-lg border border-slate-800/80 bg-slate-950/55 pb-1 flex flex-col justify-between`}
+                    className={`relative ${rowHeightClass} rounded-lg border border-slate-800/80 bg-slate-950/55 pb-1 flex flex-col justify-between`}
                   >
-                    <div className="grid grid-cols-7">
-                      {week.map((day) => (
+                    {todayCol >= 0 && (
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 grid grid-cols-7"
+                      >
                         <div
-                          key={day.iso}
-                          className={`px-1.5 pt-1 text-[11px] sm:text-xs ${
-                            day.inMonth ? 'text-slate-300' : 'text-slate-600'
-                          }`}
-                        >
-                          {day.dayNum}
-                        </div>
-                      ))}
+                          style={{ gridColumn: `${todayCol + 1} / span 1` }}
+                          className="rounded-lg border-2 border-sky-400/90 bg-sky-500/10"
+                        />
+                      </div>
+                    )}
+
+                    <div className="relative z-10 grid grid-cols-7">
+                      {week.map((day) => {
+                        const isToday = day.iso === todayIso;
+                        return (
+                          <div
+                            key={day.iso}
+                            aria-current={isToday ? 'date' : undefined}
+                            className={`px-1.5 pt-1 text-[11px] sm:text-xs flex items-center justify-between ${
+                              isToday
+                                ? 'font-bold text-sky-300'
+                                : day.inMonth
+                                  ? 'text-slate-300'
+                                  : 'text-slate-600'
+                            }`}
+                          >
+                            <span>{day.dayNum}</span>
+                            {isToday && (
+                              <span
+                                className="h-1.5 w-1.5 rounded-full bg-sky-400"
+                                aria-hidden="true"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     <div
-                      className="grid grid-cols-7 gap-0.5 px-0.5 mt-0.5"
+                      className="relative z-10 grid grid-cols-7 gap-0.5 px-0.5 mt-0.5"
                       style={{ gridAutoFlow: 'dense' }}
                     >
                       {weekBars.map(({ leg, idx, barStart, barEnd }) => {
