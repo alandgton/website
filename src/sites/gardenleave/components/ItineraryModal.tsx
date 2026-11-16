@@ -419,7 +419,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                               style={{ width: `${barPct}%` }}
                             />
                           </div>
-                          <span className="font-mono text-[11px] sm:text-xs text-slate-300">
+                          <span className="w-[152px] sm:w-[168px] text-right tabular-nums font-mono text-[11px] sm:text-xs text-slate-300">
                             {formatDateRange(leg.startDate, leg.endDate)}
                           </span>
                         </div>
