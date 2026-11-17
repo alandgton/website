@@ -65,6 +65,51 @@ test.describe('Garden Leave Travel Map — Mobile (390x844, touch)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('Itinerary modal pins Close button to top-right across Calendar and List views', async ({
+    page,
+  }) => {
+    const errors = trackRuntimeErrors(page);
+
+    await page.goto('/gardenleave/');
+
+    await page.getByRole('button', { name: 'Itinerary' }).tap();
+
+    const dialog = page.getByRole('dialog', { name: 'Itinerary' });
+    await expect(dialog).toBeVisible();
+
+    const modalCard = dialog.locator('> div');
+    const closeBtn = dialog.getByRole('button', { name: 'Close Itinerary' });
+    const titleEl = dialog.getByText('Itinerary', { exact: true });
+
+    const cardCal = await modalCard.boundingBox();
+    const closeCal = await closeBtn.boundingBox();
+    const titleCal = await titleEl.boundingBox();
+    expect(cardCal).not.toBeNull();
+    expect(closeCal).not.toBeNull();
+    expect(titleCal).not.toBeNull();
+
+    // Close button stays aligned on Row 1 at the top-right corner of the modal card
+    expect(Math.abs(closeCal!.y - titleCal!.y)).toBeLessThan(12);
+    expect(closeCal!.x + closeCal!.width).toBeGreaterThan(cardCal!.x + cardCal!.width - 24);
+
+    const relXCal = Math.round(closeCal!.x - cardCal!.x);
+    const relYCal = Math.round(closeCal!.y - cardCal!.y);
+
+    // Toggle to List view and confirm the Close button stays at the exact same top-right spot
+    await dialog.getByRole('tab', { name: 'List' }).tap();
+    const cardList = await modalCard.boundingBox();
+    const closeList = await closeBtn.boundingBox();
+    expect(cardList).not.toBeNull();
+    expect(closeList).not.toBeNull();
+
+    expect(Math.round(closeList!.x - cardList!.x)).toBe(relXCal);
+    expect(Math.round(closeList!.y - cardList!.y)).toBe(relYCal);
+
+    await closeBtn.tap();
+    await expect(dialog).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {

@@ -299,8 +299,8 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
         className="w-full max-w-xl max-h-[82dvh] rounded-2xl border border-slate-700/85 bg-slate-900/95 shadow-2xl overflow-hidden flex flex-col text-slate-100"
       >
         {/* Modal Header */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 sm:px-4 py-2.5 border-b border-slate-800 shrink-0">
-          <div className="flex items-center gap-2.5">
+        <div className="grid grid-cols-[1fr_auto] sm:flex items-center justify-between gap-x-2 gap-y-2 px-3.5 sm:px-4 py-2.5 border-b border-slate-800 shrink-0">
+          <div className="order-1 flex items-center gap-2.5 min-w-0">
             <span className="text-xs sm:text-sm font-bold text-white">Itinerary</span>
 
             {/* Calendar | List Toggle */}
@@ -340,46 +340,44 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {activeMode === 'calendar' && currentMonth ? (
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setMonthIdx((i) => Math.max(0, i - 1))}
-                  disabled={safeMonthIdx <= 0}
-                  aria-label="Previous month"
-                  className="rounded-md border border-slate-800 bg-slate-950/80 p-1 text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-35 transition"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-                <span className="w-24 text-center text-xs font-semibold text-sky-300">
-                  {currentMonth.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setMonthIdx((i) => Math.min(months.length - 1, i + 1))}
-                  disabled={safeMonthIdx >= months.length - 1}
-                  aria-label="Next month"
-                  className="rounded-md border border-slate-800 bg-slate-950/80 p-1 text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-35 transition"
-                >
-                  <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
-            ) : (
-              <span className="rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-300">
-                {itinerary.length} stops
-              </span>
-            )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close Itinerary"
+            className="order-2 justify-self-end sm:order-3 shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
 
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close Itinerary"
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
+          {activeMode === 'calendar' && currentMonth ? (
+            <div className="order-3 col-span-2 flex items-center justify-center gap-1 pt-1 border-t border-slate-800/60 sm:order-2 sm:col-span-1 sm:ml-auto sm:pt-0 sm:border-t-0">
+              <button
+                type="button"
+                onClick={() => setMonthIdx((i) => Math.max(0, i - 1))}
+                disabled={safeMonthIdx <= 0}
+                aria-label="Previous month"
+                className="rounded-md border border-slate-800 bg-slate-950/80 p-1 text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-35 transition"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <span className="w-24 text-center text-xs font-semibold text-sky-300">
+                {currentMonth.name}
+              </span>
+              <button
+                type="button"
+                onClick={() => setMonthIdx((i) => Math.min(months.length - 1, i + 1))}
+                disabled={safeMonthIdx >= months.length - 1}
+                aria-label="Next month"
+                className="rounded-md border border-slate-800 bg-slate-950/80 p-1 text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-35 transition"
+              >
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          ) : (
+            <span className="hidden sm:inline-block sm:order-2 sm:ml-auto rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-300">
+              {itinerary.length} stops
+            </span>
+          )}
         </div>
 
         {/* Calendar View */}
