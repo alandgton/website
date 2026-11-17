@@ -158,6 +158,24 @@ function getInitialMonthIndex(months: TripMonth[]): number {
   return 0;
 }
 
+/**
+ * Centered glass capsule month header shared across Calendar and List views.
+ */
+function StickyMonthHeader({ label, zClass }: { label: string; zClass: string }) {
+  return (
+    <div
+      className={`sticky top-0 ${zClass} bg-slate-950/95 py-1.5 px-3 backdrop-blur-md flex items-center gap-3`}
+    >
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent to-slate-800" />
+      <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-900/90 border border-sky-500/40 text-sky-300 font-bold text-xs tracking-wide shadow-sm shadow-sky-950/80 backdrop-blur-sm">
+        <Calendar className="w-3 h-3 text-sky-400" aria-hidden="true" />
+        <span>{label}</span>
+      </div>
+      <div className="h-px flex-1 bg-gradient-to-l from-transparent to-slate-800" />
+    </div>
+  );
+}
+
 export const ItineraryModal: React.FC<ItineraryModalProps> = ({
   isOpen,
   itinerary,
@@ -404,32 +422,47 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 const rowHeightClass = m.weeks.length >= 6 ? 'min-h-[52px]' : 'min-h-[60px]';
                 return (
                   <section key={m.ym}>
-                    <div className="sticky top-0 z-20 bg-slate-950/95 py-1.5 px-3 backdrop-blur-md flex items-center gap-3">
-                      <div className="h-px flex-1 bg-gradient-to-r from-transparent to-slate-800" />
-                      <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-900/90 border border-sky-500/40 text-sky-300 font-bold text-xs tracking-wide shadow-sm shadow-sky-950/80 backdrop-blur-sm">
-                        <Calendar className="w-3 h-3 text-sky-400" aria-hidden="true" />
-                        <span>{m.name}</span>
-                      </div>
-                      <div className="h-px flex-1 bg-gradient-to-l from-transparent to-slate-800" />
-                    </div>
+                    <StickyMonthHeader label={m.name} zClass="z-20" />
                     <div className="p-2.5 sm:p-3 space-y-1.5">
                       {m.weeks.map((week, wIdx) => {
+                        const firstInMonthCol = week.findIndex((day) => day.inMonth);
+                        let lastInMonthCol = -1;
+                        for (let c = week.length - 1; c >= 0; c--) {
+                          if (week[c].inMonth) {
+                            lastInMonthCol = c;
+                            break;
+                          }
+                        }
+                        if (firstInMonthCol < 0 || lastInMonthCol < firstInMonthCol) return null;
+
                         const wStart = week[0].iso;
-                        const wEnd = week[6].iso;
+                        const inMonthSpan = lastInMonthCol - firstInMonthCol + 1;
+                        const activeStartIso = week[firstInMonthCol].iso;
+                        const activeEndIso = week[lastInMonthCol].iso;
                         const todayCol = week.findIndex((day) => day.iso === todayIso && day.inMonth);
                         const isTargetWeek = hasTodayInTrip
                           ? todayCol >= 0
                           : m.ym === fallbackCalendarYm && wIdx === Math.floor(m.weeks.length / 2);
                         const weekBars = legsWithSpan.filter(
-                          (item) => item.barEnd >= wStart && item.barStart <= wEnd
+                          (item) => item.barEnd >= activeStartIso && item.barStart <= activeEndIso
                         );
 
                         return (
                           <div
                             key={`${m.ym}-${wStart}`}
                             ref={isTargetWeek ? currentCalendarRowRef : undefined}
-                            className={`relative ${rowHeightClass} rounded-lg border border-slate-800/80 bg-slate-950/55 pb-1 flex flex-col justify-between`}
+                            className={`relative ${rowHeightClass} pb-1 flex flex-col justify-between`}
                           >
+                            <div
+                              aria-hidden="true"
+                              className="pointer-events-none absolute inset-0 grid grid-cols-7"
+                            >
+                              <div
+                                style={{ gridColumn: `${firstInMonthCol + 1} / span ${inMonthSpan}` }}
+                                className="rounded-lg border border-slate-800/80 bg-slate-950/55"
+                              />
+                            </div>
+
                             {todayCol >= 0 && (
                               <div
                                 aria-hidden="true"
@@ -444,17 +477,22 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
 
                             <div className="relative z-10 grid grid-cols-7">
                               {week.map((day) => {
-                                const isToday = day.iso === todayIso && day.inMonth;
+                                if (!day.inMonth) {
+                                  return (
+                                    <div
+                                      key={day.iso}
+                                      aria-hidden="true"
+                                      className="px-1.5 pt-1 text-[11px] sm:text-xs"
+                                    />
+                                  );
+                                }
+                                const isToday = day.iso === todayIso;
                                 return (
                                   <div
                                     key={day.iso}
                                     aria-current={isToday ? 'date' : undefined}
                                     className={`px-1.5 pt-1 text-[11px] sm:text-xs flex items-center justify-between ${
-                                      isToday
-                                        ? 'font-bold text-sky-300'
-                                        : day.inMonth
-                                          ? 'text-slate-300'
-                                          : 'text-slate-600'
+                                      isToday ? 'font-bold text-sky-300' : 'text-slate-300'
                                     }`}
                                   >
                                     <span>{day.dayNum}</span>
@@ -474,14 +512,16 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                               style={{ gridAutoFlow: 'dense' }}
                             >
                               {weekBars.map(({ leg, idx, barStart, barEnd }) => {
-                                let cStart = 0;
-                                let cEnd = 6;
-                                for (let c = 0; c < 7; c++) {
-                                  if (week[c].iso === barStart) cStart = c;
-                                  if (week[c].iso === barEnd) cEnd = c;
+                                const effectiveStart =
+                                  barStart < activeStartIso ? activeStartIso : barStart;
+                                const effectiveEnd =
+                                  barEnd > activeEndIso ? activeEndIso : barEnd;
+                                let cStart = firstInMonthCol;
+                                let cEnd = lastInMonthCol;
+                                for (let c = firstInMonthCol; c <= lastInMonthCol; c++) {
+                                  if (week[c].iso === effectiveStart) cStart = c;
+                                  if (week[c].iso === effectiveEnd) cEnd = c;
                                 }
-                                if (barStart < wStart) cStart = 0;
-                                if (barEnd > wEnd) cEnd = 6;
 
                                 const spanCols = Math.max(1, cEnd - cStart + 1);
                                 const cityName = cities[leg.dest]?.name ?? leg.dest;
@@ -518,9 +558,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
           <div ref={listContainerRef} className="overflow-y-auto flex-1">
             {groupedByMonth.map(({ ym, monthName, legs }) => (
               <div key={ym}>
-                <div className="sticky top-0 z-10 bg-slate-950/95 px-3.5 py-1.5 border-y border-slate-800 text-xs font-bold text-sky-400 backdrop-blur-sm">
-                  {monthName}
-                </div>
+                <StickyMonthHeader label={monthName} zClass="z-10" />
                 <div className="divide-y divide-slate-800/50">
                   {legs.map((leg) => {
                     const city = cities[leg.dest];
