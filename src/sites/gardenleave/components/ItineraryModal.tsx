@@ -159,19 +159,21 @@ function getInitialMonthIndex(months: TripMonth[]): number {
 }
 
 /**
- * Centered glass capsule month header shared across Calendar and List views.
+ * Sticky left gutter bar with a -90° rotated (Read Up) month label shared across Calendar and List views.
  */
-function StickyMonthHeader({ label, zClass }: { label: string; zClass: string }) {
+function StickyMonthGutter({ label, zClass }: { label: string; zClass: string }) {
   return (
-    <div
-      className={`sticky top-0 ${zClass} bg-slate-950/95 py-1.5 px-3 backdrop-blur-md flex items-center gap-3`}
-    >
-      <div className="h-px flex-1 bg-gradient-to-r from-transparent to-slate-800" />
-      <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-900/90 border border-sky-500/40 text-sky-300 font-bold text-xs tracking-wide shadow-sm shadow-sky-950/80 backdrop-blur-sm">
-        <Calendar className="w-3 h-3 text-sky-400" aria-hidden="true" />
-        <span>{label}</span>
+    <div className="w-7 shrink-0 relative flex flex-col items-center py-2 bg-slate-900/55 border-r border-slate-800/90">
+      <div
+        className={`sticky top-2 ${zClass} flex items-center justify-center border-l-2 border-sky-400/80 pl-1 pr-0.5 py-2 text-sky-300 font-bold text-xs tracking-wider uppercase`}
+      >
+        <span
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+          className="whitespace-nowrap leading-none"
+        >
+          {label}
+        </span>
       </div>
-      <div className="h-px flex-1 bg-gradient-to-l from-transparent to-slate-800" />
     </div>
   );
 }
@@ -404,13 +406,19 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
           </div>
         </div>
 
-        {/* Calendar View (Scrollable Multi-Month Sections with Sticky Month Headers) */}
+        {/* Calendar View (Scrollable Multi-Month Sections with Sticky Left Gutter) */}
         {activeMode === 'calendar' ? (
           <>
-            <div className="grid grid-cols-7 text-center text-xs font-medium text-slate-400 px-2.5 sm:px-3 py-1.5 border-b border-slate-800/80 bg-slate-900 shrink-0">
-              {WEEKDAYS.map((day) => (
-                <span key={day}>{day}</span>
-              ))}
+            <div className="flex items-center border-b border-slate-800/80 bg-slate-900 shrink-0 text-xs font-medium text-slate-400">
+              <div
+                className="w-7 shrink-0 self-stretch border-r border-slate-800/90 bg-slate-900/55"
+                aria-hidden="true"
+              />
+              <div className="grid grid-cols-7 flex-1 text-center px-2 sm:px-2.5 py-1.5">
+                {WEEKDAYS.map((day) => (
+                  <span key={day}>{day}</span>
+                ))}
+              </div>
             </div>
 
             <div
@@ -418,12 +426,15 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
               data-testid="itinerary-calendar-scroll"
               className="overflow-y-auto flex-1"
             >
-              {monthsWithWeeks.map((m) => {
+              {monthsWithWeeks.map((m, mIdx) => {
                 const rowHeightClass = m.weeks.length >= 6 ? 'min-h-[52px]' : 'min-h-[60px]';
                 return (
-                  <section key={m.ym}>
-                    <StickyMonthHeader label={m.name} zClass="z-20" />
-                    <div className="p-2.5 sm:p-3 space-y-1.5">
+                  <section
+                    key={m.ym}
+                    className={`flex min-h-[88px] ${mIdx > 0 ? 'border-t border-slate-800/80' : ''}`}
+                  >
+                    <StickyMonthGutter label={m.name} zClass="z-20" />
+                    <div className="flex-1 min-w-0 p-2 sm:p-2.5 space-y-1.5">
                       {m.weeks.map((week, wIdx) => {
                         const firstInMonthCol = week.findIndex((day) => day.inMonth);
                         let lastInMonthCol = -1;
@@ -556,10 +567,13 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
         ) : (
           /* List View (Monthly Agenda Timeline with Weekday M/D Dates) */
           <div ref={listContainerRef} className="overflow-y-auto flex-1">
-            {groupedByMonth.map(({ ym, monthName, legs }) => (
-              <div key={ym}>
-                <StickyMonthHeader label={monthName} zClass="z-10" />
-                <div className="divide-y divide-slate-800/50">
+            {groupedByMonth.map(({ ym, monthName, legs }, mIdx) => (
+              <section
+                key={ym}
+                className={`flex min-h-[88px] ${mIdx > 0 ? 'border-t border-slate-800/80' : ''}`}
+              >
+                <StickyMonthGutter label={monthName} zClass="z-10" />
+                <div className="flex-1 min-w-0 divide-y divide-slate-800/50">
                   {legs.map((leg) => {
                     const city = cities[leg.dest];
                     const cityName = city?.name ?? leg.dest;
@@ -603,7 +617,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                     );
                   })}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
         )}
