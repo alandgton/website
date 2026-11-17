@@ -80,17 +80,17 @@ test.describe('Garden Leave Travel Map — Mobile (390x844, touch)', () => {
 
     const modalCard = dialog.locator('> div');
     const closeBtn = dialog.getByRole('button', { name: 'Close Itinerary' });
-    const titleEl = dialog.getByText('Itinerary', { exact: true });
+    const tablistEl = dialog.getByRole('tablist', { name: 'Itinerary View' });
 
     const cardCal = await modalCard.boundingBox();
     const closeCal = await closeBtn.boundingBox();
-    const titleCal = await titleEl.boundingBox();
+    const tablistCal = await tablistEl.boundingBox();
     expect(cardCal).not.toBeNull();
     expect(closeCal).not.toBeNull();
-    expect(titleCal).not.toBeNull();
+    expect(tablistCal).not.toBeNull();
 
     // Close button stays aligned on Row 1 at the top-right corner of the modal card
-    expect(Math.abs(closeCal!.y - titleCal!.y)).toBeLessThan(12);
+    expect(Math.abs(closeCal!.y - tablistCal!.y)).toBeLessThan(12);
     expect(closeCal!.x + closeCal!.width).toBeGreaterThan(cardCal!.x + cardCal!.width - 24);
 
     const relXCal = Math.round(closeCal!.x - cardCal!.x);
