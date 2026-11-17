@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Calendar, List, X } from 'lucide-react';
 import { CityConfig, ItineraryLegConfig } from '../config/types';
 
@@ -16,10 +16,21 @@ interface TripMonth {
   name: string;
 }
 
-interface CalendarDayCell {
+interface ContinuousDayCell {
   iso: string;
   dayNum: number;
-  inMonth: boolean;
+  month: number; // 0-indexed (0 = January)
+  monthShort: string;
+  ym: string;
+}
+
+interface ContinuousWeek {
+  days: ContinuousDayCell[];
+  wStart: string;
+  wEnd: string;
+  transitionCol: number;
+  ownerMonthName: string;
+  ownerYm: string;
 }
 
 const MS_PER_DAY = 86_400_000;
@@ -39,6 +50,21 @@ const MONTH_NAMES = [
   'October',
   'November',
   'December',
+] as const;
+
+const MONTH_SHORT_NAMES = [
+  'JAN',
+  'FEB',
+  'MAR',
+  'APR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AUG',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DEC',
 ] as const;
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -121,26 +147,55 @@ export function formatDateRange(startIso: string, endIso: string): string {
   return `${formatShortDayDate(start)} – ${formatShortDayDate(end)}`;
 }
 
-function getWeeksForMonth(year: number, month: number): CalendarDayCell[][] {
-  const first = new Date(Date.UTC(year, month, 1));
-  const last = new Date(Date.UTC(year, month + 1, 0));
-  const startOffset = first.getUTCDay();
-  const gridStart = new Date(Date.UTC(year, month, 1 - startOffset));
-  const totalDaysNeeded = startOffset + last.getUTCDate();
-  const totalWeeks = Math.ceil(totalDaysNeeded / 7);
+function buildContinuousWeeks(months: TripMonth[]): ContinuousWeek[] {
+  if (months.length === 0) return [];
+  const firstMonth = months[0];
+  const lastMonth = months[months.length - 1];
 
-  const weeks: CalendarDayCell[][] = [];
-  for (let w = 0; w < totalWeeks; w++) {
-    const weekDays: CalendarDayCell[] = [];
+  const firstDay = new Date(Date.UTC(firstMonth.year, firstMonth.month, 1));
+  const gridStartMs = Date.UTC(
+    firstMonth.year,
+    firstMonth.month,
+    1 - firstDay.getUTCDay()
+  );
+
+  const lastDay = new Date(Date.UTC(lastMonth.year, lastMonth.month + 1, 0));
+  const endOffset = 6 - lastDay.getUTCDay();
+  const gridEndMs = Date.UTC(
+    lastMonth.year,
+    lastMonth.month + 1,
+    endOffset
+  );
+
+  const weeks: ContinuousWeek[] = [];
+  for (let curMs = gridStartMs; curMs <= gridEndMs; curMs += 7 * MS_PER_DAY) {
+    const days: ContinuousDayCell[] = [];
     for (let d = 0; d < 7; d++) {
-      const cur = new Date(gridStart.getTime() + (w * 7 + d) * MS_PER_DAY);
-      weekDays.push({
-        iso: toIsoDateUtc(cur),
+      const cur = new Date(curMs + d * MS_PER_DAY);
+      const month = cur.getUTCMonth();
+      const iso = toIsoDateUtc(cur);
+      days.push({
+        iso,
         dayNum: cur.getUTCDate(),
-        inMonth: cur.getUTCMonth() === month,
+        month,
+        monthShort: MONTH_SHORT_NAMES[month] ?? '',
+        ym: iso.slice(0, 7),
       });
     }
-    weeks.push(weekDays);
+
+    const transitionCol = days.findIndex(
+      (day, idx) => idx > 0 && day.month !== days[idx - 1].month
+    );
+    const ownerDay = transitionCol > 0 ? days[transitionCol] : days[0];
+
+    weeks.push({
+      days,
+      wStart: days[0].iso,
+      wEnd: days[6].iso,
+      transitionCol,
+      ownerMonthName: MONTH_NAMES[ownerDay.month] ?? ownerDay.ym,
+      ownerYm: ownerDay.ym,
+    });
   }
   return weeks;
 }
@@ -283,26 +338,53 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
     return itinerary[0]?.id ?? null;
   }, [itinerary, legsWithSpan, months, todayIso]);
 
-  const monthsWithWeeks = useMemo(
-    () =>
-      months.map((m) => ({
-        ...m,
-        weeks: getWeeksForMonth(m.year, m.month),
-      })),
-    [months]
-  );
+  const continuousWeeks = useMemo(() => buildContinuousWeeks(months), [months]);
 
   const hasTodayInTrip = useMemo(
-    () =>
-      monthsWithWeeks.some((m) =>
-        m.weeks.some((week) => week.some((day) => day.iso === todayIso && day.inMonth))
-      ),
-    [monthsWithWeeks, todayIso]
+    () => continuousWeeks.some((week) => week.days.some((day) => day.iso === todayIso)),
+    [continuousWeeks, todayIso]
   );
 
-  const fallbackCalendarYm = !hasTodayInTrip
-    ? (months[getInitialMonthIndex(months)]?.ym ?? null)
-    : null;
+  const fallbackTargetWeekStart = useMemo(() => {
+    if (hasTodayInTrip) return null;
+    const fallbackYm = months[getInitialMonthIndex(months)]?.ym ?? null;
+    if (!fallbackYm) return null;
+    const matching = continuousWeeks.filter((w) => w.ownerYm === fallbackYm);
+    if (matching.length === 0) return null;
+    return matching[Math.floor(matching.length / 2)].wStart;
+  }, [continuousWeeks, hasTodayInTrip, months]);
+
+  const defaultCalendarMonth = months[getInitialMonthIndex(months)]?.name ?? '';
+  const [activeCalendarMonth, setActiveCalendarMonth] = useState<string>(defaultCalendarMonth);
+
+  const updateCalendarScrollSpy = useCallback(() => {
+    const container = calendarContainerRef.current;
+    if (!container) return;
+    const rows = container.querySelectorAll<HTMLElement>('[data-week-month]');
+    if (rows.length === 0) return;
+
+    if (container.scrollTop <= 8) {
+      const firstMonth = rows[0].getAttribute('data-week-month');
+      if (firstMonth) setActiveCalendarMonth(firstMonth);
+      return;
+    }
+
+    if (container.scrollTop + container.clientHeight >= container.scrollHeight - 8) {
+      const lastMonth = rows[rows.length - 1].getAttribute('data-week-month');
+      if (lastMonth) setActiveCalendarMonth(lastMonth);
+      return;
+    }
+
+    const probeY = container.getBoundingClientRect().top + container.clientHeight * 0.35;
+    for (const row of rows) {
+      const rect = row.getBoundingClientRect();
+      if (rect.bottom >= probeY) {
+        const monthLabel = row.getAttribute('data-week-month');
+        if (monthLabel) setActiveCalendarMonth(monthLabel);
+        break;
+      }
+    }
+  }, []);
 
   useLayoutEffect(() => {
     if (!isOpen || activeMode !== 'calendar') return;
@@ -318,7 +400,8 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
       containerRect.height / 2 +
       rowRect.height / 2;
     container.scrollTop = Math.max(0, targetScrollTop);
-  }, [isOpen, activeMode, monthsWithWeeks, todayIso]);
+    updateCalendarScrollSpy();
+  }, [isOpen, activeMode, continuousWeeks, todayIso, updateCalendarScrollSpy]);
 
   useLayoutEffect(() => {
     if (!isOpen || activeMode !== 'list') return;
@@ -424,144 +507,142 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
             <div
               ref={calendarContainerRef}
               data-testid="itinerary-calendar-scroll"
+              onScroll={updateCalendarScrollSpy}
               className="overflow-y-auto flex-1"
             >
-              {monthsWithWeeks.map((m, mIdx) => {
-                const rowHeightClass = m.weeks.length >= 6 ? 'min-h-[52px]' : 'min-h-[60px]';
-                return (
-                  <section
-                    key={m.ym}
-                    className={`flex min-h-[88px] ${mIdx > 0 ? 'border-t border-slate-800/80' : ''}`}
-                  >
-                    <StickyMonthGutter label={m.name} zClass="z-20" />
-                    <div className="flex-1 min-w-0 p-2 sm:p-2.5 space-y-1.5">
-                      {m.weeks.map((week, wIdx) => {
-                        const firstInMonthCol = week.findIndex((day) => day.inMonth);
-                        let lastInMonthCol = -1;
-                        for (let c = week.length - 1; c >= 0; c--) {
-                          if (week[c].inMonth) {
-                            lastInMonthCol = c;
-                            break;
-                          }
-                        }
-                        if (firstInMonthCol < 0 || lastInMonthCol < firstInMonthCol) return null;
+              <div className="flex min-h-full">
+                <StickyMonthGutter label={activeCalendarMonth} zClass="z-20" />
+                <div className="flex-1 min-w-0 p-2 sm:p-2.5 space-y-1.5">
+                  {continuousWeeks.map((week) => {
+                    const todayCol = week.days.findIndex((day) => day.iso === todayIso);
+                    const isTargetWeek = hasTodayInTrip
+                      ? todayCol >= 0
+                      : week.wStart === fallbackTargetWeekStart;
+                    const weekBars = legsWithSpan.filter(
+                      (item) => item.barEnd >= week.wStart && item.barStart <= week.wEnd
+                    );
+                    const hasSplit = week.transitionCol > 0;
 
-                        const wStart = week[0].iso;
-                        const inMonthSpan = lastInMonthCol - firstInMonthCol + 1;
-                        const activeStartIso = week[firstInMonthCol].iso;
-                        const activeEndIso = week[lastInMonthCol].iso;
-                        const todayCol = week.findIndex((day) => day.iso === todayIso && day.inMonth);
-                        const isTargetWeek = hasTodayInTrip
-                          ? todayCol >= 0
-                          : m.ym === fallbackCalendarYm && wIdx === Math.floor(m.weeks.length / 2);
-                        const weekBars = legsWithSpan.filter(
-                          (item) => item.barEnd >= activeStartIso && item.barStart <= activeEndIso
-                        );
-
-                        return (
+                    return (
+                      <div
+                        key={week.wStart}
+                        data-week-month={week.ownerMonthName}
+                        ref={isTargetWeek ? currentCalendarRowRef : undefined}
+                        className="relative min-h-[56px] rounded-lg border border-slate-800/80 bg-slate-950/55 pb-1 flex flex-col justify-between"
+                      >
+                        {hasSplit && (
                           <div
-                            key={`${m.ym}-${wStart}`}
-                            ref={isTargetWeek ? currentCalendarRowRef : undefined}
-                            className={`relative ${rowHeightClass} pb-1 flex flex-col justify-between`}
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 grid grid-cols-7 rounded-lg overflow-hidden"
                           >
                             <div
-                              aria-hidden="true"
-                              className="pointer-events-none absolute inset-0 grid grid-cols-7"
-                            >
-                              <div
-                                style={{ gridColumn: `${firstInMonthCol + 1} / span ${inMonthSpan}` }}
-                                className="rounded-lg border border-slate-800/80 bg-slate-950/55"
-                              />
-                            </div>
-
-                            {todayCol >= 0 && (
-                              <div
-                                aria-hidden="true"
-                                className="pointer-events-none absolute inset-0 grid grid-cols-7"
-                              >
-                                <div
-                                  style={{ gridColumn: `${todayCol + 1} / span 1` }}
-                                  className="rounded-lg border-2 border-sky-400/90 bg-sky-500/10"
-                                />
-                              </div>
-                            )}
-
-                            <div className="relative z-10 grid grid-cols-7">
-                              {week.map((day) => {
-                                if (!day.inMonth) {
-                                  return (
-                                    <div
-                                      key={day.iso}
-                                      aria-hidden="true"
-                                      className="px-1.5 pt-1 text-[11px] sm:text-xs"
-                                    />
-                                  );
-                                }
-                                const isToday = day.iso === todayIso;
-                                return (
-                                  <div
-                                    key={day.iso}
-                                    aria-current={isToday ? 'date' : undefined}
-                                    className={`px-1.5 pt-1 text-[11px] sm:text-xs flex items-center justify-between ${
-                                      isToday ? 'font-bold text-sky-300' : 'text-slate-300'
-                                    }`}
-                                  >
-                                    <span>{day.dayNum}</span>
-                                    {isToday && (
-                                      <span
-                                        className="h-1.5 w-1.5 rounded-full bg-sky-400"
-                                        aria-hidden="true"
-                                      />
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-
+                              style={{ gridColumn: `1 / span ${week.transitionCol}` }}
+                              className="bg-slate-950/80"
+                            />
                             <div
-                              className="relative z-10 grid grid-cols-7 gap-0.5 px-0.5 mt-0.5"
-                              style={{ gridAutoFlow: 'dense' }}
-                            >
-                              {weekBars.map(({ leg, idx, barStart, barEnd }) => {
-                                const effectiveStart =
-                                  barStart < activeStartIso ? activeStartIso : barStart;
-                                const effectiveEnd =
-                                  barEnd > activeEndIso ? activeEndIso : barEnd;
-                                let cStart = firstInMonthCol;
-                                let cEnd = lastInMonthCol;
-                                for (let c = firstInMonthCol; c <= lastInMonthCol; c++) {
-                                  if (week[c].iso === effectiveStart) cStart = c;
-                                  if (week[c].iso === effectiveEnd) cEnd = c;
-                                }
-
-                                const spanCols = Math.max(1, cEnd - cStart + 1);
-                                const cityName = cities[leg.dest]?.name ?? leg.dest;
-                                const isIntraday = leg.nights === 0;
-                                const barStyle = isIntraday
-                                  ? 'bg-amber-500/20 border-amber-400/40 text-amber-200'
-                                  : idx % 2 === 0
-                                    ? 'bg-slate-800/95 border-sky-500/35 text-sky-200'
-                                    : 'bg-sky-950/80 border-sky-500/25 text-slate-200';
-
-                                return (
-                                  <div
-                                    key={`${m.ym}-${wStart}-${leg.id}`}
-                                    style={{ gridColumn: `${cStart + 1} / span ${spanCols}` }}
-                                    title={`${cityName}: ${formatDateRange(leg.startDate, leg.endDate)}`}
-                                    className={`truncate rounded border px-1 sm:px-1.5 py-0.5 text-left text-[11px] sm:text-xs font-medium select-text ${barStyle}`}
-                                  >
-                                    {leg.dest}
-                                  </div>
-                                );
-                              })}
-                            </div>
+                              style={{
+                                gridColumn: `${week.transitionCol + 1} / span ${7 - week.transitionCol}`,
+                              }}
+                              className="bg-sky-950/20 border-l-2 border-sky-400/50"
+                            />
                           </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
+                        )}
+
+                        {todayCol >= 0 && (
+                          <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 grid grid-cols-7"
+                          >
+                            <div
+                              style={{ gridColumn: `${todayCol + 1} / span 1` }}
+                              className="rounded-lg border-2 border-sky-400/90 bg-sky-500/10"
+                            />
+                          </div>
+                        )}
+
+                        <div className="relative z-10 grid grid-cols-7">
+                          {week.days.map((day, colIdx) => {
+                            const isToday = day.iso === todayIso;
+                            const isFirstOfMonth = day.dayNum === 1;
+                            const isSplitBoundary = hasSplit && colIdx === week.transitionCol;
+                            const isOutgoingMuted = hasSplit && colIdx < week.transitionCol;
+
+                            return (
+                              <div
+                                key={day.iso}
+                                aria-current={isToday ? 'date' : undefined}
+                                className={`px-1 sm:px-1.5 pt-1 text-[11px] sm:text-xs flex items-center justify-between ${
+                                  isSplitBoundary ? 'border-l-2 border-sky-400/70' : ''
+                                } ${
+                                  isToday
+                                    ? 'font-bold text-sky-300'
+                                    : isFirstOfMonth
+                                      ? 'font-bold text-sky-300'
+                                      : isOutgoingMuted
+                                        ? 'text-slate-500'
+                                        : 'text-slate-300'
+                                }`}
+                              >
+                                <span className="truncate">
+                                  {isFirstOfMonth ? (
+                                    <>
+                                      <span className="text-sky-400 mr-0.5">{day.monthShort}</span>1
+                                    </>
+                                  ) : (
+                                    day.dayNum
+                                  )}
+                                </span>
+                                {isToday && (
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0"
+                                    aria-hidden="true"
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div
+                          className="relative z-10 grid grid-cols-7 gap-0.5 px-0.5 mt-0.5"
+                          style={{ gridAutoFlow: 'dense' }}
+                        >
+                          {weekBars.map(({ leg, idx, barStart, barEnd }) => {
+                            let cStart = 0;
+                            let cEnd = 6;
+                            for (let c = 0; c < 7; c++) {
+                              if (week.days[c].iso === barStart) cStart = c;
+                              if (week.days[c].iso === barEnd) cEnd = c;
+                            }
+                            if (barStart < week.wStart) cStart = 0;
+                            if (barEnd > week.wEnd) cEnd = 6;
+
+                            const spanCols = Math.max(1, cEnd - cStart + 1);
+                            const cityName = cities[leg.dest]?.name ?? leg.dest;
+                            const isIntraday = leg.nights === 0;
+                            const barStyle = isIntraday
+                              ? 'bg-amber-500/20 border-amber-400/40 text-amber-200'
+                              : idx % 2 === 0
+                                ? 'bg-slate-800/95 border-sky-500/35 text-sky-200'
+                                : 'bg-sky-950/80 border-sky-500/25 text-slate-200';
+
+                            return (
+                              <div
+                                key={`${week.wStart}-${leg.id}`}
+                                style={{ gridColumn: `${cStart + 1} / span ${spanCols}` }}
+                                title={`${cityName}: ${formatDateRange(leg.startDate, leg.endDate)}`}
+                                className={`truncate rounded border px-1 sm:px-1.5 py-0.5 text-left text-[11px] sm:text-xs font-medium select-text ${barStyle}`}
+                              >
+                                {leg.dest}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </>
         ) : (
