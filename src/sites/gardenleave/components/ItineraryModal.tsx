@@ -404,8 +404,13 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                 const rowHeightClass = m.weeks.length >= 6 ? 'min-h-[52px]' : 'min-h-[60px]';
                 return (
                   <section key={m.ym}>
-                    <div className="sticky top-0 z-20 bg-slate-950/95 px-3.5 py-1.5 border-y border-slate-800 text-xs font-bold text-sky-400 backdrop-blur-sm">
-                      {m.name}
+                    <div className="sticky top-0 z-20 bg-slate-950/95 py-1.5 px-3 backdrop-blur-md flex items-center gap-3">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent to-slate-800" />
+                      <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-900/90 border border-sky-500/40 text-sky-300 font-bold text-xs tracking-wide shadow-sm shadow-sky-950/80 backdrop-blur-sm">
+                        <Calendar className="w-3 h-3 text-sky-400" aria-hidden="true" />
+                        <span>{m.name}</span>
+                      </div>
+                      <div className="h-px flex-1 bg-gradient-to-l from-transparent to-slate-800" />
                     </div>
                     <div className="p-2.5 sm:p-3 space-y-1.5">
                       {m.weeks.map((week, wIdx) => {
