@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, List, X } from 'lucide-react';
+import { Calendar, List, X } from 'lucide-react';
 import { CityConfig, ItineraryLegConfig } from '../config/types';
 
 interface ItineraryModalProps {
@@ -184,8 +184,9 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
   }, [itinerary]);
 
   const [activeMode, setActiveMode] = useState<'calendar' | 'list'>('calendar');
-  const [monthIdx, setMonthIdx] = useState<number>(() => getInitialMonthIndex(months));
 
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const currentCalendarRowRef = useRef<HTMLDivElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const currentLegRowRef = useRef<HTMLDivElement>(null);
 
@@ -197,8 +198,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     setActiveMode('calendar');
-    setMonthIdx(getInitialMonthIndex(months));
-  }, [isOpen, months]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -263,6 +263,43 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
     return itinerary[0]?.id ?? null;
   }, [itinerary, legsWithSpan, months, todayIso]);
 
+  const monthsWithWeeks = useMemo(
+    () =>
+      months.map((m) => ({
+        ...m,
+        weeks: getWeeksForMonth(m.year, m.month),
+      })),
+    [months]
+  );
+
+  const hasTodayInTrip = useMemo(
+    () =>
+      monthsWithWeeks.some((m) =>
+        m.weeks.some((week) => week.some((day) => day.iso === todayIso && day.inMonth))
+      ),
+    [monthsWithWeeks, todayIso]
+  );
+
+  const fallbackCalendarYm = !hasTodayInTrip
+    ? (months[getInitialMonthIndex(months)]?.ym ?? null)
+    : null;
+
+  useLayoutEffect(() => {
+    if (!isOpen || activeMode !== 'calendar') return;
+    const container = calendarContainerRef.current;
+    const row = currentCalendarRowRef.current;
+    if (!container || !row) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const targetScrollTop =
+      container.scrollTop +
+      (rowRect.top - containerRect.top) -
+      containerRect.height / 2 +
+      rowRect.height / 2;
+    container.scrollTop = Math.max(0, targetScrollTop);
+  }, [isOpen, activeMode, monthsWithWeeks, todayIso]);
+
   useLayoutEffect(() => {
     if (!isOpen || activeMode !== 'list') return;
     const container = listContainerRef.current;
@@ -280,11 +317,6 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
   }, [isOpen, activeMode, currentLegId]);
 
   if (!isOpen) return null;
-
-  const safeMonthIdx = Math.min(monthIdx, Math.max(0, months.length - 1));
-  const currentMonth = months[safeMonthIdx];
-  const weeks = currentMonth ? getWeeksForMonth(currentMonth.year, currentMonth.month) : [];
-  const rowHeightClass = weeks.length >= 6 ? 'min-h-[52px]' : 'min-h-[60px]';
 
   return (
     <div
@@ -337,31 +369,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {activeMode === 'calendar' && currentMonth ? (
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setMonthIdx((i) => Math.max(0, i - 1))}
-                  disabled={safeMonthIdx <= 0}
-                  aria-label="Previous month"
-                  className="rounded-md border border-slate-800 bg-slate-950/80 p-1 text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-35 transition"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-                <span className="w-20 sm:w-24 text-center text-xs font-semibold text-sky-300">
-                  {currentMonth.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setMonthIdx((i) => Math.min(months.length - 1, i + 1))}
-                  disabled={safeMonthIdx >= months.length - 1}
-                  aria-label="Next month"
-                  className="rounded-md border border-slate-800 bg-slate-950/80 p-1 text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-35 transition"
-                >
-                  <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
-            ) : (
+            {activeMode === 'list' && (
               <span className="hidden sm:inline-block rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-300">
                 {itinerary.length} stops
               </span>
@@ -378,108 +386,128 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
           </div>
         </div>
 
-        {/* Calendar View */}
+        {/* Calendar View (Scrollable Multi-Month Sections with Sticky Month Headers) */}
         {activeMode === 'calendar' ? (
-          <div className="p-2.5 sm:p-3 space-y-1.5 overflow-y-auto">
-            <div className="grid grid-cols-7 text-center text-xs font-medium text-slate-400 pb-0.5">
+          <>
+            <div className="grid grid-cols-7 text-center text-xs font-medium text-slate-400 px-2.5 sm:px-3 py-1.5 border-b border-slate-800/80 bg-slate-900 shrink-0">
               {WEEKDAYS.map((day) => (
                 <span key={day}>{day}</span>
               ))}
             </div>
 
-            <div className="space-y-1.5">
-              {weeks.map((week) => {
-                const wStart = week[0].iso;
-                const wEnd = week[6].iso;
-                const todayCol = week.findIndex((day) => day.iso === todayIso);
-                const weekBars = legsWithSpan.filter(
-                  (item) => item.barEnd >= wStart && item.barStart <= wEnd
-                );
-
+            <div
+              ref={calendarContainerRef}
+              data-testid="itinerary-calendar-scroll"
+              className="overflow-y-auto flex-1"
+            >
+              {monthsWithWeeks.map((m) => {
+                const rowHeightClass = m.weeks.length >= 6 ? 'min-h-[52px]' : 'min-h-[60px]';
                 return (
-                  <div
-                    key={wStart}
-                    className={`relative ${rowHeightClass} rounded-lg border border-slate-800/80 bg-slate-950/55 pb-1 flex flex-col justify-between`}
-                  >
-                    {todayCol >= 0 && (
-                      <div
-                        aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 grid grid-cols-7"
-                      >
-                        <div
-                          style={{ gridColumn: `${todayCol + 1} / span 1` }}
-                          className="rounded-lg border-2 border-sky-400/90 bg-sky-500/10"
-                        />
-                      </div>
-                    )}
+                  <section key={m.ym}>
+                    <div className="sticky top-0 z-20 bg-slate-950/95 px-3.5 py-1.5 border-y border-slate-800 text-xs font-bold text-sky-400 backdrop-blur-sm">
+                      {m.name}
+                    </div>
+                    <div className="p-2.5 sm:p-3 space-y-1.5">
+                      {m.weeks.map((week, wIdx) => {
+                        const wStart = week[0].iso;
+                        const wEnd = week[6].iso;
+                        const todayCol = week.findIndex((day) => day.iso === todayIso && day.inMonth);
+                        const isTargetWeek = hasTodayInTrip
+                          ? todayCol >= 0
+                          : m.ym === fallbackCalendarYm && wIdx === Math.floor(m.weeks.length / 2);
+                        const weekBars = legsWithSpan.filter(
+                          (item) => item.barEnd >= wStart && item.barStart <= wEnd
+                        );
 
-                    <div className="relative z-10 grid grid-cols-7">
-                      {week.map((day) => {
-                        const isToday = day.iso === todayIso;
                         return (
                           <div
-                            key={day.iso}
-                            aria-current={isToday ? 'date' : undefined}
-                            className={`px-1.5 pt-1 text-[11px] sm:text-xs flex items-center justify-between ${
-                              isToday
-                                ? 'font-bold text-sky-300'
-                                : day.inMonth
-                                  ? 'text-slate-300'
-                                  : 'text-slate-600'
-                            }`}
+                            key={`${m.ym}-${wStart}`}
+                            ref={isTargetWeek ? currentCalendarRowRef : undefined}
+                            className={`relative ${rowHeightClass} rounded-lg border border-slate-800/80 bg-slate-950/55 pb-1 flex flex-col justify-between`}
                           >
-                            <span>{day.dayNum}</span>
-                            {isToday && (
-                              <span
-                                className="h-1.5 w-1.5 rounded-full bg-sky-400"
+                            {todayCol >= 0 && (
+                              <div
                                 aria-hidden="true"
-                              />
+                                className="pointer-events-none absolute inset-0 grid grid-cols-7"
+                              >
+                                <div
+                                  style={{ gridColumn: `${todayCol + 1} / span 1` }}
+                                  className="rounded-lg border-2 border-sky-400/90 bg-sky-500/10"
+                                />
+                              </div>
                             )}
+
+                            <div className="relative z-10 grid grid-cols-7">
+                              {week.map((day) => {
+                                const isToday = day.iso === todayIso && day.inMonth;
+                                return (
+                                  <div
+                                    key={day.iso}
+                                    aria-current={isToday ? 'date' : undefined}
+                                    className={`px-1.5 pt-1 text-[11px] sm:text-xs flex items-center justify-between ${
+                                      isToday
+                                        ? 'font-bold text-sky-300'
+                                        : day.inMonth
+                                          ? 'text-slate-300'
+                                          : 'text-slate-600'
+                                    }`}
+                                  >
+                                    <span>{day.dayNum}</span>
+                                    {isToday && (
+                                      <span
+                                        className="h-1.5 w-1.5 rounded-full bg-sky-400"
+                                        aria-hidden="true"
+                                      />
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <div
+                              className="relative z-10 grid grid-cols-7 gap-0.5 px-0.5 mt-0.5"
+                              style={{ gridAutoFlow: 'dense' }}
+                            >
+                              {weekBars.map(({ leg, idx, barStart, barEnd }) => {
+                                let cStart = 0;
+                                let cEnd = 6;
+                                for (let c = 0; c < 7; c++) {
+                                  if (week[c].iso === barStart) cStart = c;
+                                  if (week[c].iso === barEnd) cEnd = c;
+                                }
+                                if (barStart < wStart) cStart = 0;
+                                if (barEnd > wEnd) cEnd = 6;
+
+                                const spanCols = Math.max(1, cEnd - cStart + 1);
+                                const cityName = cities[leg.dest]?.name ?? leg.dest;
+                                const isIntraday = leg.nights === 0;
+                                const barStyle = isIntraday
+                                  ? 'bg-amber-500/20 border-amber-400/40 text-amber-200'
+                                  : idx % 2 === 0
+                                    ? 'bg-slate-800/95 border-sky-500/35 text-sky-200'
+                                    : 'bg-sky-950/80 border-sky-500/25 text-slate-200';
+
+                                return (
+                                  <div
+                                    key={`${m.ym}-${wStart}-${leg.id}`}
+                                    style={{ gridColumn: `${cStart + 1} / span ${spanCols}` }}
+                                    title={`${cityName}: ${formatDateRange(leg.startDate, leg.endDate)}`}
+                                    className={`truncate rounded border px-1 sm:px-1.5 py-0.5 text-left text-[11px] sm:text-xs font-medium select-text ${barStyle}`}
+                                  >
+                                    {leg.dest}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         );
                       })}
                     </div>
-
-                    <div
-                      className="relative z-10 grid grid-cols-7 gap-0.5 px-0.5 mt-0.5"
-                      style={{ gridAutoFlow: 'dense' }}
-                    >
-                      {weekBars.map(({ leg, idx, barStart, barEnd }) => {
-                        let cStart = 0;
-                        let cEnd = 6;
-                        for (let c = 0; c < 7; c++) {
-                          if (week[c].iso === barStart) cStart = c;
-                          if (week[c].iso === barEnd) cEnd = c;
-                        }
-                        if (barStart < wStart) cStart = 0;
-                        if (barEnd > wEnd) cEnd = 6;
-
-                        const spanCols = Math.max(1, cEnd - cStart + 1);
-                        const cityName = cities[leg.dest]?.name ?? leg.dest;
-                        const isIntraday = leg.nights === 0;
-                        const barStyle = isIntraday
-                          ? 'bg-amber-500/20 border-amber-400/40 text-amber-200'
-                          : idx % 2 === 0
-                            ? 'bg-slate-800/95 border-sky-500/35 text-sky-200'
-                            : 'bg-sky-950/80 border-sky-500/25 text-slate-200';
-
-                        return (
-                          <div
-                            key={`${wStart}-${leg.id}`}
-                            style={{ gridColumn: `${cStart + 1} / span ${spanCols}` }}
-                            title={`${cityName}: ${formatDateRange(leg.startDate, leg.endDate)}`}
-                            className={`truncate rounded border px-1 sm:px-1.5 py-0.5 text-left text-[11px] sm:text-xs font-medium select-text ${barStyle}`}
-                          >
-                            {leg.dest}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  </section>
                 );
               })}
             </div>
-          </div>
+          </>
         ) : (
           /* List View (Monthly Agenda Timeline with Weekday M/D Dates) */
           <div ref={listContainerRef} className="overflow-y-auto flex-1">

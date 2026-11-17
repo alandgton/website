@@ -190,15 +190,14 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
 
     await expect(dialog.getByText(expectedMonth.name, { exact: true })).toBeVisible();
     await expect(dialog.getByText(`${expectedMonth.name} ${expectedMonth.ym.slice(0, 4)}`)).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: /Previous month|Next month/i })).toHaveCount(0);
 
-    // Step months via Next/Previous controls
-    const nextBtn = dialog.getByRole('button', { name: 'Next month' });
-    const prevBtn = dialog.getByRole('button', { name: 'Previous month' });
-    if (expectedMonth.ym !== '2027-01') {
-      await nextBtn.click();
-      await prevBtn.click();
-      await expect(dialog.getByText(expectedMonth.name, { exact: true })).toBeVisible();
-    }
+    // Scroll vertically to the top of the Calendar view to reveal August
+    const calScroll = dialog.getByTestId('itinerary-calendar-scroll');
+    await calScroll.evaluate((el) => {
+      el.scrollTop = 0;
+    });
+    await expect(dialog.getByText('August', { exact: true })).toBeVisible();
 
     // Switch to List view (Monthly Agenda Timeline) and verify it centers on the current city row
     await listTab.click();
