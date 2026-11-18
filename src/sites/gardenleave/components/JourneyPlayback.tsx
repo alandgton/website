@@ -22,6 +22,7 @@ import {
   getDisplayPhotoCaption,
   PostcardStackImage,
 } from './CityPhotoCarousel';
+import { TransitModeButtons } from './TransitLegendBar';
 
 interface JourneyPlaybackProps {
   isEnabled: boolean;
@@ -30,6 +31,9 @@ interface JourneyPlaybackProps {
   itinerary: ItineraryLegConfig[];
   cities: Record<string, CityConfig>;
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
+  visibleModes?: Record<TransitMode, boolean>;
+  legsByMode?: Record<TransitMode, number>;
+  onToggleMode?: (mode: TransitMode) => void;
   playbackSpeedMs: number;
   destPhotos?: CityPhotoConfig[];
   activePhotoIndex?: number;
@@ -50,6 +54,9 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
   itinerary,
   cities,
   transitModes,
+  visibleModes,
+  legsByMode,
+  onToggleMode,
   playbackSpeedMs,
   destPhotos = [],
   activePhotoIndex = 0,
@@ -115,18 +122,24 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
   // Expanded playback controls
   return (
     <div className="pointer-events-auto w-full max-w-2xl rounded-2xl border border-slate-800/95 bg-slate-900/95 px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-2xl backdrop-blur-md transition-all">
-      {/* Top Row: Playback Title, Speed Selector & Close Button */}
-      <div className="flex items-center justify-between gap-3 pb-1.5 sm:pb-2 border-b border-slate-800/80 text-xs">
-        <div className="flex items-center gap-2 font-semibold text-white">
-          <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
-          <span>Journey Playback</span>
-        </div>
+      {/* Top Row: Embedded Transit Mode Legend, Speed Selector & Close Button */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 pb-1.5 sm:pb-2 border-b border-slate-800/80 text-xs">
+        {visibleModes && onToggleMode && (
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <TransitModeButtons
+              transitModes={transitModes}
+              visibleModes={visibleModes}
+              legsByMode={legsByMode}
+              onToggleMode={onToggleMode}
+              variant="embedded"
+            />
+          </div>
+        )}
 
-        <div className="flex items-center gap-2.5">
+        <div className="ml-auto flex items-center gap-2 sm:gap-2.5 shrink-0">
           {/* Speed Selector */}
           <div className="flex items-center rounded-lg border border-slate-800 bg-slate-950/60 p-0.5 font-mono text-[10px]">
             {[
-              { label: '0.7x', ms: 2200 },
               { label: '1x', ms: 1400 },
               { label: '2x', ms: 750 },
             ].map((opt) => (

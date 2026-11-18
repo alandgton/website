@@ -9,30 +9,34 @@ const TRANSIT_MODE_ICONS: Record<TransitMode, LucideIcon> = {
   Bike: Bike,
 };
 
-interface TransitLegendBarProps {
+export interface TransitModeButtonsProps {
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
   visibleModes: Record<TransitMode, boolean>;
-  legsByMode: Record<TransitMode, number>;
+  legsByMode?: Record<TransitMode, number>;
   onToggleMode: (mode: TransitMode) => void;
+  variant?: 'bar' | 'embedded';
 }
 
-export const TransitLegendBar: React.FC<TransitLegendBarProps> = ({
+export const TransitModeButtons: React.FC<TransitModeButtonsProps> = ({
   transitModes,
   visibleModes,
   legsByMode,
   onToggleMode,
+  variant = 'bar',
 }) => {
   const modes = Object.values(transitModes);
+  const isEmbedded = variant === 'embedded';
 
   return (
-    <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-800/90 bg-slate-900/85 px-3 py-1.5 shadow-lg backdrop-blur-md">
-      <span className="text-[11px] font-medium text-slate-400 mr-1 hidden xl:inline">
-        Transit Modes:
-      </span>
+    <>
       {modes.map((style) => {
         const isVisible = visibleModes[style.mode];
-        const count = legsByMode[style.mode] ?? 0;
+        const count = legsByMode?.[style.mode];
         const ModeIcon = TRANSIT_MODE_ICONS[style.mode];
+        const countLabel =
+          typeof count === 'number'
+            ? ` (${count} ${count === 1 ? 'leg' : 'legs'})`
+            : '';
 
         return (
           <button
@@ -40,8 +44,13 @@ export const TransitLegendBar: React.FC<TransitLegendBarProps> = ({
             type="button"
             onClick={() => onToggleMode(style.mode)}
             aria-label={`Toggle ${style.label} visibility`}
-            title={`${style.label} (${count} ${count === 1 ? 'leg' : 'legs'}): ${style.description} — Click to toggle visibility`}
-            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition ${
+            aria-pressed={isVisible}
+            title={`${style.label}${countLabel}: ${style.description} — Click to toggle visibility`}
+            className={`flex items-center rounded-lg border text-xs transition ${
+              isEmbedded
+                ? 'gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1'
+                : 'gap-1.5 px-2.5 py-1'
+            } ${
               isVisible
                 ? 'border-slate-700/90 bg-slate-800/70 text-slate-100 hover:bg-slate-800'
                 : 'border-slate-800/50 bg-slate-900/40 text-slate-500 opacity-55 hover:opacity-80'
@@ -61,12 +70,42 @@ export const TransitLegendBar: React.FC<TransitLegendBarProps> = ({
               <polygon points="25,5 19,2 20.5,5 19,8" fill={style.color} />
             </svg>
             <ModeIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span className="hidden xl:inline rounded bg-slate-950/70 px-1.5 py-px font-mono text-[10px] text-slate-400">
-              {count}
-            </span>
+            {!isEmbedded && typeof count === 'number' && (
+              <span className="hidden xl:inline rounded bg-slate-950/70 px-1.5 py-px font-mono text-[10px] text-slate-400">
+                {count}
+              </span>
+            )}
           </button>
         );
       })}
+    </>
+  );
+};
+
+interface TransitLegendBarProps {
+  transitModes: Record<TransitMode, TransitModeStyleConfig>;
+  visibleModes: Record<TransitMode, boolean>;
+  legsByMode: Record<TransitMode, number>;
+  onToggleMode: (mode: TransitMode) => void;
+}
+
+export const TransitLegendBar: React.FC<TransitLegendBarProps> = ({
+  transitModes,
+  visibleModes,
+  legsByMode,
+  onToggleMode,
+}) => {
+  return (
+    <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-800/90 bg-slate-900/85 px-3 py-1.5 shadow-lg backdrop-blur-md">
+      <span className="text-[11px] font-medium text-slate-400 mr-1 hidden xl:inline">
+        Transit Modes:
+      </span>
+      <TransitModeButtons
+        transitModes={transitModes}
+        visibleModes={visibleModes}
+        legsByMode={legsByMode}
+        onToggleMode={onToggleMode}
+      />
     </div>
   );
 };

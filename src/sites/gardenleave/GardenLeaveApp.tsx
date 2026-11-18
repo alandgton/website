@@ -656,12 +656,14 @@ export const App: React.FC = () => {
         className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center gap-2 p-3 sm:p-4"
       >
         <div className="flex flex-wrap items-center justify-center gap-2 pointer-events-auto">
-          <TransitLegendBar
-            transitModes={activeConfig.transitModes}
-            visibleModes={visibleModes}
-            legsByMode={legsByMode}
-            onToggleMode={handleToggleMode}
-          />
+          {!isTimelineEnabled && (
+            <TransitLegendBar
+              transitModes={activeConfig.transitModes}
+              visibleModes={visibleModes}
+              legsByMode={legsByMode}
+              onToggleMode={handleToggleMode}
+            />
+          )}
 
           <JourneyPlayback
             isEnabled={isTimelineEnabled}
@@ -670,6 +672,9 @@ export const App: React.FC = () => {
             itinerary={activeConfig.itinerary}
             cities={resolvedCities}
             transitModes={activeConfig.transitModes}
+            visibleModes={visibleModes}
+            legsByMode={legsByMode}
+            onToggleMode={handleToggleMode}
             playbackSpeedMs={playbackSpeedMs}
             destPhotos={postcardPhotos}
             activePhotoIndex={activePhotoIndex}
