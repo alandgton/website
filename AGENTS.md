@@ -9,6 +9,7 @@ You are an expert full-stack engineer, minimalist UX architect, and cartographic
 ### Clarification & Intent First (Non-Negotiable)
 - **Always ask clarifying questions before executing** whenever a request is ambiguous, involves design/architectural trade-offs, or touches existing visual conventions. Do not assume or guess user preferences.
 - **Present concrete choices**: When asking for guidance, provide 2–3 clear options, their pros/cons, and a recommended default.
+- **Interactive HTML Demos (`generative_ui`)**: For visual, layout, or HUD trade-offs, build a compact inline interactive HTML demo via the `generative_ui` skill (`<agent-embed>`) when helpful so the user can inspect and compare options live before choosing.
 - **Reference Single Source of Truth**: Before making architectural or styling changes, consult [`ARCHITECTURE_AND_LEARNINGS.md`](./ARCHITECTURE_AND_LEARNINGS.md).
 
 ### Git Commit & Remote Push Protocol (Strict Non-Negotiable Rule)
@@ -22,7 +23,7 @@ You are an expert full-stack engineer, minimalist UX architect, and cartographic
 
 ## 2. Codebase & Multi-Site Monolith Architecture
 
-- **Stack**: React 18/19, TypeScript 5.6+, Vite 6+ (multi-page rollup), D3.js (`d3-geo`, `d3-zoom`), Tailwind CSS, Lucide icons.
+- **Stack**: React 18, TypeScript 5.6+, Vite 8+ (multi-page rollup), D3.js (`d3-geo`, `d3-zoom`), Tailwind CSS, Lucide icons.
 - **Hosting**: 100% static Cloudflare Pages deployment from `dist/` ($0 cost, GitHub CI/CD).
 - **Multi-Page Subpaths & Modular Layout**:
   - `/` → `src/sites/landing/` (Master landing portal with interactive canvas `NeuralMeshBackground`)
@@ -56,14 +57,16 @@ Future development on the Garden Leave Interactive Travel Map is strictly refocu
    - Displays user-uploaded photos (`photos/raw/<CityId>/` synced via `npm run photos:sync` into `photos.manifest.ts` / `photos.config.ts`) when a user taps or selects a city on the map, as well as during Journey Playback.
 
 ### Feature Scope Decisions (Keep / Simplify / Remove)
-- **Itinerary / City Detail Drawer (`CityDetailDrawer.tsx`) — REMOVE**:
-  - The side/bottom `CityDetailDrawer` (directory list, search bar, leg tables, and the `Itinerary` button in `RegionSelectorBar`) is deprecated bloat and must be removed cleanly along with all dead state/props.
+- **Legacy City Detail Drawer (`CityDetailDrawer.tsx`) — REMOVED**:
+  - The legacy `CityDetailDrawer` (directory list, search bar, leg tables) is deprecated bloat and must remain removed.
+- **Read-Only Itinerary Modal (`ItineraryModal.tsx`) — KEEP**:
+  - Maintain the centered read-only glassmorphic modal toggled via the `Itinerary` button in `RegionSelectorBar`, offering vertically scrollable multi-month `Calendar` (`StickyMonthGutter`) and monthly `List` views. Browsing dates must never alter map selection or camera state.
 - **Photo Postcards & Carousels (`CityPhotoPostcard.tsx`, `CityPhotoCarousel.tsx`) — SIMPLIFY**:
-  - Keep photo viewing lightweight, clean, and uncluttered when a city is selected on the map or active in Journey Playback. Eliminate redundant drawer links (`onOpenCityDetails`) and excessive chrome.
+  - Keep photo viewing lightweight, clean, and uncluttered when a city is selected on the map or active in Journey Playback (`16:10` carousel, `bottom-28` mobile manual-tap clearance above the 2-row idle footer, and omitted from the DOM on `< 640px` mobile during playback when `JourneyPlayback`'s docked strip handles photos).
 - **Journey Playback (`JourneyPlayback.tsx`) — KEEP & PROTECT**:
-  - Maintain chronological playback with smooth camera framing that guarantees both source and destination pins remain in the unobstructed safe zone.
+  - Maintain chronological playback with `1x` / `2x` speed selector, embedded `TransitModeButtons` legend in its top row (without pulsing `"Journey Playback"` text or `0.7x`), and smooth camera framing (`followRafIdRef`) that guarantees both source and destination pins remain in the unobstructed safe zone.
 - **Top Bar & Legend Controls (`RegionSelectorBar.tsx`, `TransitLegendBar.tsx`) — KEEP (Streamlined)**:
-  - Retain the centered top island (`Main` back link, title, `Region` presets, `Granularity` dropdown, `Grid` toggle — without the removed `Itinerary` drawer button) and the bottom `TransitLegendBar` mode pills.
+  - Retain the centered floating island (`Main`, full `{title}`, `Region` presets, `Granularity` dropdown, `Itinerary` modal trigger, `Grid` toggle; `< 640px` mobile uses a 3-column Row 1 with `Main` left, centered `{title}`, and icon-only `Grid` right, plus Row 2 with `Region`, labeled `Granularity`, and `Itinerary`). Keep `TransitLegendBar` beside `[ ▶ Play Journey ]` when idle and shared `TransitModeButtons` embedded inside `JourneyPlayback`'s top row when active.
 
 ---
 
@@ -79,21 +82,21 @@ Any agent working on this codebase must strictly preserve the following decision
 
 2. **Cartographic Geometry & Antimeridian Shift**:
    - D3 projection uses `rotate([-11, 0])`, shifting the Pacific seam to **`-169°W`**.
-   - Transpacific legs crossing the Pacific (`Tokyo -> LA`) must split across `-169°W` into eastward straight segments.
-   - Bidirectional legs (`NYC <-> SF`, `Cairo <-> Luxor`, `Tokyo <-> Niseko`, `Shanghai <-> Suzhou`) must maintain parallel offset via normal vector separation.
+   - Transpacific legs crossing the Pacific (e.g. `Tokyo -> LA`, `Vancouver -> Sapporo`) must split across `-169°W` into eastward straight segments.
+   - Bidirectional legs (e.g. `NYC <-> SF`, `Shanghai <-> Nanjing`) must maintain parallel offset via normal vector separation.
    - Dedicated Seto Inland Sea overlay layer (`seto-islands-layer`) must remain synchronized with Japan's visited/active states.
 
 3. **Performance Invariants (60–120fps Native Panning & Zooming)**:
    - Pan/drag updates mutate `<g ref={cameraGroupRef}>`'s `transform` attribute directly in the DOM. Never route continuous pan coordinates through React state (`0` React renders per drag frame).
-   - Country and boundary polygons must use `vectorEffect="non-scaling-stroke"` and stay strictly memoized (`useMemo`).
+   - Keep SVG rendering split into memoized layer sub-components (`src/sites/gardenleave/components/map/`: `GeographyLayer`, `TransitLinesLayer`, `CitiesLayer`, `TransitArrowsLayer`, `CityLabelsLayer`) with `vectorEffect="non-scaling-stroke"`, and keep hover tooltips isolated in imperative `MapHoverTooltip` (`0` canvas re-renders on `mousemove`/city hover, clamped to container bounds).
    - Adaptive LOD: 50m topology below 6x zoom; 10m high-res swapped at $\ge 6x$ zoom (paused during auto-playback so camera transitions never stutter).
    - Dynamic arrowhead math: arrowheads are centered in the visible gap between pin edges (`sourceTrimRadius` / `destTrimRadius`), clamped to a minimum scale (`0.72 * invScale`), and rendered in a dedicated top layer above pin halos.
 
 4. **Visual Aesthetics & Decluttered UI (Minimalist Vector)**:
    - **City Pins**: Clean, uniform slate-white dots (`#f8fafc`) with dark outline (`#0f172a`) and dark halo. Only New York City (`NYC`) has the amber Home Base ring and house icon.
-   - **Transit Lines**: Solid lines only across all 4 modes (`Flight`, `Train`, `Drive`, `Bike`). Differentiated strictly by color. No dashed/dotted patterns.
+   - **Transit Lines**: Solid lines only across all 4 modes (`Flight`, `Train`, `Drive`, `Bike`). Differentiated strictly by color (no dashed/dotted patterns or `strokeDasharray` plumbing).
    - **Transit Arrows**: Hidden by default. Rendered only on focused legs (hovered, selected, or connected to selected city). Hidden completely during playback.
-   - **Playback Controls**: Kept minimal. Follow camera is permanently enabled; ghost future is permanently disabled.
+   - **Playback Controls**: Kept minimal (`1x` / `2x` speeds, embedded `TransitModeButtons` legend without count badges). Follow camera is permanently enabled; ghost future is permanently disabled.
 
 ---
 
@@ -105,10 +108,10 @@ Refocusing and feature changes are driven via a **Live Multi-Agent Swarm** (usin
 
 | Agent Name | Role | Core Responsibilities & Guardrails |
 | :--- | :--- | :--- |
-| **`coordinator`** | Lead Orchestrator (Main Agent) | Translates user goals into swarm tasks, enforces the Clarification First rule (pausing for user approval on UX options when trade-offs exist), coordinates handoffs (`@ux` → `@eng` → `@qa`), summarizes completed changes with before/after debloat metrics (files removed, bundle size delta), creates clean atomic local `git commit`s once `@qa` passes, and asks for explicit user approval before `git push`. Never writes application code directly while running the swarm. |
-| **`ux`** | UX Designer | **Scope Gatekeeper & Interaction Critic.** Audits components against the 3 Core Essentials. Designs ways to remove bloat (`CityDetailDrawer`) and simplify remaining UI (`CityPhotoPostcard`, `CityPhotoCarousel`, `JourneyPlayback`) so desktop and mobile viewports stay uncluttered and playback never obscures source/destination cities. **Read-only: never edits source code.** |
-| **`eng`** | Software Engineer | **React/TS/D3 Implementation Specialist.** Implements `@ux`'s approved spec. Deletes deprecated files, props, and state cleanly without leaving dead imports. Preserves 60–120fps DOM-transform panning, unobstructed source+dest playback framing, and `-169°W` seam math. Syncs `ARCHITECTURE_AND_LEARNINGS.md` when features are removed and verifies `npm run build` and `npm test` before handing off to `@qa`. |
-| **`qa`** | QA Tester | **Viewport, Performance & Regression Verifier.** Runs `npm run build` and `npm test` (Playwright headless Desktop `1280×800` + Mobile `390×844` E2E suite), and inspects the live app on **Desktop (`1280×800`)** and **Mobile (`390×844`)** browsers (delegating live UI checks to the `browser` subagent when available). Must verify: (1) clean, uncluttered UI on desktop & mobile, (2) **both source and destination cities are visible and unobstructed during Journey Playback**, (3) **expanding and compacting the mobile photo strip during active Journey Playback never pauses playback**, and (4) loading, panning, zooming, and playback movements are smooth and lag-free with zero console/runtime errors. **Never patches application code directly; reports defects back to `@eng`.** |
+| **`coordinator`** | Lead Orchestrator (Main Agent) | Translates user goals into swarm tasks, enforces the Clarification First rule (pausing for user approval on UX options—with optional `generative_ui` HTML demos—when trade-offs exist), coordinates handoffs (`@ux` → `@eng` → `@qa`), summarizes completed changes with metrics, creates clean atomic local `git commit`s once `@qa` passes, and asks for explicit user approval before `git push`. Never writes application code directly while running the swarm. |
+| **`ux`** | UX Designer | **Scope Gatekeeper & Interaction Critic.** Audits components against the 3 Core Essentials and read-only `ItineraryModal`. Designs clean simplifications across `RegionSelectorBar`, `CityPhotoPostcard`, `CityPhotoCarousel`, and `JourneyPlayback` so desktop and mobile (`390×844` / `360×740`) viewports stay uncluttered and playback never obscures source/destination cities. **Read-only: never edits source code.** |
+| **`eng`** | Software Engineer | **React/TS/D3 Implementation Specialist.** Implements `@ux`'s approved spec cleanly, deletes dead code/imports completely, preserves 60–120fps DOM-transform panning, `components/map/` layer separation + imperative `MapHoverTooltip`, unobstructed source+dest playback framing, and `-169°W` seam math. Syncs `ARCHITECTURE_AND_LEARNINGS.md` and verifies `npx tsc --noEmit && npm run build && npm test` before handing off to `@qa`. |
+| **`qa`** | QA Tester | **Viewport, Performance & Regression Verifier.** Runs `npx tsc --noEmit`, `npm run build`, and `npm test` (Playwright headless Desktop `1280×800` + Mobile `390×844` E2E suite), and inspects the live app on **Desktop (`1280×800`)** and **Mobile (`390×844` / `360×740`)** browsers (delegating live UI checks to the `browser` subagent when available). Must verify: (1) clean, uncluttered UI (no `CityDetailDrawer`, centered mobile title/controls, read-only `ItineraryModal`), (2) embedded `TransitModeButtons` + `1x`/`2x` controls work during playback, (3) **both source and destination cities are visible and unobstructed during Journey Playback**, (4) **expanding and compacting the mobile photo strip during active Journey Playback never pauses playback**, and (5) `MapHoverTooltip` edge clamping, `0` SVG mutations on pan/hover, and zero console/runtime errors. **Never patches application code directly; reports defects back to `@eng`.** |
 
 ### Standard Swarm Pipeline
 1. **UX Audit & Spec (`@ux`)**: `@ux` inspects the target feature/files and posts a concise UX Simplification Spec (plus 2–3 options if design choices exist).
@@ -141,7 +144,7 @@ npm run preview
 ```
 
 ### Verification & Commit Protocols
-1. Always verify that `npm run build` and `npm test` succeed with zero TypeScript, Rollup, or Playwright errors before completing or committing a task.
+1. Always verify that `npx tsc --noEmit`, `npm run build`, and `npm test` succeed with zero TypeScript, Rollup, or Playwright errors before completing or committing a task.
 2. **Proactive Local Commit vs. Gated Remote Push**:
    - Follow software engineering best practices: automatically create clean, atomic local commits (`git add` and `git commit`) when a logical unit of work is complete and verified (`npm run build`, `npm test`, and `@qa` pass).
    - **`git push` is NEVER run automatically.** Always ask for explicit user approval before pushing to `main` (which triggers automated Cloudflare Pages production deployments). Never bundle push with commit.
