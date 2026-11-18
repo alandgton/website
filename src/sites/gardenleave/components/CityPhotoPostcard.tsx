@@ -41,7 +41,7 @@ export const CityPhotoPostcard: React.FC<CityPhotoPostcardProps> = ({
       className={`${
         isTimelineEnabled
           ? 'hidden sm:block sm:top-16 sm:left-4 sm:w-56'
-          : 'bottom-16 inset-x-4 max-w-[260px] mx-auto sm:mx-0 sm:max-w-none sm:bottom-auto sm:inset-x-auto sm:top-16 sm:left-4 sm:w-56'
+          : 'bottom-28 inset-x-4 max-w-[260px] mx-auto sm:mx-0 sm:max-w-none sm:bottom-auto sm:inset-x-auto sm:top-16 sm:left-4 sm:w-56'
       } pointer-events-auto absolute z-20 rounded-2xl border border-slate-800/95 bg-slate-900/90 p-2 shadow-2xl backdrop-blur-md transition-all duration-200`}
     >
       {/* Single-Row Streamlined Header */}

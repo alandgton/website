@@ -214,6 +214,24 @@ function getInitialMonthIndex(months: TripMonth[]): number {
 }
 
 /**
+ * Vertically centers `row` inside `container` without scrolling past the top boundary.
+ */
+function centerRowInScrollContainer(
+  container: HTMLDivElement | null,
+  row: HTMLDivElement | null
+): void {
+  if (!container || !row) return;
+  const containerRect = container.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  const targetScrollTop =
+    container.scrollTop +
+    (rowRect.top - containerRect.top) -
+    containerRect.height / 2 +
+    rowRect.height / 2;
+  container.scrollTop = Math.max(0, targetScrollTop);
+}
+
+/**
  * Sticky left gutter bar with a -90° rotated (Read Up) month label shared across Calendar and List views.
  */
 function StickyMonthGutter({ label, zClass }: { label: string; zClass: string }) {
@@ -388,35 +406,13 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
 
   useLayoutEffect(() => {
     if (!isOpen || activeMode !== 'calendar') return;
-    const container = calendarContainerRef.current;
-    const row = currentCalendarRowRef.current;
-    if (!container || !row) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const rowRect = row.getBoundingClientRect();
-    const targetScrollTop =
-      container.scrollTop +
-      (rowRect.top - containerRect.top) -
-      containerRect.height / 2 +
-      rowRect.height / 2;
-    container.scrollTop = Math.max(0, targetScrollTop);
+    centerRowInScrollContainer(calendarContainerRef.current, currentCalendarRowRef.current);
     updateCalendarScrollSpy();
   }, [isOpen, activeMode, continuousWeeks, todayIso, updateCalendarScrollSpy]);
 
   useLayoutEffect(() => {
     if (!isOpen || activeMode !== 'list') return;
-    const container = listContainerRef.current;
-    const row = currentLegRowRef.current;
-    if (!container || !row) return;
-
-    const containerRect = container.getBoundingClientRect();
-    const rowRect = row.getBoundingClientRect();
-    const targetScrollTop =
-      container.scrollTop +
-      (rowRect.top - containerRect.top) -
-      containerRect.height / 2 +
-      rowRect.height / 2;
-    container.scrollTop = Math.max(0, targetScrollTop);
+    centerRowInScrollContainer(listContainerRef.current, currentLegRowRef.current);
   }, [isOpen, activeMode, currentLegId]);
 
   if (!isOpen) return null;

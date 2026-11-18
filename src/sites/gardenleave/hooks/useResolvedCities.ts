@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CityConfig, ItineraryLegConfig } from '../config/types';
 import { geocodeCityAsync, resolveCitySync } from '../utils/cityGeocoder';
 
@@ -43,10 +43,13 @@ export function useResolvedCities(itinerary: ItineraryLegConfig[]): UseResolvedC
   const [asyncResolved, setAsyncResolved] = useState<Record<string, CityConfig>>({});
   const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
   const [failedCities, setFailedCities] = useState<string[]>([]);
+  const attemptedCityIdsRef = useRef<Set<string>>(new Set());
 
   // 2. Asynchronous geocoding pass for any newly added city names not in the cache
   useEffect(() => {
-    const toFetch = syncResult.pending.filter((id) => !asyncResolved[id]);
+    const toFetch = syncResult.pending.filter(
+      (id) => !attemptedCityIdsRef.current.has(id)
+    );
     if (toFetch.length === 0) {
       setIsGeocoding(false);
       return;
@@ -54,7 +57,6 @@ export function useResolvedCities(itinerary: ItineraryLegConfig[]): UseResolvedC
 
     let cancelled = false;
     setIsGeocoding(true);
-    setFailedCities([]);
 
     Promise.all(
       toFetch.map(async (cityId) => {
@@ -67,6 +69,7 @@ export function useResolvedCities(itinerary: ItineraryLegConfig[]): UseResolvedC
       const notFound: string[] = [];
 
       for (const { cityId, result } of outcomes) {
+        attemptedCityIdsRef.current.add(cityId);
         if (result) {
           newlyFound[cityId] = result;
         } else {
@@ -77,14 +80,23 @@ export function useResolvedCities(itinerary: ItineraryLegConfig[]): UseResolvedC
       if (Object.keys(newlyFound).length > 0) {
         setAsyncResolved((prev) => ({ ...prev, ...newlyFound }));
       }
-      setFailedCities(notFound);
+      setFailedCities((prev) => {
+        const pendingSet = new Set(syncResult.pending);
+        const retained = prev.filter((id) => pendingSet.has(id) && !newlyFound[id]);
+        return Array.from(new Set([...retained, ...notFound]));
+      });
       setIsGeocoding(false);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [asyncResolved, syncResult.pending]);
+  }, [syncResult.pending]);
+
+  const unresolvedCities = useMemo(
+    () => failedCities.filter((id) => syncResult.pending.includes(id)),
+    [failedCities, syncResult.pending]
+  );
 
   const cities = useMemo(() => {
     const merged: Record<string, CityConfig> = { ...syncResult.resolved };
@@ -99,6 +111,6 @@ export function useResolvedCities(itinerary: ItineraryLegConfig[]): UseResolvedC
   return {
     cities,
     isGeocoding,
-    unresolvedCities: failedCities,
+    unresolvedCities,
   };
 }

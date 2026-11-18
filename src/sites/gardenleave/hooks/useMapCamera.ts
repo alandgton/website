@@ -21,6 +21,7 @@ export interface UseMapCameraReturn {
   zoomK: number;
   invScale: number;
   labelScaleBoost: number;
+  isMobileViewport: boolean;
   activeRegionId: string | null;
   computeBoundsFit: (
     coordsList: [number, number][],
@@ -383,6 +384,7 @@ export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
     zoomK,
     invScale,
     labelScaleBoost,
+    isMobileViewport: isMobilePhone,
     activeRegionId,
     computeBoundsFit,
     flyToCoordinates,

@@ -27,6 +27,28 @@ interface RegionSelectorBarProps {
   containerRef?: React.RefObject<HTMLElement>;
 }
 
+function useDropdownAlign(
+  isOpen: boolean,
+  menuRef: React.RefObject<HTMLDivElement>,
+  menuWidth: number = 160
+): 'left' | 'right' {
+  const [align, setAlign] = useState<'left' | 'right'>('left');
+
+  useLayoutEffect(() => {
+    if (!isOpen || !menuRef.current) return;
+    const updateAlign = () => {
+      if (!menuRef.current) return;
+      const rect = menuRef.current.getBoundingClientRect();
+      setAlign(rect.left + menuWidth > window.innerWidth - 12 ? 'right' : 'left');
+    };
+    updateAlign();
+    window.addEventListener('resize', updateAlign);
+    return () => window.removeEventListener('resize', updateAlign);
+  }, [isOpen, menuRef, menuWidth]);
+
+  return align;
+}
+
 export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   title,
   subtitle,
@@ -54,34 +76,8 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
   const granularityMenuRef = useRef<HTMLDivElement>(null);
   const regionMenuRef = useRef<HTMLDivElement>(null);
 
-  const [regionMenuAlign, setRegionMenuAlign] = useState<'left' | 'right'>('left');
-  const [granularityAlign, setGranularityAlign] = useState<'left' | 'right'>('left');
-
-  useLayoutEffect(() => {
-    if (!isRegionMenuOpen || !regionMenuRef.current) return;
-    const updateAlign = () => {
-      if (!regionMenuRef.current) return;
-      const rect = regionMenuRef.current.getBoundingClientRect();
-      const menuWidth = 160; // w-40 is 160px
-      setRegionMenuAlign(rect.left + menuWidth > window.innerWidth - 12 ? 'right' : 'left');
-    };
-    updateAlign();
-    window.addEventListener('resize', updateAlign);
-    return () => window.removeEventListener('resize', updateAlign);
-  }, [isRegionMenuOpen]);
-
-  useLayoutEffect(() => {
-    if (!isGranularityOpen || !granularityMenuRef.current) return;
-    const updateAlign = () => {
-      if (!granularityMenuRef.current) return;
-      const rect = granularityMenuRef.current.getBoundingClientRect();
-      const menuWidth = 160;
-      setGranularityAlign(rect.left + menuWidth > window.innerWidth - 12 ? 'right' : 'left');
-    };
-    updateAlign();
-    window.addEventListener('resize', updateAlign);
-    return () => window.removeEventListener('resize', updateAlign);
-  }, [isGranularityOpen]);
+  const regionMenuAlign = useDropdownAlign(isRegionMenuOpen, regionMenuRef);
+  const granularityAlign = useDropdownAlign(isGranularityOpen, granularityMenuRef);
 
   useEffect(() => {
     if (!isGranularityOpen && !isRegionMenuOpen) return;
@@ -144,7 +140,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
             title={`${title} — ${subtitle}`}
           >
             <Palmtree className="h-3.5 w-3.5 text-sky-400 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">Alan Ton @ Garden Leave</span>
+            <span className="hidden sm:inline">{title}</span>
             <span className="sm:hidden">Garden Leave</span>
           </div>
         </div>

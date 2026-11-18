@@ -89,7 +89,7 @@ export function computeDirectionalTransitLine(
   const [x2, y2] = p2;
   const rawDx = x2 - x1;
 
-  // Check for Pacific Ocean / Antimeridian wrapping (e.g. Leg #49 Tokyo -> LA)
+  // Check for Pacific Ocean / Antimeridian wrapping (e.g. Tokyo -> LA)
   if (Math.abs(rawDx) > mapWidth * antimeridianThresholdRatio) {
     const midLat = (sourceCoords[1] + destCoords[1]) / 2;
     const [rotLon] = projection.rotate();

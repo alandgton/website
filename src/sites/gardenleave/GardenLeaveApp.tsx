@@ -160,6 +160,7 @@ export const App: React.FC = () => {
     zoomK,
     invScale,
     labelScaleBoost,
+    isMobileViewport,
     activeRegionId,
     computeBoundsFit,
     flyToCoordinates,
@@ -188,7 +189,7 @@ export const App: React.FC = () => {
     unresolvedCities,
   } = useResolvedCities(activeConfig.itinerary);
 
-  // Compute responsive region presets (e.g. dynamic viewport fit for Shimanami Kaido's 4 bike stops)
+  // Compute responsive region presets (e.g. dynamic viewport fit for Shimanami Kaido island stops)
   const effectiveRegions = useMemo(() => {
     const map: Record<string, RegionCameraConfig> = {};
     for (const [id, region] of Object.entries(activeConfig.regions)) {
@@ -228,12 +229,19 @@ export const App: React.FC = () => {
     [activeConfig.itinerary]
   );
 
-  // Track active camera zoom in a ref so Follow Camera deadband calculations always read
-  // the latest target/committed zoom without re-triggering the timeline effect when zoom settles.
+  // Track active camera zoom and playback speed in refs so Follow Camera calculations read
+  // latest values without re-triggering the timeline follow effect when zoom settles or speed changes.
   const currentZoomKRef = useRef<number>(zoomK);
   useEffect(() => {
     currentZoomKRef.current = zoomK;
   }, [zoomK]);
+
+  const playbackSpeedMsRef = useRef<number>(playbackSpeedMs);
+  useEffect(() => {
+    playbackSpeedMsRef.current = playbackSpeedMs;
+  }, [playbackSpeedMs]);
+
+  const followRafIdRef = useRef<number | null>(null);
 
   // Computes the SVG viewBox center and usable dimensions of the remaining unobstructed map area
   // after excluding the top floating bar, bottom playback/legend footer, and top-left photo postcard.
@@ -366,7 +374,7 @@ export const App: React.FC = () => {
       flyToCoordinates(
         focusCoords,
         targetZoom,
-        Math.min(850, playbackSpeedMs * 0.75),
+        Math.min(850, playbackSpeedMsRef.current * 0.75),
         null,
         metrics?.center ?? null
       );
@@ -377,11 +385,32 @@ export const App: React.FC = () => {
       activeConfig.mapConfig.scaleExtent,
       flyToCoordinates,
       getPlaybackViewportMetrics,
-      playbackSpeedMs,
       projection,
       shimanamiClusterZoom,
     ]
   );
+
+  const scheduleFollowLeg = useCallback(
+    (legIndex: number) => {
+      if (followRafIdRef.current !== null) {
+        window.cancelAnimationFrame(followRafIdRef.current);
+      }
+      followRafIdRef.current = window.requestAnimationFrame(() => {
+        followRafIdRef.current = null;
+        followLegDestination(legIndex);
+      });
+    },
+    [followLegDestination]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (followRafIdRef.current !== null) {
+        window.cancelAnimationFrame(followRafIdRef.current);
+        followRafIdRef.current = null;
+      }
+    };
+  }, []);
 
   // Reset active photo index whenever the timeline leg or selected city changes
   useEffect(() => {
@@ -420,12 +449,15 @@ export const App: React.FC = () => {
 
   // Trigger camera follow whenever currentTimelineIndex changes while timeline is enabled
   useEffect(() => {
-    if (!isTimelineEnabled) return;
-    const rafId = window.requestAnimationFrame(() => {
-      followLegDestination(currentTimelineIndex);
-    });
-    return () => window.cancelAnimationFrame(rafId);
-  }, [currentTimelineIndex, followLegDestination, isTimelineEnabled]);
+    if (!isTimelineEnabled) {
+      if (followRafIdRef.current !== null) {
+        window.cancelAnimationFrame(followRafIdRef.current);
+        followRafIdRef.current = null;
+      }
+      return;
+    }
+    scheduleFollowLeg(currentTimelineIndex);
+  }, [currentTimelineIndex, isTimelineEnabled, scheduleFollowLeg]);
 
   // Handlers
   const handleSelectRegion = useCallback(
@@ -485,10 +517,8 @@ export const App: React.FC = () => {
 
   const handlePlaybackLayoutHeightChange = useCallback(() => {
     if (!isTimelineEnabled) return;
-    window.requestAnimationFrame(() => {
-      followLegDestination(currentTimelineIndex);
-    });
-  }, [currentTimelineIndex, followLegDestination, isTimelineEnabled]);
+    scheduleFollowLeg(currentTimelineIndex);
+  }, [currentTimelineIndex, isTimelineEnabled, scheduleFollowLeg]);
 
   // Determine active city and photo gallery for the floating postcard HUD
   const activeTimelineLeg = isTimelineEnabled
@@ -501,13 +531,17 @@ export const App: React.FC = () => {
     () => getPhotosForCity(postcardCityId, activeConfig.cityPhotos),
     [activeConfig.cityPhotos, postcardCityId]
   );
+  const shouldMountPostcard =
+    Boolean(postcardCityId) &&
+    postcardPhotos.length > 0 &&
+    (!isTimelineEnabled || !isMobileViewport);
 
-  // Ensure desktop postcard hover state never stays stuck when the postcard is hidden or unmounted
+  // Ensure desktop postcard hover state never stays stuck when the postcard is hidden, unmounted, or on mobile
   useEffect(() => {
-    if (!isTimelineEnabled || !postcardCityId || postcardPhotos.length === 0) {
+    if (!isTimelineEnabled || isMobileViewport || !postcardCityId || postcardPhotos.length === 0) {
       setIsPostcardHovered(false);
     }
-  }, [isTimelineEnabled, postcardCityId, postcardPhotos.length]);
+  }, [isMobileViewport, isTimelineEnabled, postcardCityId, postcardPhotos.length]);
   const postcardSubtitle = activeTimelineLeg
     ? `${activeTimelineLeg.startDate} → ${activeTimelineLeg.endDate}`
     : postcardCityId && cityStats[postcardCityId]
@@ -567,7 +601,7 @@ export const App: React.FC = () => {
         />
 
         {/* Floating Photo Postcard HUD (Desktop >= 640px during playback; mobile uses docked strip in JourneyPlayback) */}
-        {postcardCityId && postcardPhotos.length > 0 && (
+        {shouldMountPostcard && postcardCityId && (
           <CityPhotoPostcard
             containerRef={postcardRef}
             city={resolvedCities[postcardCityId]}

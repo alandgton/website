@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { geoArea } from 'd3-geo';
-import type { Feature, FeatureCollection, Geometry } from 'geojson';
-import { decodeTopoJSON, TopoJSONTopology } from '../utils/topojsonDecoder';
+import type { FeatureCollection, Geometry } from 'geojson';
+import {
+  decodeTopoJSON,
+  normalizeGeoJsonWinding,
+  TopoJSONTopology,
+} from '../utils/topojsonDecoder';
 
 interface MapTopologyState {
   countriesGeoJson: FeatureCollection<Geometry> | null;
@@ -12,51 +15,6 @@ interface MapTopologyState {
 }
 
 const topologyCache = new Map<string, FeatureCollection<Geometry>>();
-
-function normalizeGeoJsonWinding(
-  collection: FeatureCollection<Geometry>
-): FeatureCollection<Geometry> {
-  const features: Feature<Geometry>[] = collection.features.map((feat) => {
-    const geom = feat.geometry;
-    if (!geom) return feat;
-    try {
-      if (geom.type === 'Polygon') {
-        if (geoArea(geom) > 2 * Math.PI) {
-          return {
-            ...feat,
-            geometry: {
-              ...geom,
-              coordinates: geom.coordinates.map((ring) => [...ring].reverse()),
-            },
-          };
-        }
-      } else if (geom.type === 'MultiPolygon') {
-        const fixed = geom.coordinates.map((polyCoords) => {
-          const singlePoly: Geometry = { type: 'Polygon', coordinates: polyCoords };
-          if (geoArea(singlePoly) > 2 * Math.PI) {
-            return polyCoords.map((ring) => [...ring].reverse());
-          }
-          return polyCoords;
-        });
-        return {
-          ...feat,
-          geometry: {
-            ...geom,
-            coordinates: fixed,
-          },
-        };
-      }
-    } catch {
-      return feat;
-    }
-    return feat;
-  });
-
-  return {
-    ...collection,
-    features,
-  };
-}
 
 export function useMapTopology(
   countriesTopoJsonUrl: string,

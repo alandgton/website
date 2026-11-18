@@ -71,7 +71,7 @@ website/
 │       ├── gardenleave/            # Garden Leave 2D Travel Map
 │       │   ├── GardenLeaveApp.tsx  # Root travel map application
 │       │   ├── main.tsx
-│       │   ├── components/         # Map canvas, drawers, selectors, playback
+│       │   ├── components/         # Map canvas & layers, itinerary modal, selectors, playback
 │       │   ├── config/             # Regions, itinerary, transit, map presets
 │       │   ├── hooks/              # LOD topology, resolved cities, camera zoom
 │       │   └── utils/              # TopoJSON, geocoding, collision culling, arc math

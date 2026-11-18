@@ -81,12 +81,21 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
     onLayoutHeightChangeRef.current = onLayoutHeightChange;
   }, [onLayoutHeightChange]);
 
-  // Notify parent when docked mobile photo strip appears/disappears or expands/collapses
-  // so Follow Camera can re-center the map in the unobstructed viewport.
+  const prevEnabledRef = useRef(isEnabled);
+  const prevExpandedRef = useRef(isMobilePhotoExpanded);
+
+  // Notify parent when the docked mobile photo strip is expanded/collapsed while playback
+  // stays enabled so Follow Camera re-centers without double-firing on playback start or leg changes.
   useEffect(() => {
-    if (!isEnabled) return;
-    onLayoutHeightChangeRef.current?.();
-  }, [hasPhotos, isEnabled, isMobilePhotoExpanded]);
+    const wasEnabled = prevEnabledRef.current;
+    const wasExpanded = prevExpandedRef.current;
+    prevEnabledRef.current = isEnabled;
+    prevExpandedRef.current = isMobilePhotoExpanded;
+
+    if (isEnabled && wasEnabled && isMobilePhotoExpanded !== wasExpanded) {
+      onLayoutHeightChangeRef.current?.();
+    }
+  }, [isEnabled, isMobilePhotoExpanded]);
 
   // When playback is idle/disabled, render a compact floating pill button
   if (!isEnabled) {

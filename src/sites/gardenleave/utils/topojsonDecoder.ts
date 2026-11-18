@@ -26,6 +26,56 @@ export interface TopoJSONTopology {
 }
 
 /**
+ * Ensures spherical winding order compatibility with d3.geoPath (steradians <= 2 * PI).
+ * Reverses polygon rings when d3.geoArea exceeds 2 * PI to avoid exterior-globe inversion.
+ */
+export function normalizeSphericalWinding(geom: Geometry): Geometry {
+  try {
+    if (geom.type === 'Polygon') {
+      if (geoArea(geom) > 2 * Math.PI) {
+        return {
+          ...geom,
+          coordinates: geom.coordinates.map((ring) => [...ring].reverse()),
+        };
+      }
+    } else if (geom.type === 'MultiPolygon') {
+      const fixedPolys = geom.coordinates.map((polyCoords) => {
+        const singlePoly: Geometry = { type: 'Polygon', coordinates: polyCoords };
+        if (geoArea(singlePoly) > 2 * Math.PI) {
+          return polyCoords.map((ring) => [...ring].reverse());
+        }
+        return polyCoords;
+      });
+      return {
+        ...geom,
+        coordinates: fixedPolys,
+      };
+    }
+  } catch {
+    // Fallback to original geometry if spherical area check fails
+  }
+  return geom;
+}
+
+/**
+ * Normalizes spherical winding order across all features in a GeoJSON FeatureCollection.
+ */
+export function normalizeGeoJsonWinding(
+  collection: FeatureCollection<Geometry>
+): FeatureCollection<Geometry> {
+  const features: Feature<Geometry>[] = collection.features.map((feat) => {
+    if (!feat.geometry) return feat;
+    const normalized = normalizeSphericalWinding(feat.geometry);
+    return normalized === feat.geometry ? feat : { ...feat, geometry: normalized };
+  });
+
+  return {
+    ...collection,
+    features,
+  };
+}
+
+/**
  * Zero-dependency TopoJSON decoder that converts quantized delta-encoded
  * topology.arcs using topology.transform (scale and translate) into a standard
  * GeoJSON FeatureCollection for topology.objects.countries (with fallback to land).
@@ -77,35 +127,6 @@ export function decodeTopoJSON(
       }
     }
     return coords;
-  };
-
-  // Ensure spherical winding order compatibility with d3.geoPath (steradians <= 2*PI)
-  const normalizeSphericalWinding = (geom: Geometry): Geometry => {
-    try {
-      if (geom.type === 'Polygon') {
-        if (geoArea(geom) > 2 * Math.PI) {
-          return {
-            ...geom,
-            coordinates: geom.coordinates.map((ring) => [...ring].reverse()),
-          };
-        }
-      } else if (geom.type === 'MultiPolygon') {
-        const fixedPolys = geom.coordinates.map((polyCoords) => {
-          const singlePoly: Geometry = { type: 'Polygon', coordinates: polyCoords };
-          if (geoArea(singlePoly) > 2 * Math.PI) {
-            return polyCoords.map((ring) => [...ring].reverse());
-          }
-          return polyCoords;
-        });
-        return {
-          ...geom,
-          coordinates: fixedPolys,
-        };
-      }
-    } catch {
-      // Fallback to original geometry if spherical area check fails
-    }
-    return geom;
   };
 
   const convertGeometry = (obj: TopoJSONGeometryObject): Geometry | null => {
