@@ -27,7 +27,6 @@ function boxesOverlap(a: BoundingBox, b: BoundingBox): boolean {
 }
 
 interface CandidateSlot {
-  name: 'top' | 'bottom' | 'right' | 'left' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
   dx: number;
   dy: number;
   textAnchor: 'middle' | 'start' | 'end';
@@ -103,7 +102,6 @@ export function computeSmartLabelLayout(
     const candidates: CandidateSlot[] = [
       // Top-center
       {
-        name: 'top',
         dx: 0,
         dy: -gap,
         textAnchor: 'middle',
@@ -118,7 +116,6 @@ export function computeSmartLabelLayout(
       },
       // Bottom-center
       {
-        name: 'bottom',
         dx: 0,
         dy: gap + estHeight * 0.82,
         textAnchor: 'middle',
@@ -133,7 +130,6 @@ export function computeSmartLabelLayout(
       },
       // Right-middle
       {
-        name: 'right',
         dx: gap + 1.0 * invScale,
         dy: estHeight * 0.32,
         textAnchor: 'start',
@@ -148,7 +144,6 @@ export function computeSmartLabelLayout(
       },
       // Left-middle
       {
-        name: 'left',
         dx: -(gap + 1.0 * invScale),
         dy: estHeight * 0.32,
         textAnchor: 'end',
@@ -163,7 +158,6 @@ export function computeSmartLabelLayout(
       },
       // Top-right
       {
-        name: 'top-right',
         dx: diagGap + 1.0 * invScale,
         dy: -diagGap,
         textAnchor: 'start',
@@ -178,7 +172,6 @@ export function computeSmartLabelLayout(
       },
       // Top-left
       {
-        name: 'top-left',
         dx: -(diagGap + 1.0 * invScale),
         dy: -diagGap,
         textAnchor: 'end',
@@ -193,7 +186,6 @@ export function computeSmartLabelLayout(
       },
       // Bottom-right
       {
-        name: 'bottom-right',
         dx: diagGap + 1.0 * invScale,
         dy: diagGap + estHeight * 0.8,
         textAnchor: 'start',
@@ -208,7 +200,6 @@ export function computeSmartLabelLayout(
       },
       // Bottom-left
       {
-        name: 'bottom-left',
         dx: -(diagGap + 1.0 * invScale),
         dy: diagGap + estHeight * 0.8,
         textAnchor: 'end',

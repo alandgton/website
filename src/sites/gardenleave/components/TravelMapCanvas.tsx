@@ -14,7 +14,6 @@ import {
   TransitMode,
   TransitModeStyleConfig,
 } from '../config/types';
-import { scaleStrokeDasharray } from '../config/transit.config';
 import { SETO_INLAND_ISLANDS } from '../config/setoInlandIslands.config';
 import {
   buildArrowheadPath,
@@ -404,14 +403,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
             <stop offset="70%" stopColor="#070d19" />
             <stop offset="100%" stopColor="#040811" />
           </radialGradient>
-
-          <filter id="glow-active" x="-35%" y="-35%" width="170%" height="170%">
-            <feGaussianBlur stdDeviation={1.8 * invScale} result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
         </defs>
 
         <rect
@@ -621,7 +612,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
                       : 1.0;
 
                   const strokeWidth = modeStyle.baseStrokeWidth * strokeMultiplier * invScale;
-                  const scaledDash = scaleStrokeDasharray(modeStyle.strokeDasharray, invScale);
 
                   return (
                     <g
@@ -681,7 +671,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
                         fill="none"
                         stroke={modeStyle.color}
                         strokeWidth={strokeWidth}
-                        strokeDasharray={scaledDash}
                         strokeOpacity={strokeOpacity}
                         strokeLinecap="round"
                       />

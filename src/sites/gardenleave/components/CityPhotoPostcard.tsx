@@ -84,7 +84,6 @@ export const CityPhotoPostcard: React.FC<CityPhotoPostcardProps> = ({
         cityName={city.name}
         activeIndex={activePhotoIndex}
         onChangeIndex={onChangePhotoIndex}
-        compact
       />
     </aside>
   );

@@ -6,7 +6,6 @@ export interface TransitModeStyleConfig {
   mode: TransitMode;
   label: string;
   color: string;
-  strokeDasharray: string;
   baseStrokeWidth: number;
   description: string;
 }
@@ -118,9 +117,6 @@ export interface TravelMapConfig {
 export interface CityComputedStats {
   city: CityConfig;
   totalNights: number;
-  visitCount: number;
   arrivals: ItineraryLegConfig[];
   departures: ItineraryLegConfig[];
-  firstArrivalDate: string | null;
-  lastDepartureDate: string | null;
 }

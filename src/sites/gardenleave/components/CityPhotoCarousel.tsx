@@ -95,8 +95,6 @@ interface CityPhotoCarouselProps {
   cityName: string;
   activeIndex: number;
   onChangeIndex: (index: number) => void;
-  /** Optional compact sizing for floating postcard HUD */
-  compact?: boolean;
 }
 
 export const CityPhotoCarousel: React.FC<CityPhotoCarouselProps> = ({
@@ -104,7 +102,6 @@ export const CityPhotoCarousel: React.FC<CityPhotoCarouselProps> = ({
   cityName,
   activeIndex,
   onChangeIndex,
-  compact = false,
 }) => {
   if (photos.length === 0) return null;
 
@@ -125,8 +122,8 @@ export const CityPhotoCarousel: React.FC<CityPhotoCarouselProps> = ({
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-slate-800/90 bg-slate-950 select-none group">
-      {/* 4:3 / 16:10 Aspect Ratio Image Container (prevents layout shift) */}
-      <div className={`relative w-full ${compact ? 'aspect-[16/10]' : 'aspect-[4/3]'} bg-slate-950`}>
+      {/* 16:10 Aspect Ratio Image Container (prevents layout shift) */}
+      <div className="relative w-full aspect-[16/10] bg-slate-950">
         <PostcardStackImage photo={activePhoto} cityName={cityName} />
 
         {/* Top-Right Counter Badge (only when multiple photos exist) */}

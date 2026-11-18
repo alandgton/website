@@ -5,7 +5,7 @@ import 'd3-transition';
 import { zoom, zoomIdentity, ZoomBehavior, ZoomTransform } from 'd3-zoom';
 import { MapRenderConfig, RegionCameraConfig } from '../config/types';
 
-export interface FlyToBoundsOptions {
+interface FlyToBoundsOptions {
   paddingRatio?: number;
   maxZoom?: number;
   minZoom?: number;
@@ -33,15 +33,11 @@ export interface UseMapCameraReturn {
     regionId?: string | null,
     viewportCenter?: [number, number] | null
   ) => void;
-  flyToBounds: (coordsList: [number, number][], options?: FlyToBoundsOptions) => void;
   flyToRegion: (
     region: RegionCameraConfig,
     durationMs?: number,
     resolvedCoordsList?: [number, number][]
   ) => void;
-  zoomIn: () => void;
-  zoomOut: () => void;
-  resetCamera: () => void;
 }
 
 export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
@@ -343,53 +339,6 @@ export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
     [flyToBounds, flyToCoordinates]
   );
 
-  const zoomIn = useCallback(() => {
-    const svgEl = svgRef.current;
-    const zoomBehavior = zoomBehaviorRef.current;
-    if (!svgEl || !zoomBehavior) return;
-    setActiveRegionId(null);
-    if (rafIdRef.current !== null) {
-      window.cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
-    }
-    isProgrammaticFlightRef.current = true;
-    const targetK = Math.min(mapConfig.scaleExtent[1], lastCommittedZoomKRef.current * 1.5);
-    lastCommittedZoomKRef.current = targetK;
-    setScaleZoomK(targetK);
-    select(svgEl).transition().duration(300).call(zoomBehavior.scaleBy, 1.5);
-  }, [mapConfig.scaleExtent]);
-
-  const zoomOut = useCallback(() => {
-    const svgEl = svgRef.current;
-    const zoomBehavior = zoomBehaviorRef.current;
-    if (!svgEl || !zoomBehavior) return;
-    setActiveRegionId(null);
-    if (rafIdRef.current !== null) {
-      window.cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
-    }
-    isProgrammaticFlightRef.current = true;
-    select(svgEl).transition().duration(300).call(zoomBehavior.scaleBy, 1 / 1.5);
-  }, []);
-
-  const resetCamera = useCallback(() => {
-    const svgEl = svgRef.current;
-    const zoomBehavior = zoomBehaviorRef.current;
-    if (!svgEl || !zoomBehavior) return;
-    setActiveRegionId('world');
-    const worldTransform = computeWorldDefaultTransform();
-    if (rafIdRef.current !== null) {
-      window.cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
-    }
-    isProgrammaticFlightRef.current = true;
-    if (worldTransform.k > lastCommittedZoomKRef.current) {
-      lastCommittedZoomKRef.current = worldTransform.k;
-      setScaleZoomK(worldTransform.k);
-    }
-    select(svgEl).transition().duration(750).call(zoomBehavior.transform, worldTransform);
-  }, [computeWorldDefaultTransform]);
-
   const zoomK = scaleZoomK;
   // Responsive mobile scaling:
   // On mobile phones (< 640px), the 1200-unit SVG viewBox is scaled down ~3x more than on desktop.
@@ -437,10 +386,6 @@ export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
     activeRegionId,
     computeBoundsFit,
     flyToCoordinates,
-    flyToBounds,
     flyToRegion,
-    zoomIn,
-    zoomOut,
-    resetCamera,
   };
 }

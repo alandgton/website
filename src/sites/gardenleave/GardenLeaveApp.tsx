@@ -13,7 +13,7 @@ import { useMapCamera } from './hooks/useMapCamera';
 import { useMapTopology } from './hooks/useMapTopology';
 import { usePhotoPreloader } from './hooks/usePhotoPreloader';
 import { useResolvedCities } from './hooks/useResolvedCities';
-import { computeAllCityStats, computeJourneySummary } from './utils/itineraryStats';
+import { computeAllCityStats, computeLegsByMode } from './utils/itineraryStats';
 import { CityPhotoPostcard } from './components/CityPhotoPostcard';
 import { ItineraryModal } from './components/ItineraryModal';
 import { RegionSelectorBar } from './components/RegionSelectorBar';
@@ -223,9 +223,9 @@ export const App: React.FC = () => {
     [resolvedCities, activeConfig.itinerary]
   );
 
-  const journeySummary = useMemo(
-    () => computeJourneySummary(resolvedCities, activeConfig.itinerary),
-    [resolvedCities, activeConfig.itinerary]
+  const legsByMode = useMemo(
+    () => computeLegsByMode(activeConfig.itinerary),
+    [activeConfig.itinerary]
   );
 
   // Track active camera zoom in a ref so Follow Camera deadband calculations always read
@@ -625,7 +625,7 @@ export const App: React.FC = () => {
           <TransitLegendBar
             transitModes={activeConfig.transitModes}
             visibleModes={visibleModes}
-            legsByMode={journeySummary.legsByMode}
+            legsByMode={legsByMode}
             onToggleMode={handleToggleMode}
           />
 

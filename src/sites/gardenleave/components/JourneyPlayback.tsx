@@ -174,7 +174,6 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                     cityName={destCity?.name ?? currentLeg.dest}
                     activeIndex={safePhotoIndex}
                     onChangeIndex={(idx) => onChangePhotoIndex?.(idx)}
-                    compact
                   />
                 </div>
               ) : (
@@ -183,8 +182,7 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsMobilePhotoExpanded(true)}
-                    className="relative h-12 w-18 shrink-0 overflow-hidden rounded-lg border border-slate-700/80 bg-slate-900"
-                    style={{ width: '4.5rem' }}
+                    className="relative h-12 w-[4.5rem] shrink-0 overflow-hidden rounded-lg border border-slate-700/80 bg-slate-900"
                     title="Tap to enlarge photo"
                   >
                     <PostcardStackImage
@@ -202,7 +200,7 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                       <Camera className="h-3 w-3 shrink-0 text-sky-400" />
                       <span className="truncate">{destCity?.name ?? currentLeg.dest}</span>
                       {destPhotos.length > 1 && (
-                        <span className="shrink-0 rounded bg-sky-500/15 border border-sky-400/30 px-1 py-0.2 font-mono text-[9px] text-sky-300">
+                        <span className="shrink-0 rounded bg-sky-500/15 border border-sky-400/30 px-1 py-px font-mono text-[9px] text-sky-300">
                           {safePhotoIndex + 1}/{destPhotos.length}
                         </span>
                       )}

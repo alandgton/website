@@ -47,7 +47,7 @@ export const TransitLegendBar: React.FC<TransitLegendBarProps> = ({
                 : 'border-slate-800/50 bg-slate-900/40 text-slate-500 opacity-55 hover:opacity-80'
             }`}
           >
-            {/* SVG Pattern Preview matching Section 3 spec */}
+            {/* Solid directional transit line preview */}
             <svg width="26" height="10" viewBox="0 0 26 10" className="shrink-0">
               <line
                 x1="1"
@@ -56,15 +56,12 @@ export const TransitLegendBar: React.FC<TransitLegendBarProps> = ({
                 y2="5"
                 stroke={style.color}
                 strokeWidth="2.2"
-                strokeDasharray={
-                  style.strokeDasharray === 'none' ? undefined : style.strokeDasharray
-                }
                 strokeLinecap="round"
               />
               <polygon points="25,5 19,2 20.5,5 19,8" fill={style.color} />
             </svg>
             <ModeIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span className="hidden xl:inline rounded bg-slate-950/70 px-1.5 py-0.2 font-mono text-[10px] text-slate-400">
+            <span className="hidden xl:inline rounded bg-slate-950/70 px-1.5 py-px font-mono text-[10px] text-slate-400">
               {count}
             </span>
           </button>

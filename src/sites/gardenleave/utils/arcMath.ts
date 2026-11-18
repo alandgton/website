@@ -3,14 +3,8 @@ import type { GeoProjection } from 'd3-geo';
 export interface StraightLineSegment {
   /** SVG path 'M x1 y1 L x2 y2' */
   d: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
   /** Segment length in SVG units */
   length: number;
-  /** Exposed gap length between source and destination pin edges */
-  exposedLength: number;
   /** Directional arrow position & angle (degrees) along the straight line */
   arrowX: number;
   arrowY: number;
@@ -22,10 +16,6 @@ export interface ComputedTransitLine {
   pathData: string;
   /** Individual straight line segments (1 for standard, 2 for Pacific wrap) */
   segments: StraightLineSegment[];
-  /** Whether the leg wraps across the Pacific seam */
-  isPacificSplit: boolean;
-  /** Primary label/badge anchor point */
-  midpoint: [number, number];
 }
 
 function buildStraightSegment(
@@ -63,19 +53,13 @@ function buildStraightSegment(
   const dEnd = Math.max(length * 0.52, length - destTrimRadius);
   const arrowT = (dStart + dEnd) / (2 * length);
 
-  const exposedLength = Math.max(0.05, length - sourceTrimRadius - destTrimRadius);
   const arrowX = x1 + rawDx * arrowT;
   const arrowY = y1 + rawDy * arrowT;
   const arrowAngleDeg = (Math.atan2(rawDy, rawDx) * 180) / Math.PI;
 
   return {
     d,
-    x1,
-    y1,
-    x2,
-    y2,
     length,
-    exposedLength,
     arrowX,
     arrowY,
     arrowAngleDeg,
@@ -149,8 +133,6 @@ export function computeDirectionalTransitLine(
     return {
       pathData: `${seg1.d} ${seg2.d}`,
       segments: [seg1, seg2],
-      isPacificSplit: true,
-      midpoint: [seg2.arrowX, seg2.arrowY],
     };
   }
 
@@ -166,8 +148,6 @@ export function computeDirectionalTransitLine(
   return {
     pathData: seg.d,
     segments: [seg],
-    isPacificSplit: false,
-    midpoint: [seg.arrowX, seg.arrowY],
   };
 }
 
