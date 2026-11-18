@@ -113,6 +113,24 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
     };
   }, [isGranularityOpen, isRegionMenuOpen]);
 
+  const renderGridToggleButton = (displayClassName: string) => (
+    <button
+      type="button"
+      onClick={onToggleGraticule}
+      title="Toggle Graticule Grid"
+      aria-label="Toggle Graticule Grid"
+      aria-pressed={showGraticule}
+      className={`${displayClassName} items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition shrink-0 ${
+        showGraticule
+          ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
+          : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+      }`}
+    >
+      <Grid className="h-3.5 w-3.5" aria-hidden="true" />
+      <span className="hidden md:inline">Grid</span>
+    </button>
+  );
+
   return (
     <header
       ref={containerRef}
@@ -120,13 +138,13 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
     >
       {/* Centered Floating Island */}
       <div className="relative z-20 pointer-events-auto w-full max-w-[366px] sm:w-auto sm:max-w-none flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 rounded-2xl border border-slate-800/90 bg-slate-900/85 px-3.5 py-1.5 shadow-2xl backdrop-blur-md text-xs">
-        {/* Navigation & Identity (Mobile Row 1 / Desktop Left) */}
-        <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 min-w-0">
+        {/* Navigation & Identity (Mobile Row 1 3-col Grid / Desktop Left) */}
+        <div className="w-full grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 sm:flex sm:w-auto sm:justify-start min-w-0">
           {/* Main Return Link */}
           <a
             href="/"
             title="Main"
-            className="shrink-0 flex items-center gap-1.5 text-slate-300 hover:text-sky-300 font-semibold transition"
+            className="justify-self-start shrink-0 flex items-center gap-1.5 text-slate-300 hover:text-sky-300 font-semibold transition"
           >
             <ArrowLeft className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
             <span>Main</span>
@@ -136,12 +154,15 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
 
           {/* Title Badge */}
           <div
-            className="flex min-w-0 items-center gap-1.5 font-bold text-white select-none"
+            className="justify-self-center flex min-w-0 max-w-full items-center gap-1.5 font-bold text-white select-none"
             title={`${title} — ${subtitle}`}
           >
             <Palmtree className="h-3.5 w-3.5 text-sky-400 shrink-0" aria-hidden="true" />
             <span className="truncate">{title}</span>
           </div>
+
+          {/* Mobile Row 1 Right Slot: Icon-Only Grid Toggle */}
+          {renderGridToggleButton('flex justify-self-end sm:hidden')}
         </div>
 
         {/* Vertical divider on desktop, subtle horizontal hairline on mobile */}
@@ -149,7 +170,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
         <div className="sm:hidden w-full h-px bg-slate-800/60" aria-hidden="true" />
 
         {/* Map Controls & Itinerary (Mobile Row 2 / Desktop Right) */}
-        <div className="w-full sm:w-auto flex items-center justify-between sm:justify-center gap-1 sm:gap-2 min-w-0">
+        <div className="w-full sm:w-auto flex items-center justify-between sm:justify-center gap-1.5 sm:gap-2 min-w-0">
           {/* Region Dropdown Menu */}
           <div ref={regionMenuRef} className="relative z-50 min-w-0">
             <button
@@ -159,12 +180,12 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
                 setIsGranularityOpen(false);
               }}
               title={`Quick-Zoom to Region: ${activeRegionLabel}`}
-              className="flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-medium bg-slate-800/60 text-slate-200 hover:bg-slate-800 transition max-w-full"
+              className="flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-medium bg-slate-800/60 text-slate-200 hover:bg-slate-800 transition max-w-full min-w-0"
               aria-expanded={isRegionMenuOpen}
               aria-haspopup="listbox"
             >
               <Compass className="h-3.5 w-3.5 text-sky-400 shrink-0" aria-hidden="true" />
-              <span className="truncate max-w-[108px] sm:max-w-none">{activeRegionLabel}</span>
+              <span className="truncate">{activeRegionLabel}</span>
               <ChevronDown
                 className={`h-3 w-3 text-slate-400 shrink-0 transition-transform ${
                   isRegionMenuOpen ? 'rotate-180 text-sky-300' : ''
@@ -229,7 +250,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
                     ? 'Country'
                     : 'None'
               } (Click to change)`}
-              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-medium transition ${
+              className={`flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-medium transition ${
                 granularity !== 'none'
                   ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                   : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
@@ -237,10 +258,10 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
               aria-expanded={isGranularityOpen}
               aria-haspopup="listbox"
             >
-              <Layers className="h-3.5 w-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Granularity</span>
+              <Layers className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span className="hidden min-[350px]:inline sm:inline">Granularity</span>
               <ChevronDown
-                className={`h-3 w-3 text-slate-400 transition-transform ${
+                className={`h-3 w-3 text-slate-400 shrink-0 transition-transform ${
                   isGranularityOpen ? 'rotate-180 text-sky-300' : ''
                 }`}
                 aria-hidden="true"
@@ -303,30 +324,18 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
             }}
             title="View Full Itinerary"
             aria-expanded={isItineraryOpen}
-            className={`shrink-0 flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-medium transition ${
+            className={`shrink-0 flex items-center gap-1 sm:gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-medium transition ${
               isItineraryOpen
                 ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
           >
-            <Calendar className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
+            <Calendar className="h-3.5 w-3.5 text-sky-400 shrink-0" aria-hidden="true" />
             <span>Itinerary</span>
           </button>
 
-          {/* Grid Toggle */}
-          <button
-            type="button"
-            onClick={onToggleGraticule}
-            title="Toggle Graticule Grid"
-            className={`shrink-0 flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition ${
-              showGraticule
-                ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
-          >
-            <Grid className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="hidden md:inline">Grid</span>
-          </button>
+          {/* Desktop Grid Toggle */}
+          {renderGridToggleButton('hidden sm:flex')}
         </div>
       </div>
     </header>
