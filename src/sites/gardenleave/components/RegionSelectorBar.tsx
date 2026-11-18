@@ -119,29 +119,28 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
       className="pointer-events-none absolute top-0 left-0 right-0 z-20 flex justify-center p-3 sm:p-4"
     >
       {/* Centered Floating Island */}
-      <div className="relative z-20 pointer-events-auto flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 rounded-2xl border border-slate-800/90 bg-slate-900/85 px-3.5 py-1.5 shadow-2xl backdrop-blur-md text-xs">
+      <div className="relative z-20 pointer-events-auto w-full max-w-[366px] sm:w-auto sm:max-w-none flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 rounded-2xl border border-slate-800/90 bg-slate-900/85 px-3.5 py-1.5 shadow-2xl backdrop-blur-md text-xs">
         {/* Navigation & Identity (Mobile Row 1 / Desktop Left) */}
-        <div className="flex items-center gap-2">
+        <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 min-w-0">
           {/* Main Return Link */}
           <a
             href="/"
             title="Main"
-            className="flex items-center gap-1.5 text-slate-300 hover:text-sky-300 font-semibold transition"
+            className="shrink-0 flex items-center gap-1.5 text-slate-300 hover:text-sky-300 font-semibold transition"
           >
             <ArrowLeft className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
             <span>Main</span>
           </a>
 
-          <span className="h-3.5 w-px bg-slate-800" aria-hidden="true" />
+          <span className="hidden sm:inline-block h-3.5 w-px bg-slate-800 shrink-0" aria-hidden="true" />
 
           {/* Title Badge */}
           <div
-            className="flex items-center gap-1.5 font-bold text-white select-none"
+            className="flex min-w-0 items-center gap-1.5 font-bold text-white select-none"
             title={`${title} — ${subtitle}`}
           >
             <Palmtree className="h-3.5 w-3.5 text-sky-400 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">{title}</span>
-            <span className="sm:hidden">Garden Leave</span>
+            <span className="truncate">{title}</span>
           </div>
         </div>
 
@@ -150,9 +149,9 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
         <div className="sm:hidden w-full h-px bg-slate-800/60" aria-hidden="true" />
 
         {/* Map Controls & Itinerary (Mobile Row 2 / Desktop Right) */}
-        <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+        <div className="w-full sm:w-auto flex items-center justify-between sm:justify-center gap-1 sm:gap-2 min-w-0">
           {/* Region Dropdown Menu */}
-          <div ref={regionMenuRef} className="relative z-50">
+          <div ref={regionMenuRef} className="relative z-50 min-w-0">
             <button
               type="button"
               onClick={() => {
@@ -160,14 +159,14 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
                 setIsGranularityOpen(false);
               }}
               title={`Quick-Zoom to Region: ${activeRegionLabel}`}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium bg-slate-800/60 text-slate-200 hover:bg-slate-800 transition"
+              className="flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-medium bg-slate-800/60 text-slate-200 hover:bg-slate-800 transition max-w-full"
               aria-expanded={isRegionMenuOpen}
               aria-haspopup="listbox"
             >
-              <Compass className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
-              <span className="truncate max-w-[110px] sm:max-w-none">{activeRegionLabel}</span>
+              <Compass className="h-3.5 w-3.5 text-sky-400 shrink-0" aria-hidden="true" />
+              <span className="truncate max-w-[108px] sm:max-w-none">{activeRegionLabel}</span>
               <ChevronDown
-                className={`h-3 w-3 text-slate-400 transition-transform ${
+                className={`h-3 w-3 text-slate-400 shrink-0 transition-transform ${
                   isRegionMenuOpen ? 'rotate-180 text-sky-300' : ''
                 }`}
                 aria-hidden="true"
@@ -216,7 +215,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
           </div>
 
           {/* Granularity Dropdown */}
-          <div ref={granularityMenuRef} className="relative z-50">
+          <div ref={granularityMenuRef} className="relative z-50 shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -230,7 +229,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
                     ? 'Country'
                     : 'None'
               } (Click to change)`}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+              className={`flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-medium transition ${
                 granularity !== 'none'
                   ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                   : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
@@ -304,7 +303,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
             }}
             title="View Full Itinerary"
             aria-expanded={isItineraryOpen}
-            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+            className={`shrink-0 flex items-center gap-1.5 rounded-lg px-2 sm:px-2.5 py-1 text-xs font-medium transition ${
               isItineraryOpen
                 ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
                 : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -319,7 +318,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
             type="button"
             onClick={onToggleGraticule}
             title="Toggle Graticule Grid"
-            className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition ${
+            className={`shrink-0 flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium transition ${
               showGraticule
                 ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
                 : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
