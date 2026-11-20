@@ -54,7 +54,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
   {
     id: 'facebook',
     company: 'Facebook',
-    role: 'Production Engineer Intern',
+    role: 'Production Engineer',
     employmentType: 'Internship',
     dateRange: 'May 2019 – Aug 2019',
     location: 'Menlo Park, CA',
@@ -63,7 +63,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
   {
     id: 'aws',
     company: 'Amazon Web Services',
-    role: 'Software Development Engineer Intern',
+    role: 'Software Development Engineer',
     employmentType: 'Internship',
     dateRange: 'May 2018 – Aug 2018',
     location: 'Seattle, WA',
@@ -72,7 +72,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
   {
     id: 'nasa-jpl',
     company: 'NASA Jet Propulsion Laboratory',
-    role: 'Undergraduate Engineering Intern',
+    role: 'Undergraduate Engineering',
     employmentType: 'Internship',
     dateRange: 'May 2017 – Aug 2017',
     location: 'Pasadena, CA',
