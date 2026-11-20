@@ -18,7 +18,7 @@ function trackRuntimeErrors(page: Page): string[] {
 test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
-  test('renders mobile-first vertical timeline ordered Present -> 2017 without durations or overlap flags', async ({
+  test('renders mobile-first vertical timeline ordered Present -> 2017 without durations, overlap flags, filters, or header dates', async ({
     page,
   }) => {
     const errors = trackRuntimeErrors(page);
@@ -27,6 +27,12 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
 
     await expect(page.getByRole('heading', { name: 'Alan Ton @ Work' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Main' })).toHaveAttribute('href', '/');
+
+    // Removed header date span and top region filter buttons stay absent
+    await expect(page.locator('header').getByText(/2017/)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'New York', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'West Coast', exact: true })).toHaveCount(0);
 
     const items = page.locator('ol[aria-label="Work experience timeline"] > li');
     await expect(items).toHaveCount(6);
@@ -66,7 +72,7 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('region filters and expand/collapse all work on narrow 360px viewport without overflow', async ({
+  test('expand/collapse all works on narrow 360px viewport without overflow', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 740 });
@@ -74,19 +80,13 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
 
     await page.goto('/work/');
 
-    const items = page.locator('ol[aria-label="Work experience timeline"] > li');
-    await page.getByRole('button', { name: 'New York' }).tap();
-    await expect(items).toHaveCount(2);
-
-    await page.getByRole('button', { name: 'West Coast' }).tap();
-    await expect(items).toHaveCount(4);
-
     await page.getByRole('button', { name: 'Expand all' }).tap();
     await expect(page.getByRole('button', { name: 'Collapse all' })).toBeVisible();
     await expect(page.getByText('Component Engineering & Assurance Office')).toBeVisible();
 
-    await page.getByRole('button', { name: 'All', exact: true }).tap();
-    await expect(items).toHaveCount(6);
+    await page.getByRole('button', { name: 'Collapse all' }).tap();
+    await expect(page.getByRole('button', { name: 'Expand all' })).toBeVisible();
+    await expect(page.getByText('Fixed Income & Macro')).toHaveCount(0);
 
     const hasOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth

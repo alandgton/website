@@ -1,7 +1,3 @@
-export type ExperienceRegion = 'nyc' | 'west';
-
-export type ExperienceFilter = 'all' | ExperienceRegion;
-
 export interface ExperienceCourse {
   code: string;
   title: string;
@@ -14,17 +10,10 @@ export interface ExperienceEntry {
   employmentType: 'Full-time' | 'Part-time';
   dateRange: string;
   location: string;
-  region: ExperienceRegion;
   isCurrent?: boolean;
   focus?: string;
   courses?: ExperienceCourse[];
 }
-
-export const EXPERIENCE_FILTERS: { id: ExperienceFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'nyc', label: 'New York' },
-  { id: 'west', label: 'West Coast' },
-];
 
 /**
  * Chronological experience entries ordered Present -> 2017.
@@ -37,7 +26,6 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     employmentType: 'Full-time',
     dateRange: 'Oct 2023 – Present',
     location: 'New York, New York, United States · On-site',
-    region: 'nyc',
     isCurrent: true,
     focus: 'Fixed Income & Macro',
   },
@@ -48,7 +36,6 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     employmentType: 'Full-time',
     dateRange: 'Sep 2020 – Oct 2023',
     location: 'New York, New York, United States · On-site',
-    region: 'nyc',
     focus: 'Messaging Infrastructure',
   },
   {
@@ -58,7 +45,6 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     employmentType: 'Part-time',
     dateRange: 'Jan 2018 – May 2020',
     location: 'Berkeley, CA',
-    region: 'west',
     courses: [
       { code: 'CS162', title: 'Operating Systems & Systems Programming' },
       { code: 'CS61B', title: 'Data Structures & Algorithms' },
@@ -72,7 +58,6 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     employmentType: 'Full-time',
     dateRange: 'May 2019 – Aug 2019',
     location: 'Menlo Park, California',
-    region: 'west',
     focus: 'Instagram Core Infrastructure',
   },
   {
@@ -82,7 +67,6 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     employmentType: 'Full-time',
     dateRange: 'May 2018 – Aug 2018',
     location: 'Seattle, Washington',
-    region: 'west',
     focus: 'Elastic Compute Cloud (EC2) Networking',
   },
   {
@@ -92,7 +76,6 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     employmentType: 'Full-time',
     dateRange: 'May 2017 – Aug 2017',
     location: 'Pasadena, California',
-    region: 'west',
     focus: 'Component Engineering & Assurance Office',
   },
 ];

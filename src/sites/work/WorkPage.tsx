@@ -1,10 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
-import {
-  EXPERIENCE_ENTRIES,
-  EXPERIENCE_FILTERS,
-  ExperienceFilter,
-} from './config/experience.config';
+import { EXPERIENCE_ENTRIES } from './config/experience.config';
 import { ExperienceCard } from './components/ExperienceCard';
 import { WorkHeader } from './components/WorkHeader';
 
@@ -12,16 +8,11 @@ import { WorkHeader } from './components/WorkHeader';
  * Alan Ton @ Work — Mobile-first vertical experience timeline.
  */
 export const WorkPage: React.FC = () => {
-  const [regionFilter, setRegionFilter] = useState<ExperienceFilter>('all');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set(['citadel']));
 
-  const visibleEntries = useMemo(() => {
-    if (regionFilter === 'all') return EXPERIENCE_ENTRIES;
-    return EXPERIENCE_ENTRIES.filter((entry) => entry.region === regionFilter);
-  }, [regionFilter]);
-
   const allExpanded =
-    visibleEntries.length > 0 && visibleEntries.every((entry) => expandedIds.has(entry.id));
+    EXPERIENCE_ENTRIES.length > 0 &&
+    EXPERIENCE_ENTRIES.every((entry) => expandedIds.has(entry.id));
 
   const handleToggleCard = (id: string) => {
     setExpandedIds((prev) => {
@@ -36,15 +27,9 @@ export const WorkPage: React.FC = () => {
   };
 
   const handleToggleExpandAll = () => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (allExpanded) {
-        visibleEntries.forEach((entry) => next.delete(entry.id));
-      } else {
-        visibleEntries.forEach((entry) => next.add(entry.id));
-      }
-      return next;
-    });
+    setExpandedIds(
+      allExpanded ? new Set() : new Set(EXPERIENCE_ENTRIES.map((entry) => entry.id))
+    );
   };
 
   return (
@@ -58,33 +43,8 @@ export const WorkPage: React.FC = () => {
       <WorkHeader />
 
       <main className="relative z-10 mx-auto w-full max-w-xl px-3.5 pt-4 pb-14 sm:px-6 sm:pt-6">
-        {/* Filter & Expand Controls */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div
-            role="group"
-            aria-label="Filter experience by location"
-            className="inline-flex items-center rounded-xl border border-slate-800/90 bg-slate-900/75 p-1 backdrop-blur-md"
-          >
-            {EXPERIENCE_FILTERS.map((filter) => {
-              const isActive = regionFilter === filter.id;
-              return (
-                <button
-                  key={filter.id}
-                  type="button"
-                  onClick={() => setRegionFilter(filter.id)}
-                  aria-pressed={isActive}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-                    isActive
-                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                      : 'border border-transparent text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              );
-            })}
-          </div>
-
+        {/* Expand / Collapse Control */}
+        <div className="mb-3 flex justify-end">
           <button
             type="button"
             onClick={handleToggleExpandAll}
@@ -106,13 +66,13 @@ export const WorkPage: React.FC = () => {
 
         {/* Vertical Timeline */}
         <ol aria-label="Work experience timeline">
-          {visibleEntries.map((entry, idx) => (
+          {EXPERIENCE_ENTRIES.map((entry, idx) => (
             <ExperienceCard
               key={entry.id}
               entry={entry}
               isExpanded={expandedIds.has(entry.id)}
               isFirst={idx === 0}
-              isLast={idx === visibleEntries.length - 1}
+              isLast={idx === EXPERIENCE_ENTRIES.length - 1}
               onToggle={handleToggleCard}
             />
           ))}
