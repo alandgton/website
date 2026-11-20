@@ -1,5 +1,4 @@
-import { Briefcase } from 'lucide-react';
 import { mountSite } from '../shared/mountSite';
-import { PlaceholderPage } from '../shared/PlaceholderPage';
+import { WorkPage } from './WorkPage';
 
-mountSite(<PlaceholderPage section="Work" icon={Briefcase} />);
+mountSite(<WorkPage />);
