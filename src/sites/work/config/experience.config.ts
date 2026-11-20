@@ -25,7 +25,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     role: 'Software Engineer',
     employmentType: 'Full-time',
     dateRange: 'Oct 2023 – Present',
-    location: 'New York, New York, United States · On-site',
+    location: 'New York, NY',
     isCurrent: true,
     focus: 'Fixed Income & Macro',
   },
@@ -35,7 +35,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     role: 'Production Engineer',
     employmentType: 'Full-time',
     dateRange: 'Sep 2020 – Oct 2023',
-    location: 'New York, New York, United States · On-site',
+    location: 'New York, NY',
     focus: 'Messaging Infrastructure',
   },
   {
@@ -57,7 +57,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     role: 'Production Engineer Intern',
     employmentType: 'Full-time',
     dateRange: 'May 2019 – Aug 2019',
-    location: 'Menlo Park, California',
+    location: 'Menlo Park, CA',
     focus: 'Instagram Core Infrastructure',
   },
   {
@@ -66,7 +66,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     role: 'Software Development Engineer Intern',
     employmentType: 'Full-time',
     dateRange: 'May 2018 – Aug 2018',
-    location: 'Seattle, Washington',
+    location: 'Seattle, WA',
     focus: 'Elastic Compute Cloud (EC2) Networking',
   },
   {
@@ -75,7 +75,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     role: 'Undergraduate Engineering Intern',
     employmentType: 'Full-time',
     dateRange: 'May 2017 – Aug 2017',
-    location: 'Pasadena, California',
+    location: 'Pasadena, CA',
     focus: 'Component Engineering & Assurance Office',
   },
 ];

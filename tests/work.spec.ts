@@ -84,6 +84,13 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
     await expect(page.getByRole('button', { name: 'Collapse all' })).toBeVisible();
     await expect(page.getByText('Component Engineering & Assurance Office')).toBeVisible();
 
+    // All locations use uniform "City, ST" formatting
+    await expect(page.getByText('New York, NY')).toHaveCount(2);
+    await expect(page.getByText('Berkeley, CA')).toBeVisible();
+    await expect(page.getByText('Menlo Park, CA')).toBeVisible();
+    await expect(page.getByText('Seattle, WA')).toBeVisible();
+    await expect(page.getByText('Pasadena, CA')).toBeVisible();
+
     await page.getByRole('button', { name: 'Collapse all' }).tap();
     await expect(page.getByRole('button', { name: 'Expand all' })).toBeVisible();
     await expect(page.getByText('Fixed Income & Macro')).toHaveCount(0);
