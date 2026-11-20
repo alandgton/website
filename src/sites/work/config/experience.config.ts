@@ -7,7 +7,7 @@ export interface ExperienceEntry {
   id: string;
   company: string;
   role: string;
-  employmentType: 'Full-time' | 'Part-time';
+  employmentType: 'Full-time' | 'Part-time' | 'Internship';
   dateRange: string;
   location: string;
   isCurrent?: boolean;
@@ -55,7 +55,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     id: 'facebook',
     company: 'Facebook',
     role: 'Production Engineer Intern',
-    employmentType: 'Full-time',
+    employmentType: 'Internship',
     dateRange: 'May 2019 – Aug 2019',
     location: 'Menlo Park, CA',
     focus: 'Instagram Core Infrastructure',
@@ -64,7 +64,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     id: 'aws',
     company: 'Amazon Web Services',
     role: 'Software Development Engineer Intern',
-    employmentType: 'Full-time',
+    employmentType: 'Internship',
     dateRange: 'May 2018 – Aug 2018',
     location: 'Seattle, WA',
     focus: 'Elastic Compute Cloud (EC2) Networking',
@@ -73,7 +73,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
     id: 'nasa-jpl',
     company: 'NASA Jet Propulsion Laboratory',
     role: 'Undergraduate Engineering Intern',
-    employmentType: 'Full-time',
+    employmentType: 'Internship',
     dateRange: 'May 2017 – Aug 2017',
     location: 'Pasadena, CA',
     focus: 'Component Engineering & Assurance Office',

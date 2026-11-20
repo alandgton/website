@@ -53,6 +53,11 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
     expect(bodyText).not.toMatch(/3 yrs 2 mos|2 yrs 5 mos|4 mos/i);
     expect(bodyText).not.toMatch(/\boverlap\b|\bconcurrent\b/i);
 
+    // Employment types: 2 Full-time, 1 Part-time, 3 Internship
+    await expect(page.getByText(/· Full-time/)).toHaveCount(2);
+    await expect(page.getByText(/· Part-time/)).toHaveCount(1);
+    await expect(page.getByText(/· Internship/)).toHaveCount(3);
+
     // Citadel expanded by default; Berkeley expands on tap to reveal courses
     await expect(page.getByText('Fixed Income & Macro')).toBeVisible();
 
