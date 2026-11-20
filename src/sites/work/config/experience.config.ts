@@ -62,7 +62,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
   },
   {
     id: 'aws',
-    company: 'Amazon Web Services (AWS)',
+    company: 'Amazon Web Services',
     role: 'Software Development Engineer Intern',
     employmentType: 'Full-time',
     dateRange: 'May 2018 – Aug 2018',

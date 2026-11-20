@@ -44,7 +44,7 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
       'Meta',
       'UC Berkeley College of Engineering',
       'Facebook',
-      'Amazon Web Services (AWS)',
+      'Amazon Web Services',
       'NASA Jet Propulsion Laboratory',
     ]);
 
