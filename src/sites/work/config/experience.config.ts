@@ -72,7 +72,7 @@ export const EXPERIENCE_ENTRIES: ExperienceEntry[] = [
   {
     id: 'nasa-jpl',
     company: 'NASA Jet Propulsion Laboratory',
-    role: 'Undergraduate Engineering',
+    role: 'Undergraduate Engineer',
     employmentType: 'Internship',
     dateRange: 'May 2017 – Aug 2017',
     location: 'Pasadena, CA',
