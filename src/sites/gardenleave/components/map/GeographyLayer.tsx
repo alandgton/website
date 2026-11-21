@@ -42,7 +42,7 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
 
   const countriesElement = useMemo(
     () => (
-      <g className="countries-layer">
+      <g className="countries-layer pointer-events-none">
         {countryPaths.map((country, idx) => {
           const isSubdividedInAdmin1 =
             isSubregion &&
@@ -79,7 +79,6 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
               strokeWidth={isActiveCountry ? 1.25 : isVisitedCountry ? 0.95 : 0.7}
               vectorEffect="non-scaling-stroke"
               strokeLinejoin="round"
-              data-bg="true"
             />
           );
         })}
@@ -136,7 +135,7 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
 
   const setoIslandsElement = useMemo(
     () => (
-      <g className="seto-islands-layer">
+      <g className="seto-islands-layer pointer-events-none">
         {setoIslandPaths.map((island) => {
           const isActiveIsland = !suppressCountryHighlight && isJapanActive;
           const isVisitedIsland = !suppressCountryHighlight && isJapanVisited;
@@ -162,10 +161,7 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
               strokeWidth={isActiveIsland ? 1.25 : isVisitedIsland ? 0.95 : 0.7}
               vectorEffect="non-scaling-stroke"
               strokeLinejoin="round"
-              data-bg="true"
-            >
-              <title>{island.name}</title>
-            </path>
+            />
           );
         })}
       </g>
@@ -183,7 +179,7 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
           stroke="#1e293b"
           strokeWidth={1.1}
           vectorEffect="non-scaling-stroke"
-          data-bg="true"
+          className="pointer-events-none"
         />
       )}
 

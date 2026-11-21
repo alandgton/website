@@ -80,16 +80,17 @@ Any agent working on this codebase must strictly preserve the following decision
    - Coordinates are auto-resolved via `src/sites/gardenleave/utils/cityGeocoder.ts` (Gazetteer → LocalStorage → Open-Meteo/Nominatim API fallback).
    - City photos are resolved via `src/sites/gardenleave/config/photos.config.ts` and `photos.manifest.ts`.
 
-2. **Cartographic Geometry & Antimeridian Shift**:
+2. **Cartographic Geometry, Subregion Scope & Shimanami Kaido Special Case**:
    - D3 projection uses `rotate([-11, 0])`, shifting the Pacific seam to **`-169°W`**.
    - Transpacific legs crossing the Pacific (e.g. `Tokyo -> LA`, `Vancouver -> Sapporo`) must split across `-169°W` into eastward straight segments.
    - Bidirectional legs (e.g. `NYC <-> SF`, `Shanghai <-> Nanjing`) must maintain parallel offset via normal vector separation.
-   - Dedicated Seto Inland Sea overlay layer (`seto-islands-layer`) must remain synchronized with Japan's visited/active states.
+   - **Admin-1 Subdivisions Scope (US, Canada & China Only)**: `Subregion` granularity (`public/gardenleave/admin1-50m.topo.json`, 95 features) is intentionally scoped **only to the United States, Canada, and China**. Subdivisions of other countries are intentionally excluded and not desired as of now — keep other visited countries highlighted at the country level to avoid unnecessary SVG vertex overhead.
+   - **Shimanami Kaido High-Zoom Detail (Special Case)**: Zoomed-in cartographic fidelity along the **Shimanami Kaido** (`Onomichi -> Setoda -> Omishima -> Imabari -> Matsuyama`) matters greatly and must always be treated as a **special case**. Preserve both (a) the high-resolution `10m` Japan coastline embedded inside self-hosted `public/gardenleave/countries-50m-jp10m.topo.json` (giving crisp Honshu/Shikoku/Hiroshima Bay geometry at `185×` zoom without a heavy global `10m` swap) and (b) the dedicated Seto Inland Sea overlay (`seto-islands-layer` from `setoInlandIslands.config.ts`) synchronized with Japan's visited/active states.
 
 3. **Performance Invariants (60–120fps Native Panning & Zooming)**:
-   - Pan/drag updates mutate `<g ref={cameraGroupRef}>`'s `transform` attribute directly in the DOM. Never route continuous pan coordinates through React state (`0` React renders per drag frame).
-   - Keep SVG rendering split into memoized layer sub-components (`src/sites/gardenleave/components/map/`: `GeographyLayer`, `TransitLinesLayer`, `CitiesLayer`, `TransitArrowsLayer`, `CityLabelsLayer`) with `vectorEffect="non-scaling-stroke"`, and keep hover tooltips isolated in imperative `MapHoverTooltip` (`0` canvas re-renders on `mousemove`/city hover, clamped to container bounds).
-   - Adaptive LOD: 50m topology below 6x zoom; 10m high-res swapped at $\ge 6x$ zoom (paused during auto-playback so camera transitions never stutter).
+   - Pan/drag updates mutate `<g ref={cameraGroupRef}>`'s `transform` attribute directly in the DOM. Never route continuous pan coordinates through React state (`0` React renders per drag frame). Mid-gesture zoom state commits are throttled to $\ge 30\%$ scale steps (plus exact scale on `end`).
+   - Keep SVG rendering split into memoized layer sub-components (`src/sites/gardenleave/components/map/`: `GeographyLayer`, `TransitLinesLayer`, `CitiesLayer`, `TransitArrowsLayer`, `CityLabelsLayer`) with `vectorEffect="non-scaling-stroke"` and `pointer-events-none` on all geography layers (background clicks fall through in O(1) to `<rect data-bg="true">`), and keep hover tooltips isolated in imperative `MapHoverTooltip` (`0` canvas re-renders on `mousemove`/city hover, clamped to container bounds).
+   - Self-Hosted Static Topologies (Zero Runtime Global `10m` Swap): Load self-hosted `countries-50m-jp10m.topo.json` (`50m` world + `10m` Japan) and US/Canada/China `admin1-50m.topo.json` once from Cloudflare Pages — avoiding the `600ms` global `10m` LOD freeze and keeping pan/zoom locked at `60+ fps` across `1×–250×`.
    - Dynamic arrowhead math: arrowheads are centered in the visible gap between pin edges (`sourceTrimRadius` / `destTrimRadius`), clamped to a minimum scale (`0.72 * invScale`), and rendered in a dedicated top layer above pin halos.
 
 4. **Visual Aesthetics & Decluttered UI (Minimalist Vector)**:

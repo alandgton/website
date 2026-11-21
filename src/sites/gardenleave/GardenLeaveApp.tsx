@@ -175,8 +175,7 @@ export const App: React.FC = () => {
     flyToRegion,
   } = useMapCamera(MAP_RENDER_CONFIG);
 
-  // Map Topology Hook (uses lightweight 50m below 6x zoom and upgrades to 10m high-res when zoomed >= 6x,
-  // pausing 10m swaps while auto-playing timeline so high-zoom landings do not rebuild country paths mid-playback)
+  // Map Topology Hook (self-hosted 50m world + 10m Japan for Shimanami Kaido, plus US/CA/CN Admin-1)
   const {
     countriesGeoJson,
     admin1GeoJson,
@@ -186,8 +185,7 @@ export const App: React.FC = () => {
   } = useMapTopology(
     MAP_RENDER_CONFIG.countriesTopoJsonUrl,
     MAP_RENDER_CONFIG.admin1GeoJsonUrl,
-    granularity === 'subregion',
-    zoomK >= 6 && !isPlayingTimeline
+    granularity === 'subregion'
   );
 
   // Automatically resolve city coordinates from the itinerary's source & dest city names
@@ -619,7 +617,7 @@ export const App: React.FC = () => {
             <Loader2 className="h-4 w-4 animate-spin text-sky-400" />
             <span>
               {isLoadingCountries
-                ? 'Decoding 50m World Vector Topology…'
+                ? 'Decoding World Vector Topology…'
                 : 'Auto-geocoding new itinerary cities…'}
             </span>
           </div>

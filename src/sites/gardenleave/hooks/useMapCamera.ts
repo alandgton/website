@@ -145,11 +145,12 @@ export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
         }
 
         // 3. During manual user gestures, only trigger a React state re-render when zoomK
-        //    changes by >= 14% (throttled via requestAnimationFrame). Pure panning triggers
-        //    zero React re-renders during the drag.
+        //    changes by >= 30% (throttled via requestAnimationFrame) so continuous wheel/pinch
+        //    zooming stays smooth; exact scale always commits on .on('end'). Pure panning
+        //    triggers zero React re-renders during the drag.
         const prevK = lastCommittedZoomKRef.current;
         const relDiff = Math.abs(nextTransform.k - prevK) / (prevK || 1);
-        if (relDiff >= 0.14 && rafIdRef.current === null) {
+        if (relDiff >= 0.3 && rafIdRef.current === null) {
           rafIdRef.current = window.requestAnimationFrame(() => {
             rafIdRef.current = null;
             lastCommittedZoomKRef.current = nextTransform.k;

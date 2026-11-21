@@ -231,11 +231,12 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('loads self-hosted Admin-1 TopoJSON without flashing whole-country highlights while pending', async ({
+  test('loads self-hosted countries + US/CA/CN Admin-1 TopoJSONs without external fetches or country flash', async ({
     page,
   }) => {
     const errors = trackRuntimeErrors(page);
-    const githubRequests: string[] = [];
+    const externalTopologyRequests: string[] = [];
+    let sawLocalCountriesRequest = false;
     let sawLocalAdmin1Request = false;
     let releaseAdmin1!: () => void;
     const admin1Gate = new Promise<void>((resolve) => {
@@ -243,8 +244,12 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
     });
 
     page.on('request', (req) => {
-      if (req.url().includes('raw.githubusercontent.com')) {
-        githubRequests.push(req.url());
+      const url = req.url();
+      if (url.includes('raw.githubusercontent.com') || url.includes('cdn.jsdelivr.net')) {
+        externalTopologyRequests.push(url);
+      }
+      if (url.includes('/gardenleave/countries-50m-jp10m.topo.json')) {
+        sawLocalCountriesRequest = true;
       }
     });
 
@@ -256,21 +261,29 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
 
     await page.goto('/gardenleave/');
 
-    // Wait for base 50m country polygons to mount while Admin-1 is still held
+    // Wait for base country polygons to mount while Admin-1 is still held
     await expect(page.locator('.countries-layer path').first()).toBeVisible();
+    expect(sawLocalCountriesRequest).toBe(true);
     expect(sawLocalAdmin1Request).toBe(true);
 
     // No whole-country highlight flash while Admin-1 is still loading in Subregion mode
     await expect(page.locator('.countries-layer path[fill="#183052"]')).toHaveCount(0);
     await expect(page.locator('.admin1-layer')).toHaveCount(0);
 
-    // Release Admin-1 TopoJSON and verify subregion + non-subdivided country highlights appear together
+    // Release Admin-1 TopoJSON and verify US/CA/CN (95 features) + non-subdivided countries highlight together
     releaseAdmin1();
 
+    await expect(page.locator('.admin1-layer path')).toHaveCount(95);
     await expect(page.locator('.admin1-layer path[fill="#183052"]').first()).toBeVisible();
     await expect(page.locator('.countries-layer path[fill="#183052"]').first()).toBeVisible();
 
-    expect(githubRequests).toEqual([]);
+    // Selecting a city opens its photo postcard, and clicking empty map background still clears selection
+    await page.locator('.cities-layer g').first().click({ force: true });
+    await expect(page.locator('aside[aria-label^="Photos from"]')).toBeVisible();
+    await page.mouse.click(40, 400);
+    await expect(page.locator('aside[aria-label^="Photos from"]')).toHaveCount(0);
+
+    expect(externalTopologyRequests).toEqual([]);
     expect(errors).toEqual([]);
   });
 });

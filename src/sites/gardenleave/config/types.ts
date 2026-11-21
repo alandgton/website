@@ -95,9 +95,9 @@ export interface MapRenderConfig {
   bidirectionalParallelOffset: number;
   /** Fraction of map width above which a transit line splits across the Pacific seam */
   antimeridianThresholdRatio: number;
-  /** Remote TopoJSON URL for countries / landmass */
+  /** TopoJSON URL for countries / landmass (self-hosted 50m world + 10m Japan for Shimanami Kaido) */
   countriesTopoJsonUrl: string;
-  /** TopoJSON or GeoJSON URL for Admin-1 state/province boundary polygons */
+  /** TopoJSON or GeoJSON URL for Admin-1 state/province boundary polygons (US, Canada, China) */
   admin1GeoJsonUrl: string;
 }
 

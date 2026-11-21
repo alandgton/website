@@ -10,6 +10,6 @@ export const MAP_CONFIG: MapRenderConfig = {
   zoomInvariantExponent: 0.82,
   bidirectionalParallelOffset: 2.6,
   antimeridianThresholdRatio: 0.5,
-  countriesTopoJsonUrl: 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-10m.json',
+  countriesTopoJsonUrl: '/gardenleave/countries-50m-jp10m.topo.json',
   admin1GeoJsonUrl: '/gardenleave/admin1-50m.topo.json',
 };
