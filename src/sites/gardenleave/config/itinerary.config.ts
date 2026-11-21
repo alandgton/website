@@ -100,7 +100,7 @@ export const ITINERARY_STOPS: ItineraryStopInput[] = [
   { startDate: '2027-01-16', endDate: '2027-01-20', city: 'Vail', transport: 'Flight' },
   { startDate: '2027-01-20', endDate: '2027-01-24', city: 'Whistler', transport: 'Flight' },
   { startDate: '2027-01-24', endDate: '2027-01-24', city: 'Vancouver', transport: 'Drive' },
-  { startDate: '2027-01-24', endDate: '2027-01-26', city: 'Sapporo', transport: 'Flight', booked: true },
+  { startDate: '2027-01-24', endDate: '2027-01-26', city: 'Sapporo', transport: 'Flight' },
   { startDate: '2027-01-26', endDate: '2027-01-30', city: 'Rusutsu', transport: 'Drive' },
 ];
 
