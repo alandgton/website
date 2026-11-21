@@ -5,12 +5,10 @@ import 'd3-transition';
 import { zoom, zoomIdentity, ZoomBehavior, ZoomTransform } from 'd3-zoom';
 import { MapRenderConfig, RegionCameraConfig } from '../config/types';
 
-interface FlyToBoundsOptions {
+interface ComputeBoundsFitOptions {
   paddingRatio?: number;
   maxZoom?: number;
   minZoom?: number;
-  durationMs?: number;
-  regionId?: string | null;
 }
 
 export interface UseMapCameraReturn {
@@ -25,7 +23,7 @@ export interface UseMapCameraReturn {
   activeRegionId: string | null;
   computeBoundsFit: (
     coordsList: [number, number][],
-    options?: Pick<FlyToBoundsOptions, 'paddingRatio' | 'maxZoom' | 'minZoom'>
+    options?: ComputeBoundsFitOptions
   ) => { center: [number, number]; zoom: number } | null;
   flyToCoordinates: (
     coords: [number, number],
@@ -36,8 +34,7 @@ export interface UseMapCameraReturn {
   ) => void;
   flyToRegion: (
     region: RegionCameraConfig,
-    durationMs?: number,
-    resolvedCoordsList?: [number, number][]
+    durationMs?: number
   ) => void;
 }
 
@@ -65,7 +62,7 @@ export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Create the D3 Natural Earth 1 projection specified in prompt.md Section 1:
+  // Create the D3 Natural Earth 1 projection configured in MAP_CONFIG:
   // d3.geoNaturalEarth1().scale(225).translate([width / 2, height / 1.85]).rotate([-11, 0])
   const projection = useMemo(() => {
     return geoNaturalEarth1()
@@ -197,7 +194,7 @@ export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
   const computeBoundsFit = useCallback(
     (
       coordsList: [number, number][],
-      options?: Pick<FlyToBoundsOptions, 'paddingRatio' | 'maxZoom' | 'minZoom'>
+      options?: ComputeBoundsFitOptions
     ): { center: [number, number]; zoom: number } | null => {
       if (!coordsList || coordsList.length === 0) return null;
 
@@ -307,37 +304,11 @@ export function useMapCamera(mapConfig: MapRenderConfig): UseMapCameraReturn {
     [computeWorldDefaultTransform, mapConfig.height, mapConfig.scaleExtent, mapConfig.width, projection]
   );
 
-  const flyToBounds = useCallback(
-    (coordsList: [number, number][], options?: FlyToBoundsOptions) => {
-      const fit = computeBoundsFit(coordsList, options);
-      if (!fit) return;
-      flyToCoordinates(
-        fit.center,
-        fit.zoom,
-        options?.durationMs ?? 850,
-        options?.regionId ?? null
-      );
-    },
-    [computeBoundsFit, flyToCoordinates]
-  );
-
   const flyToRegion = useCallback(
-    (
-      region: RegionCameraConfig,
-      durationMs: number = 850,
-      resolvedCoordsList?: [number, number][]
-    ) => {
-      if (resolvedCoordsList && resolvedCoordsList.length >= 2) {
-        flyToBounds(resolvedCoordsList, {
-          durationMs,
-          regionId: region.id,
-          minZoom: region.zoom * 0.75,
-        });
-        return;
-      }
+    (region: RegionCameraConfig, durationMs: number = 850) => {
       flyToCoordinates(region.center, region.zoom, durationMs, region.id);
     },
-    [flyToBounds, flyToCoordinates]
+    [flyToCoordinates]
   );
 
   const zoomK = scaleZoomK;

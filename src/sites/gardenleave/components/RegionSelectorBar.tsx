@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
-  ArrowLeft,
   Calendar,
   Check,
   ChevronDown,
@@ -9,6 +8,11 @@ import {
   Layers,
   Palmtree,
 } from 'lucide-react';
+import {
+  FLOATING_ISLAND_BASE_CLASS,
+  HeaderDivider,
+  MainBackLink,
+} from '../../shared/FloatingHeader';
 import { MapGranularity, RegionCameraConfig } from '../config/types';
 
 interface RegionSelectorBarProps {
@@ -137,20 +141,15 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
       className="pointer-events-none absolute top-0 left-0 right-0 z-20 flex justify-center p-3 sm:p-4"
     >
       {/* Centered Floating Island */}
-      <div className="relative z-20 pointer-events-auto w-full max-w-[366px] sm:w-auto sm:max-w-none flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 rounded-2xl border border-slate-800/90 bg-slate-900/85 px-3.5 py-1.5 shadow-2xl backdrop-blur-md text-xs">
+      <div
+        className={`relative z-20 ${FLOATING_ISLAND_BASE_CLASS} w-full max-w-[366px] sm:w-auto sm:max-w-none flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 px-3.5 py-1.5`}
+      >
         {/* Navigation & Identity (Mobile Row 1 3-col Grid / Desktop Left) */}
         <div className="w-full grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 sm:flex sm:w-auto sm:justify-start min-w-0">
           {/* Main Return Link */}
-          <a
-            href="/"
-            title="Main"
-            className="justify-self-start shrink-0 flex items-center gap-1.5 text-slate-300 hover:text-sky-300 font-semibold transition"
-          >
-            <ArrowLeft className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
-            <span>Main</span>
-          </a>
+          <MainBackLink className="justify-self-start" />
 
-          <span className="hidden sm:inline-block h-3.5 w-px bg-slate-800 shrink-0" aria-hidden="true" />
+          <HeaderDivider />
 
           {/* Title Badge */}
           <div
@@ -166,7 +165,7 @@ export const RegionSelectorBar: React.FC<RegionSelectorBarProps> = ({
         </div>
 
         {/* Vertical divider on desktop, subtle horizontal hairline on mobile */}
-        <span className="hidden sm:inline-block h-3.5 w-px bg-slate-800" aria-hidden="true" />
+        <HeaderDivider />
         <div className="sm:hidden w-full h-px bg-slate-800/60" aria-hidden="true" />
 
         {/* Map Controls & Itinerary (Mobile Row 2 / Desktop Right) */}

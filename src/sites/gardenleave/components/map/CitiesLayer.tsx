@@ -1,5 +1,6 @@
 import React from 'react';
 import type { CityViewMeta, ProjectedCityNode } from './types';
+import { getCityNodeOpacity, getCityPinRadius } from './utils';
 
 interface CitiesLayerProps {
   projectedCities: Record<string, ProjectedCityNode>;
@@ -46,23 +47,21 @@ export const CitiesLayer: React.FC<CitiesLayerProps> = React.memo(({
         );
         const isHomeCity = meta?.isHomeCity ?? false;
 
-        const baseRadius = (meta?.baseRadiusUnscaled ?? 2.8) * invScale;
-        const radius =
-          isSelected || isTimelineActiveDest
-            ? baseRadius * 1.35
-            : isTimelineActiveSource || isConnectedToSelectedCity
-              ? baseRadius * 1.15
-              : baseRadius;
+        const radius = getCityPinRadius(meta?.baseRadiusUnscaled ?? 2.8, invScale, {
+          isSelected,
+          isTimelineActiveDest,
+          isTimelineActiveSource,
+          isConnectedToSelectedCity,
+        });
 
-        const pinOpacity =
-          isTimelineEnabled && !isVisitedInTimeline
-            ? 0.22
-            : selectedCityId &&
-                !isSelected &&
-                !isConnectedToSelectedCity &&
-                !isTimelineActiveDest
-              ? 0.45
-              : 1;
+        const pinOpacity = getCityNodeOpacity({
+          isTimelineEnabled,
+          isVisitedInTimeline,
+          selectedCityId,
+          isSelected,
+          isConnectedToSelectedCity,
+          isTimelineActiveDest,
+        });
 
         return (
           <g

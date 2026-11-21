@@ -26,6 +26,7 @@ import { GeographyLayer } from './map/GeographyLayer';
 import { MapHoverTooltip } from './map/MapHoverTooltip';
 import { TransitArrowsLayer } from './map/TransitArrowsLayer';
 import { TransitLinesLayer } from './map/TransitLinesLayer';
+import { getCityPinRadius, hasJapanFeature } from './map/utils';
 import type {
   CityViewMeta,
   ComputedLineEntry,
@@ -301,13 +302,12 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
         selectedCityId !== null && meta?.neighbors.has(selectedCityId)
       );
 
-      const baseRadius = (meta?.baseRadiusUnscaled ?? 2.8) * invScale;
-      const radius =
-        isSelected || isTimelineActiveDest
-          ? baseRadius * 1.35
-          : isTimelineActiveSource || isConnectedToSelectedCity
-            ? baseRadius * 1.15
-            : baseRadius;
+      const radius = getCityPinRadius(meta?.baseRadiusUnscaled ?? 2.8, invScale, {
+        isSelected,
+        isTimelineActiveDest,
+        isTimelineActiveSource,
+        isConnectedToSelectedCity,
+      });
 
       let priority = totalNights * 100 + connectionCount * 15;
       if (isSelected) priority += 100000;
@@ -389,19 +389,15 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
     visitedCitiesInTimeline,
   ]);
 
-  const isJapanVisited = useMemo(() => {
-    return (
-      visitedCountryFeatureIds.has('392') ||
-      Array.from(visitedCountryFeatureIds).some((id) => id.toLowerCase().includes('japan'))
-    );
-  }, [visitedCountryFeatureIds]);
+  const isJapanVisited = useMemo(
+    () => hasJapanFeature(visitedCountryFeatureIds),
+    [visitedCountryFeatureIds]
+  );
 
-  const isJapanActive = useMemo(() => {
-    return (
-      activeCountryFeatureIds.has('392') ||
-      Array.from(activeCountryFeatureIds).some((id) => id.toLowerCase().includes('japan'))
-    );
-  }, [activeCountryFeatureIds]);
+  const isJapanActive = useMemo(
+    () => hasJapanFeature(activeCountryFeatureIds),
+    [activeCountryFeatureIds]
+  );
 
   const handleBackgroundClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
@@ -435,13 +431,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
     [onHoverCity, showCityTooltip]
   );
 
-  const handleMoveCity = useCallback(
-    (cityId: string, clientX: number, clientY: number) => {
-      showCityTooltip(cityId, clientX, clientY);
-    },
-    [showCityTooltip]
-  );
-
   const handleLeaveCity = useCallback(() => {
     onHoverCity?.(null);
     tooltipRef.current?.hide();
@@ -465,13 +454,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   const handleEnterLeg = useCallback(
     (leg: ItineraryLegConfig, clientX: number, clientY: number) => {
       setHoveredLegId(leg.id);
-      showLegTooltip(leg, clientX, clientY);
-    },
-    [showLegTooltip]
-  );
-
-  const handleMoveLeg = useCallback(
-    (leg: ItineraryLegConfig, clientX: number, clientY: number) => {
       showLegTooltip(leg, clientX, clientY);
     },
     [showLegTooltip]
@@ -556,7 +538,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
             invScale={invScale}
             onSelectLeg={onSelectLeg}
             onEnterLeg={handleEnterLeg}
-            onMoveLeg={handleMoveLeg}
+            onMoveLeg={showLegTooltip}
             onLeaveLeg={handleLeaveLeg}
           />
 
@@ -571,7 +553,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
             invScale={invScale}
             onSelectCity={onSelectCity}
             onEnterCity={handleEnterCity}
-            onMoveCity={handleMoveCity}
+            onMoveCity={showCityTooltip}
             onLeaveCity={handleLeaveCity}
           />
 

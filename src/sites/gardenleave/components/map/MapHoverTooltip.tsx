@@ -1,6 +1,7 @@
 import React, { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { Camera } from 'lucide-react';
 import { getPhotosForCity } from '../../config/photos.config';
+import { formatNights } from '../../utils/itineraryStats';
 import type {
   CityComputedStats,
   CityConfig,
@@ -62,16 +63,23 @@ const MapHoverTooltipInner = forwardRef<MapHoverTooltipHandle, MapHoverTooltipPr
 
     if (!hoverInfo) return null;
 
+    const hoveredCityStats =
+      hoverInfo.type === 'city' && hoverInfo.cityId ? cityStats[hoverInfo.cityId] : undefined;
+    const hoveredCityPhotoCount = hoveredCityStats
+      ? getPhotosForCity(hoverInfo.cityId, cityPhotos).length
+      : 0;
+    const hoveredLeg = hoverInfo.type === 'leg' ? hoverInfo.leg : undefined;
+
     return (
       <div
         ref={tooltipRef}
         className="pointer-events-none absolute z-30 w-max max-w-[min(20rem,calc(100%-24px))] rounded-lg border border-slate-700/80 bg-slate-900/95 px-3 py-2 text-xs text-slate-100 shadow-xl backdrop-blur-md"
       >
-        {hoverInfo.type === 'city' && hoverInfo.cityId && cityStats[hoverInfo.cityId] && (
+        {hoveredCityStats && (
           <div>
             <div className="font-semibold text-white flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5">
-                <span>{cityStats[hoverInfo.cityId].city.fullName}</span>
+                <span>{hoveredCityStats.city.fullName}</span>
                 {hoverInfo.cityId === homeCityId && (
                   <span className="rounded bg-amber-500/25 border border-amber-400/40 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
                     Home Base
@@ -79,53 +87,48 @@ const MapHoverTooltipInner = forwardRef<MapHoverTooltipHandle, MapHoverTooltipPr
                 )}
               </span>
               <span className="flex items-center gap-1">
-                {getPhotosForCity(hoverInfo.cityId, cityPhotos).length > 0 && (
+                {hoveredCityPhotoCount > 0 && (
                   <span className="inline-flex items-center gap-1 rounded bg-sky-500/20 border border-sky-400/30 px-1.5 py-0.5 font-mono text-[10px] text-sky-300">
                     <Camera className="h-2.5 w-2.5" />
-                    <span>{getPhotosForCity(hoverInfo.cityId, cityPhotos).length}</span>
+                    <span>{hoveredCityPhotoCount}</span>
                   </span>
                 )}
                 <span className="rounded bg-sky-500/20 px-1.5 py-0.5 font-mono text-[10px] text-sky-300">
-                  {cityStats[hoverInfo.cityId].totalNights === 0
-                    ? '0 nights (intraday)'
-                    : `${cityStats[hoverInfo.cityId].totalNights} nights`}
+                  {formatNights(hoveredCityStats.totalNights)}
                 </span>
               </span>
             </div>
             <div className="mt-1 text-[11px] text-slate-400 flex items-center gap-3">
-              <span>{cityStats[hoverInfo.cityId].arrivals.length} arrival(s)</span>
+              <span>{hoveredCityStats.arrivals.length} arrival(s)</span>
               <span>·</span>
-              <span>{cityStats[hoverInfo.cityId].departures.length} departure(s)</span>
+              <span>{hoveredCityStats.departures.length} departure(s)</span>
             </div>
           </div>
         )}
 
-        {hoverInfo.type === 'leg' && hoverInfo.leg && (
+        {hoveredLeg && (
           <div>
             <div className="flex items-center justify-between gap-2">
               <span className="font-mono text-[10px] text-slate-400">
-                Leg #{hoverInfo.leg.id}
+                Leg #{hoveredLeg.id}
               </span>
               <span
                 className="rounded px-1.5 py-0.5 text-[10px] font-medium"
                 style={{
-                  backgroundColor: `${transitModes[hoverInfo.leg.transport].color}22`,
-                  color: transitModes[hoverInfo.leg.transport].color,
+                  backgroundColor: `${transitModes[hoveredLeg.transport].color}22`,
+                  color: transitModes[hoveredLeg.transport].color,
                 }}
               >
-                {hoverInfo.leg.transport}
+                {hoveredLeg.transport}
               </span>
             </div>
             <div className="mt-1 font-semibold text-white">
-              {cities[hoverInfo.leg.source]?.name ?? hoverInfo.leg.source} →{' '}
-              {cities[hoverInfo.leg.dest]?.name ?? hoverInfo.leg.dest}
+              {cities[hoveredLeg.source]?.name ?? hoveredLeg.source} →{' '}
+              {cities[hoveredLeg.dest]?.name ?? hoveredLeg.dest}
             </div>
             <div className="mt-0.5 text-[11px] text-slate-300">
-              {hoverInfo.leg.startDate} → {hoverInfo.leg.endDate} (
-              {hoverInfo.leg.nights === 0
-                ? '0 nights · intraday stop'
-                : `${hoverInfo.leg.nights} ${hoverInfo.leg.nights === 1 ? 'night' : 'nights'}`}
-              )
+              {hoveredLeg.startDate} → {hoveredLeg.endDate} (
+              {formatNights(hoveredLeg.nights, '0 nights · intraday stop')})
             </div>
           </div>
         )}

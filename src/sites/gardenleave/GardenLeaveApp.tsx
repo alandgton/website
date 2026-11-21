@@ -13,7 +13,7 @@ import { useMapCamera } from './hooks/useMapCamera';
 import { useMapTopology } from './hooks/useMapTopology';
 import { usePhotoPreloader } from './hooks/usePhotoPreloader';
 import { useResolvedCities } from './hooks/useResolvedCities';
-import { computeAllCityStats, computeLegsByMode } from './utils/itineraryStats';
+import { computeAllCityStats, computeLegsByMode, formatNights } from './utils/itineraryStats';
 import { CityPhotoPostcard } from './components/CityPhotoPostcard';
 import { ItineraryModal } from './components/ItineraryModal';
 import { RegionSelectorBar } from './components/RegionSelectorBar';
@@ -111,9 +111,17 @@ function getContextualZoomForLeg(
   return idealZoom;
 }
 
-export const App: React.FC = () => {
-  const activeConfig = DEFAULT_TRAVEL_MAP_CONFIG;
+const {
+  title: MAP_TITLE,
+  subtitle: MAP_SUBTITLE,
+  regions: BASE_REGIONS,
+  itinerary: ITINERARY_LEGS,
+  transitModes: TRANSIT_MODES,
+  mapConfig: MAP_RENDER_CONFIG,
+  cityPhotos: CITY_PHOTOS,
+} = DEFAULT_TRAVEL_MAP_CONFIG;
 
+export const App: React.FC = () => {
   // Layer visibility & granularity controls
   const [granularity, setGranularity] = useState<MapGranularity>('subregion');
   const [showGraticule, setShowGraticule] = useState<boolean>(true);
@@ -145,8 +153,8 @@ export const App: React.FC = () => {
 
   // Lookahead & hover-intent photo preloader (0 bytes on initial load)
   const { preloadCity } = usePhotoPreloader(
-    activeConfig.cityPhotos,
-    activeConfig.itinerary,
+    CITY_PHOTOS,
+    ITINERARY_LEGS,
     isTimelineEnabled,
     currentTimelineIndex,
     selectedCityId
@@ -165,7 +173,7 @@ export const App: React.FC = () => {
     computeBoundsFit,
     flyToCoordinates,
     flyToRegion,
-  } = useMapCamera(activeConfig.mapConfig);
+  } = useMapCamera(MAP_RENDER_CONFIG);
 
   // Map Topology Hook (uses lightweight 50m below 6x zoom and upgrades to 10m high-res when zoomed >= 6x,
   // pausing 10m swaps while auto-playing timeline so high-zoom landings do not rebuild country paths mid-playback)
@@ -176,8 +184,8 @@ export const App: React.FC = () => {
     isLoadingAdmin1,
     error: topologyError,
   } = useMapTopology(
-    activeConfig.mapConfig.countriesTopoJsonUrl,
-    activeConfig.mapConfig.admin1GeoJsonUrl,
+    MAP_RENDER_CONFIG.countriesTopoJsonUrl,
+    MAP_RENDER_CONFIG.admin1GeoJsonUrl,
     granularity === 'subregion',
     zoomK >= 6 && !isPlayingTimeline
   );
@@ -187,12 +195,12 @@ export const App: React.FC = () => {
     cities: resolvedCities,
     isGeocoding,
     unresolvedCities,
-  } = useResolvedCities(activeConfig.itinerary);
+  } = useResolvedCities(ITINERARY_LEGS);
 
   // Compute responsive region presets (e.g. dynamic viewport fit for Shimanami Kaido island stops)
   const effectiveRegions = useMemo(() => {
     const map: Record<string, RegionCameraConfig> = {};
-    for (const [id, region] of Object.entries(activeConfig.regions)) {
+    for (const [id, region] of Object.entries(BASE_REGIONS)) {
       if (region.fitCities && region.fitCities.length >= 2) {
         const coordsList = region.fitCities
           .map((cid) => resolvedCities[cid]?.coordinates)
@@ -212,7 +220,7 @@ export const App: React.FC = () => {
       map[id] = region;
     }
     return map;
-  }, [activeConfig.regions, computeBoundsFit, resolvedCities]);
+  }, [computeBoundsFit, resolvedCities]);
 
   // Steady high-zoom level shared across the Shimanami Kaido stretch
   const shimanamiClusterZoom =
@@ -220,14 +228,11 @@ export const App: React.FC = () => {
 
   // Derived Statistics
   const cityStats = useMemo(
-    () => computeAllCityStats(resolvedCities, activeConfig.itinerary),
-    [resolvedCities, activeConfig.itinerary]
+    () => computeAllCityStats(resolvedCities, ITINERARY_LEGS),
+    [resolvedCities]
   );
 
-  const legsByMode = useMemo(
-    () => computeLegsByMode(activeConfig.itinerary),
-    [activeConfig.itinerary]
-  );
+  const legsByMode = useMemo(() => computeLegsByMode(ITINERARY_LEGS), []);
 
   // Track active camera zoom and playback speed in refs so Follow Camera calculations read
   // latest values without re-triggering the timeline follow effect when zoom settles or speed changes.
@@ -256,7 +261,7 @@ export const App: React.FC = () => {
     const svgRect = svgEl.getBoundingClientRect();
     if (svgRect.width <= 0 || svgRect.height <= 0) return null;
 
-    const { width: mapW, height: mapH } = activeConfig.mapConfig;
+    const { width: mapW, height: mapH } = MAP_RENDER_CONFIG;
     const svgScale = Math.min(svgRect.width / mapW, svgRect.height / mapH);
     if (svgScale <= 0) return null;
 
@@ -303,12 +308,12 @@ export const App: React.FC = () => {
       availSvgW: (availRight - availLeft) / svgScale,
       availSvgH: (availBottom - availTop) / svgScale,
     };
-  }, [activeConfig.mapConfig, svgRef]);
+  }, [svgRef]);
 
   // Follow camera effect when timeline index advances (always enabled)
   const followLegDestination = useCallback(
     (legIndex: number) => {
-      const leg = activeConfig.itinerary[legIndex];
+      const leg = ITINERARY_LEGS[legIndex];
       if (!leg) return;
       const destCity = resolvedCities[leg.dest];
       const sourceCity = resolvedCities[leg.source];
@@ -316,7 +321,7 @@ export const App: React.FC = () => {
 
       // Detect whether the upcoming leg enters a micro-cluster (e.g. Kyoto -> Onomichi before Onomichi -> Setoda)
       // so the camera steps into an intermediate approach zoom on arrival before zooming to cluster scale.
-      const nextLeg = activeConfig.itinerary[legIndex + 1];
+      const nextLeg = ITINERARY_LEGS[legIndex + 1];
       const nextSourceCoords = nextLeg ? resolvedCities[nextLeg.source]?.coordinates : undefined;
       const nextDestCoords = nextLeg ? resolvedCities[nextLeg.dest]?.coordinates : undefined;
       const isCurrMicro = isMicroClusterLeg(
@@ -352,7 +357,7 @@ export const App: React.FC = () => {
           const spanX = Math.abs(pDest[0] - pSource[0]);
           const spanY = Math.abs(pDest[1] - pSource[1]);
           const maxFitZoom = Math.max(
-            activeConfig.mapConfig.scaleExtent[0],
+            MAP_RENDER_CONFIG.scaleExtent[0],
             Math.min(
               (metrics.availSvgW * 0.72) / Math.max(spanX, 1),
               (metrics.availSvgH * 0.68) / Math.max(spanY, 1)
@@ -381,8 +386,6 @@ export const App: React.FC = () => {
     },
     [
       resolvedCities,
-      activeConfig.itinerary,
-      activeConfig.mapConfig.scaleExtent,
       flyToCoordinates,
       getPlaybackViewportMetrics,
       projection,
@@ -422,20 +425,17 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (!isTimelineEnabled || !isPlayingTimeline || isPostcardHovered) return;
 
-    const timer = window.setInterval(() => {
-      setCurrentTimelineIndex((prev) => {
-        const next = prev + 1;
-        if (next >= activeConfig.itinerary.length) {
-          setIsPlayingTimeline(false);
-          return prev;
-        }
-        return next;
-      });
+    const timer = window.setTimeout(() => {
+      if (currentTimelineIndex + 1 >= ITINERARY_LEGS.length) {
+        setIsPlayingTimeline(false);
+      } else {
+        setCurrentTimelineIndex(currentTimelineIndex + 1);
+      }
     }, playbackSpeedMs);
 
-    return () => window.clearInterval(timer);
+    return () => window.clearTimeout(timer);
   }, [
-    activeConfig.itinerary.length,
+    currentTimelineIndex,
     isPlayingTimeline,
     isPostcardHovered,
     isTimelineEnabled,
@@ -444,7 +444,7 @@ export const App: React.FC = () => {
 
   // Derive effective selected leg ID so advancing currentTimelineIndex does not require a second cascading state update
   const effectiveSelectedLegId = isTimelineEnabled
-    ? (activeConfig.itinerary[currentTimelineIndex]?.id ?? selectedLegId)
+    ? (ITINERARY_LEGS[currentTimelineIndex]?.id ?? selectedLegId)
     : selectedLegId;
 
   // Trigger camera follow whenever currentTimelineIndex changes while timeline is enabled
@@ -462,12 +462,9 @@ export const App: React.FC = () => {
   // Handlers
   const handleSelectRegion = useCallback(
     (region: RegionCameraConfig) => {
-      const fitCoords = region.fitCities
-        ?.map((cid) => resolvedCities[cid]?.coordinates)
-        .filter((c): c is [number, number] => Boolean(c));
-      flyToRegion(region, 850, fitCoords);
+      flyToRegion(region, 850);
     },
-    [flyToRegion, resolvedCities]
+    [flyToRegion]
   );
 
   const handleToggleMode = useCallback((mode: TransitMode) => {
@@ -497,23 +494,15 @@ export const App: React.FC = () => {
     setSelectedLegId(null);
   }, []);
 
-  const handleToggleTimelineEnabled = useCallback(
-    (enabled: boolean) => {
-      setIsTimelineEnabled(enabled);
-      setActivePhotoIndex(0);
-      if (!enabled) {
-        setIsPlayingTimeline(false);
-        setIsPostcardHovered(false);
-        setSelectedLegId(null);
-      } else {
-        const leg = activeConfig.itinerary[currentTimelineIndex];
-        if (leg) {
-          setSelectedLegId(leg.id);
-        }
-      }
-    },
-    [activeConfig.itinerary, currentTimelineIndex]
-  );
+  const handleToggleTimelineEnabled = useCallback((enabled: boolean) => {
+    setIsTimelineEnabled(enabled);
+    setActivePhotoIndex(0);
+    if (!enabled) {
+      setIsPlayingTimeline(false);
+      setIsPostcardHovered(false);
+      setSelectedLegId(null);
+    }
+  }, []);
 
   const handlePlaybackLayoutHeightChange = useCallback(() => {
     if (!isTimelineEnabled) return;
@@ -522,14 +511,14 @@ export const App: React.FC = () => {
 
   // Determine active city and photo gallery for the floating postcard HUD
   const activeTimelineLeg = isTimelineEnabled
-    ? activeConfig.itinerary[currentTimelineIndex]
+    ? ITINERARY_LEGS[currentTimelineIndex]
     : null;
   const postcardCityId = isTimelineEnabled
     ? (activeTimelineLeg?.dest ?? null)
     : selectedCityId;
   const postcardPhotos = useMemo(
-    () => getPhotosForCity(postcardCityId, activeConfig.cityPhotos),
-    [activeConfig.cityPhotos, postcardCityId]
+    () => getPhotosForCity(postcardCityId, CITY_PHOTOS),
+    [postcardCityId]
   );
   const shouldMountPostcard =
     Boolean(postcardCityId) &&
@@ -545,9 +534,7 @@ export const App: React.FC = () => {
   const postcardSubtitle = activeTimelineLeg
     ? `${activeTimelineLeg.startDate} → ${activeTimelineLeg.endDate}`
     : postcardCityId && cityStats[postcardCityId]
-      ? `${cityStats[postcardCityId].totalNights} ${
-          cityStats[postcardCityId].totalNights === 1 ? 'night' : 'nights'
-        } stayed`
+      ? `${formatNights(cityStats[postcardCityId].totalNights, '0 nights')} stayed`
       : undefined;
 
   return (
@@ -555,8 +542,8 @@ export const App: React.FC = () => {
       {/* Top HUD: Title, Region Dropdown, Granularity, Itinerary & Grid Toggle (Centered Island) */}
       <RegionSelectorBar
         containerRef={headerRef}
-        title={activeConfig.title}
-        subtitle={activeConfig.subtitle}
+        title={MAP_TITLE}
+        subtitle={MAP_SUBTITLE}
         regions={effectiveRegions}
         activeRegionId={activeRegionId}
         granularity={granularity}
@@ -579,12 +566,12 @@ export const App: React.FC = () => {
           zoomK={zoomK}
           invScale={invScale}
           labelScaleBoost={labelScaleBoost}
-          mapConfig={activeConfig.mapConfig}
+          mapConfig={MAP_RENDER_CONFIG}
           cities={resolvedCities}
           cityStats={cityStats}
-          cityPhotos={activeConfig.cityPhotos}
-          itinerary={activeConfig.itinerary}
-          transitModes={activeConfig.transitModes}
+          cityPhotos={CITY_PHOTOS}
+          itinerary={ITINERARY_LEGS}
+          transitModes={TRANSIT_MODES}
           visibleModes={visibleModes}
           countriesGeoJson={countriesGeoJson}
           admin1GeoJson={admin1GeoJson}
@@ -620,7 +607,7 @@ export const App: React.FC = () => {
         {/* Read-Only Centered Itinerary Modal (Calendar & Monthly List) */}
         <ItineraryModal
           isOpen={isItineraryModalOpen}
-          itinerary={activeConfig.itinerary}
+          itinerary={ITINERARY_LEGS}
           cities={resolvedCities}
           onClose={() => setIsItineraryModalOpen(false)}
         />
@@ -637,15 +624,18 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {unresolvedCities.length > 0 && !isGeocoding && (
-          <div className="pointer-events-auto absolute top-28 left-4 z-20 rounded-xl border border-amber-500/40 bg-amber-950/90 px-3.5 py-2 text-xs text-amber-200 shadow-lg">
-            Could not auto-geocode: {unresolvedCities.join(', ')}
-          </div>
-        )}
-
-        {topologyError && (
-          <div className="pointer-events-auto absolute top-28 left-4 z-20 rounded-xl border border-rose-500/40 bg-rose-950/90 px-3.5 py-2 text-xs text-rose-200 shadow-lg">
-            {topologyError}
+        {((unresolvedCities.length > 0 && !isGeocoding) || topologyError) && (
+          <div className="pointer-events-auto absolute top-28 left-4 z-20 flex flex-col gap-2">
+            {unresolvedCities.length > 0 && !isGeocoding && (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-950/90 px-3.5 py-2 text-xs text-amber-200 shadow-lg">
+                Could not auto-geocode: {unresolvedCities.join(', ')}
+              </div>
+            )}
+            {topologyError && (
+              <div className="rounded-xl border border-rose-500/40 bg-rose-950/90 px-3.5 py-2 text-xs text-rose-200 shadow-lg">
+                {topologyError}
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -658,7 +648,7 @@ export const App: React.FC = () => {
         <div className="flex flex-wrap items-center justify-center gap-2 pointer-events-auto">
           {!isTimelineEnabled && (
             <TransitLegendBar
-              transitModes={activeConfig.transitModes}
+              transitModes={TRANSIT_MODES}
               visibleModes={visibleModes}
               legsByMode={legsByMode}
               onToggleMode={handleToggleMode}
@@ -669,9 +659,9 @@ export const App: React.FC = () => {
             isEnabled={isTimelineEnabled}
             isPlaying={isPlayingTimeline}
             currentIndex={currentTimelineIndex}
-            itinerary={activeConfig.itinerary}
+            itinerary={ITINERARY_LEGS}
             cities={resolvedCities}
-            transitModes={activeConfig.transitModes}
+            transitModes={TRANSIT_MODES}
             visibleModes={visibleModes}
             legsByMode={legsByMode}
             onToggleMode={handleToggleMode}
@@ -682,7 +672,7 @@ export const App: React.FC = () => {
             onLayoutHeightChange={handlePlaybackLayoutHeightChange}
             onToggleEnabled={handleToggleTimelineEnabled}
             onTogglePlay={() => {
-              if (!isPlayingTimeline && currentTimelineIndex >= activeConfig.itinerary.length - 1) {
+              if (!isPlayingTimeline && currentTimelineIndex >= ITINERARY_LEGS.length - 1) {
                 setCurrentTimelineIndex(0);
               }
               setIsPlayingTimeline((p) => !p);
@@ -693,7 +683,7 @@ export const App: React.FC = () => {
             }}
             onNext={() => {
               setIsPlayingTimeline(false);
-              setCurrentTimelineIndex((i) => Math.min(activeConfig.itinerary.length - 1, i + 1));
+              setCurrentTimelineIndex((i) => Math.min(ITINERARY_LEGS.length - 1, i + 1));
             }}
             onScrub={(idx) => {
               setIsPlayingTimeline(false);

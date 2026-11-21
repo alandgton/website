@@ -25,7 +25,7 @@ export function LandingPage() {
       <NeuralMeshBackground isAnimated={isAnimated} />
 
       {/* Top Bar / Animation Controls */}
-      <header className="relative z-10 flex justify-end p-4 sm:p-6">
+      <header className="relative z-20 flex justify-end p-4 sm:p-6">
         <button
           type="button"
           onClick={() => setIsAnimated(!isAnimated)}

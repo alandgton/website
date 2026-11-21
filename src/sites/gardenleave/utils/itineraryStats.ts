@@ -15,16 +15,24 @@ export function computeAllCityStats(
   const statsMap: Record<string, CityComputedStats> = {};
 
   for (const [cityId, city] of Object.entries(cities)) {
-    const arrivals = itinerary.filter((leg) => leg.dest === cityId);
-    const departures = itinerary.filter((leg) => leg.source === cityId);
-    const totalNights = arrivals.reduce((sum, leg) => sum + (leg.nights || 0), 0);
-
     statsMap[cityId] = {
       city,
-      totalNights,
-      arrivals,
-      departures,
+      totalNights: 0,
+      arrivals: [],
+      departures: [],
     };
+  }
+
+  for (const leg of itinerary) {
+    const destStats = statsMap[leg.dest];
+    if (destStats) {
+      destStats.arrivals.push(leg);
+      destStats.totalNights += leg.nights || 0;
+    }
+    const sourceStats = statsMap[leg.source];
+    if (sourceStats) {
+      sourceStats.departures.push(leg);
+    }
   }
 
   return statsMap;
@@ -48,4 +56,15 @@ export function computeLegsByMode(
   }
 
   return legsByMode;
+}
+
+/**
+ * Formats a night count with proper singular/plural wording and customizable intraday label.
+ */
+export function formatNights(
+  nights: number,
+  intradayLabel: string = '0 nights (intraday)'
+): string {
+  if (nights === 0) return intradayLabel;
+  return `${nights} ${nights === 1 ? 'night' : 'nights'}`;
 }

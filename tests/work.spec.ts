@@ -1,19 +1,5 @@
-import { expect, Page, test } from '@playwright/test';
-
-function trackRuntimeErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') {
-      const url = msg.location()?.url ?? '';
-      if (url.endsWith('/favicon.ico')) return;
-      errors.push(`console.error: ${msg.text()}${url ? ` [${url}]` : ''}`);
-    }
-  });
-  page.on('pageerror', (err) => {
-    errors.push(`pageerror: ${err.message}`);
-  });
-  return errors;
-}
+import { expect, test } from '@playwright/test';
+import { trackRuntimeErrors } from './helpers';
 
 test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });

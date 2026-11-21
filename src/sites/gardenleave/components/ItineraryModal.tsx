@@ -336,6 +336,8 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
     });
   }, [itinerary]);
 
+  const initialMonthIndex = useMemo(() => getInitialMonthIndex(months), [months]);
+
   const currentLegId = useMemo<number | null>(() => {
     const activeMatch = legsWithSpan.find(
       (item) => todayIso >= item.barStart && todayIso <= item.barEnd
@@ -347,16 +349,29 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
     );
     if (rangeMatch) return rangeMatch.id;
 
-    const initialMonth = months[getInitialMonthIndex(months)];
+    const initialMonth = months[initialMonthIndex];
     if (initialMonth) {
       const monthLeg = itinerary.find((leg) => leg.startDate.startsWith(initialMonth.ym));
       if (monthLeg) return monthLeg.id;
     }
 
     return itinerary[0]?.id ?? null;
-  }, [itinerary, legsWithSpan, months, todayIso]);
+  }, [initialMonthIndex, itinerary, legsWithSpan, months, todayIso]);
 
   const continuousWeeks = useMemo(() => buildContinuousWeeks(months), [months]);
+
+  const barsByWeekStart = useMemo(() => {
+    const map = new Map<string, typeof legsWithSpan>();
+    for (const week of continuousWeeks) {
+      map.set(
+        week.wStart,
+        legsWithSpan.filter(
+          (item) => item.barEnd >= week.wStart && item.barStart <= week.wEnd
+        )
+      );
+    }
+    return map;
+  }, [continuousWeeks, legsWithSpan]);
 
   const hasTodayInTrip = useMemo(
     () => continuousWeeks.some((week) => week.days.some((day) => day.iso === todayIso)),
@@ -365,15 +380,16 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
 
   const fallbackTargetWeekStart = useMemo(() => {
     if (hasTodayInTrip) return null;
-    const fallbackYm = months[getInitialMonthIndex(months)]?.ym ?? null;
+    const fallbackYm = months[initialMonthIndex]?.ym ?? null;
     if (!fallbackYm) return null;
     const matching = continuousWeeks.filter((w) => w.ownerYm === fallbackYm);
     if (matching.length === 0) return null;
     return matching[Math.floor(matching.length / 2)].wStart;
-  }, [continuousWeeks, hasTodayInTrip, months]);
+  }, [continuousWeeks, hasTodayInTrip, initialMonthIndex, months]);
 
-  const defaultCalendarMonth = months[getInitialMonthIndex(months)]?.name ?? '';
+  const defaultCalendarMonth = months[initialMonthIndex]?.name ?? '';
   const [activeCalendarMonth, setActiveCalendarMonth] = useState<string>(defaultCalendarMonth);
+  const scrollSpyRafRef = useRef<number | null>(null);
 
   const updateCalendarScrollSpy = useCallback(() => {
     const container = calendarContainerRef.current;
@@ -402,6 +418,23 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
         break;
       }
     }
+  }, []);
+
+  const handleCalendarScroll = useCallback(() => {
+    if (scrollSpyRafRef.current !== null) return;
+    scrollSpyRafRef.current = window.requestAnimationFrame(() => {
+      scrollSpyRafRef.current = null;
+      updateCalendarScrollSpy();
+    });
+  }, [updateCalendarScrollSpy]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollSpyRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollSpyRafRef.current);
+        scrollSpyRafRef.current = null;
+      }
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -503,7 +536,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
             <div
               ref={calendarContainerRef}
               data-testid="itinerary-calendar-scroll"
-              onScroll={updateCalendarScrollSpy}
+              onScroll={handleCalendarScroll}
               className="overflow-y-auto flex-1"
             >
               <div className="flex min-h-full">
@@ -514,9 +547,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                     const isTargetWeek = hasTodayInTrip
                       ? todayCol >= 0
                       : week.wStart === fallbackTargetWeekStart;
-                    const weekBars = legsWithSpan.filter(
-                      (item) => item.barEnd >= week.wStart && item.barStart <= week.wEnd
-                    );
+                    const weekBars = barsByWeekStart.get(week.wStart) ?? [];
                     const hasSplit = week.transitionCol > 0;
 
                     return (

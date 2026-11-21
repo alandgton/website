@@ -74,7 +74,7 @@ export const TransitLinesLayer: React.FC<TransitLinesLayerProps> = React.memo(({
         return (
           <g
             key={leg.id}
-            className="cursor-pointer group"
+            className="cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
               onSelectLeg(leg);

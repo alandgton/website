@@ -23,6 +23,7 @@ import {
   PostcardStackImage,
 } from './CityPhotoCarousel';
 import { TransitModeButtons } from './TransitLegendBar';
+import { formatNights } from '../utils/itineraryStats';
 
 interface JourneyPlaybackProps {
   isEnabled: boolean;
@@ -214,9 +215,10 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                   </button>
 
                   {/* Caption & Multi-Photo Progress */}
-                  <div
+                  <button
+                    type="button"
                     onClick={() => setIsMobilePhotoExpanded(true)}
-                    className="min-w-0 flex-1 cursor-pointer"
+                    className="min-w-0 flex-1 text-left cursor-pointer"
                   >
                     <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white">
                       <Camera className="h-3 w-3 shrink-0 text-sky-400" />
@@ -242,7 +244,7 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                         ))}
                       </div>
                     )}
-                  </div>
+                  </button>
 
                   {/* Prev / Next & Expand Controls */}
                   <div className="flex items-center gap-1 shrink-0">
@@ -318,9 +320,7 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                 {currentLeg.startDate} → {currentLeg.endDate}
               </span>
               <span className="rounded bg-slate-800 px-2 py-0.5 text-[11px] text-amber-300">
-                {currentLeg.nights === 0
-                  ? '0 nights (intraday)'
-                  : `${currentLeg.nights} ${currentLeg.nights === 1 ? 'night' : 'nights'}`}
+                {formatNights(currentLeg.nights)}
               </span>
             </div>
           </div>

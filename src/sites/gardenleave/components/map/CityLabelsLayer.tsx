@@ -1,6 +1,7 @@
 import React from 'react';
 import type { LabelPlacement } from '../../utils/labelLayout';
 import type { CityViewMeta, ProjectedCityNode } from './types';
+import { getCityNodeOpacity } from './utils';
 
 interface CityLabelsLayerProps {
   projectedCities: Record<string, ProjectedCityNode>;
@@ -44,15 +45,14 @@ export const CityLabelsLayer: React.FC<CityLabelsLayerProps> = React.memo(({
         const labelPlacement = smartLabelPlacements[city.id];
         if (!labelPlacement?.visible) return null;
 
-        const labelOpacity =
-          isTimelineEnabled && !isVisitedInTimeline
-            ? 0.22
-            : selectedCityId &&
-                !isSelected &&
-                !isConnectedToSelectedCity &&
-                !isTimelineActiveDest
-              ? 0.45
-              : 1;
+        const labelOpacity = getCityNodeOpacity({
+          isTimelineEnabled,
+          isVisitedInTimeline,
+          selectedCityId,
+          isSelected,
+          isConnectedToSelectedCity,
+          isTimelineActiveDest,
+        });
 
         return (
           <g

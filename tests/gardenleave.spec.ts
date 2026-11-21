@@ -1,18 +1,33 @@
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { ITINERARY } from '../src/sites/gardenleave/config/itinerary.config';
+import { trackRuntimeErrors } from './helpers';
 
-function trackRuntimeErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') {
-      const url = msg.location()?.url ?? '';
-      if (url.endsWith('/favicon.ico')) return;
-      errors.push(`console.error: ${msg.text()}${url ? ` [${url}]` : ''}`);
-    }
-  });
-  page.on('pageerror', (err) => {
-    errors.push(`pageerror: ${err.message}`);
-  });
-  return errors;
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
+
+function deriveTripMonths() {
+  const seen = new Set<string>();
+  const months: Array<{ ym: string; month: number; name: string }> = [];
+  for (const leg of ITINERARY) {
+    const ym = leg.startDate.slice(0, 7);
+    if (seen.has(ym)) continue;
+    seen.add(ym);
+    const month = Number(ym.slice(5, 7)) - 1;
+    months.push({ ym, month, name: MONTH_NAMES[month] });
+  }
+  return months;
 }
 
 test.describe('Garden Leave Travel Map — Mobile (390x844, touch)', () => {
@@ -172,15 +187,8 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
     await expect(calendarTab).toHaveAttribute('aria-selected', 'true');
     await expect(listTab).toHaveAttribute('aria-selected', 'false');
 
-    // Compute expected default month name matching getInitialMonthIndex logic
-    const tripMonths = [
-      { ym: '2026-08', month: 7, name: 'August' },
-      { ym: '2026-09', month: 8, name: 'September' },
-      { ym: '2026-10', month: 9, name: 'October' },
-      { ym: '2026-11', month: 10, name: 'November' },
-      { ym: '2026-12', month: 11, name: 'December' },
-      { ym: '2027-01', month: 0, name: 'January' },
-    ];
+    // Compute expected default month name dynamically from ITINERARY (matching getInitialMonthIndex)
+    const tripMonths = deriveTripMonths();
     const now = new Date();
     const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const expectedMonth =
