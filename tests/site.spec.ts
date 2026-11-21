@@ -92,6 +92,39 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth
     );
     expect(hasOverflow).toBe(false);
+
+    // Horizontal scroll is strictly restricted inside the wheel and across the landing viewport
+    const scrollLock = await page.evaluate(() => {
+      const wheel = document.querySelector<HTMLElement>('.wheel-scroll');
+      if (!wheel) return null;
+      wheel.scrollTo({ left: 100 });
+      const htmlStyle = getComputedStyle(document.documentElement);
+      const bodyStyle = getComputedStyle(document.body);
+      const wheelStyle = getComputedStyle(wheel);
+      return {
+        wheelHasHorizontalOverflow: wheel.scrollWidth > wheel.clientWidth,
+        wheelScrollLeft: wheel.scrollLeft,
+        wheelOverflowX: wheelStyle.overflowX,
+        wheelTouchAction: wheelStyle.touchAction,
+        wheelOverscrollX: wheelStyle.overscrollBehaviorX,
+        htmlOverflowX: htmlStyle.overflowX,
+        htmlOverscrollX: htmlStyle.overscrollBehaviorX,
+        bodyOverflowX: bodyStyle.overflowX,
+        bodyOverscrollX: bodyStyle.overscrollBehaviorX,
+      };
+    });
+    expect(scrollLock).toEqual({
+      wheelHasHorizontalOverflow: false,
+      wheelScrollLeft: 0,
+      wheelOverflowX: 'hidden',
+      wheelTouchAction: 'pan-y',
+      wheelOverscrollX: 'none',
+      htmlOverflowX: 'clip',
+      htmlOverscrollX: 'none',
+      bodyOverflowX: 'clip',
+      bodyOverscrollX: 'none',
+    });
+
     expect(errors).toEqual([]);
   });
 
@@ -114,11 +147,49 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
     expect(errors).toEqual([]);
   });
 
-  test('gardenleave page aligns document title with Alan Ton @ Garden Leave', async ({ page }) => {
+  test('gardenleave page aligns document title and keeps horizontal map panning enabled', async ({
+    page,
+  }) => {
     const errors = trackRuntimeErrors(page);
     await page.goto('/gardenleave/');
 
     await expect(page).toHaveTitle('Alan Ton @ Garden Leave');
+
+    const svg = page.locator('main svg.touch-none');
+    await expect(svg).toBeVisible();
+    await expect(svg).toHaveCSS('touch-action', 'none');
+
+    const getTranslateX = () =>
+      page.evaluate(() => {
+        const g = document.querySelector('main svg.touch-none g[transform]');
+        const t = g?.getAttribute('transform') ?? '';
+        const match = t.match(/translate\(([-0-9.]+)[,\s]+([-0-9.]+)\)/);
+        return match ? Number(match[1]) : 0;
+      });
+
+    const box = await svg.boundingBox();
+    expect(box).not.toBeNull();
+    const cx = box!.x + box!.width / 2;
+    const cy = box!.y + box!.height / 2;
+
+    const initialX = await getTranslateX();
+
+    // Drag right to pan map horizontally
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 160, cy, { steps: 8 });
+    await page.mouse.up();
+    const pannedRightX = await getTranslateX();
+    expect(pannedRightX).toBeGreaterThan(initialX + 40);
+
+    // Drag left to pan map back horizontally
+    await page.mouse.move(cx + 160, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx - 80, cy, { steps: 8 });
+    await page.mouse.up();
+    const pannedLeftX = await getTranslateX();
+    expect(pannedLeftX).toBeLessThan(pannedRightX - 40);
+
     expect(errors).toEqual([]);
   });
 });

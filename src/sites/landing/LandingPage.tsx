@@ -101,7 +101,7 @@ export function LandingPage() {
   const hasBelow = activeIndex < SITE_LINKS.length - 1;
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100 selection:bg-sky-500/30 selection:text-sky-200 overflow-x-hidden">
+    <div className="relative min-h-screen bg-slate-950 text-slate-100 selection:bg-sky-500/30 selection:text-sky-200 overflow-x-clip overscroll-x-none touch-pan-y">
       {/* Background Neural Mesh */}
       <NeuralMeshBackground isAnimated={isAnimated} />
 
@@ -131,7 +131,7 @@ export function LandingPage() {
       {/* Main Content Area */}
       <main className="relative z-10 flex min-h-[calc(100vh-80px)] flex-col items-center justify-center px-6 -mt-8 text-center">
         {/* Soft radial vignette behind text and wheel */}
-        <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center">
+        <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center overflow-hidden">
           <div className="h-[460px] w-[520px] rounded-full bg-slate-950/60 blur-3xl" />
         </div>
 
@@ -199,11 +199,11 @@ export function LandingPage() {
                   }}
                 />
 
-                {/* Scrollable snap drum */}
+                {/* Scrollable snap drum (strictly vertical axis) */}
                 <div
                   ref={wheelRef}
                   onScroll={handleWheelScroll}
-                  className="wheel-scroll relative z-10 h-full overflow-y-auto"
+                  className="wheel-scroll relative z-10 h-full overflow-y-auto overflow-x-hidden overscroll-contain overscroll-x-none touch-pan-y"
                 >
                   {/* Top & bottom spacers allow first/last items to center cleanly */}
                   <div className="h-[44px]" aria-hidden="true" />
@@ -216,15 +216,21 @@ export function LandingPage() {
                         href={item.href}
                         onClick={(e) => handleOptionClick(e, idx)}
                         aria-current={isSelected ? 'true' : undefined}
-                        className={`snap-center snap-always flex h-[44px] w-full items-center justify-center gap-2 px-5 text-[15px] transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/70 rounded-xl ${
+                        className={`snap-center snap-always flex h-[44px] w-full items-center justify-center px-5 text-[15px] transition-colors duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/70 rounded-xl ${
                           isSelected
-                            ? 'font-semibold scale-[1.03] opacity-100'
-                            : 'font-medium text-slate-300 opacity-75 scale-[0.95] hover:opacity-100 hover:text-slate-100'
+                            ? 'font-semibold opacity-100'
+                            : 'font-medium text-slate-300 opacity-75 hover:opacity-100 hover:text-slate-100'
                         }`}
                         style={isSelected ? { color: item.accentColor } : undefined}
                       >
-                        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span>{item.label}</span>
+                        <span
+                          className={`inline-flex items-center justify-center gap-2 transition-transform duration-150 ${
+                            isSelected ? 'scale-[1.03]' : 'scale-[0.95]'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          <span>{item.label}</span>
+                        </span>
                       </a>
                     );
                   })}

@@ -68,6 +68,10 @@ body {
 }
 
 .wheel-scroll {
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  overscroll-behavior-x: none;
   scroll-snap-type: y mandatory;
   scrollbar-width: none;
   -ms-overflow-style: none;
