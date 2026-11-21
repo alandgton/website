@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { EXPERIENCE_ENTRIES } from './config/experience.config';
 import { ExperienceCard } from './components/ExperienceCard';
 import { WorkHeader } from './components/WorkHeader';
@@ -40,30 +39,12 @@ export const WorkPage: React.FC = () => {
         aria-hidden="true"
       />
 
-      <WorkHeader />
+      <WorkHeader
+        allExpanded={allExpanded}
+        onToggleExpandAll={handleToggleExpandAll}
+      />
 
       <main className="relative z-10 mx-auto w-full max-w-xl px-3.5 pt-4 pb-14 sm:px-6 sm:pt-6">
-        {/* Expand / Collapse Control */}
-        <div className="mb-3 flex justify-end">
-          <button
-            type="button"
-            onClick={handleToggleExpandAll}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800/90 bg-slate-900/75 px-2.5 py-1.5 text-xs font-medium text-slate-300 backdrop-blur-md transition-colors hover:border-sky-500/50 hover:text-sky-300"
-          >
-            {allExpanded ? (
-              <>
-                <ChevronsDownUp className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
-                <span>Collapse all</span>
-              </>
-            ) : (
-              <>
-                <ChevronsUpDown className="h-3.5 w-3.5 text-sky-400" aria-hidden="true" />
-                <span>Expand all</span>
-              </>
-            )}
-          </button>
-        </div>
-
         {/* Vertical Timeline */}
         <ol aria-label="Work experience timeline">
           {EXPERIENCE_ENTRIES.map((entry, idx) => (

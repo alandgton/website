@@ -77,7 +77,7 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('expand/collapse all works on narrow 360px viewport without overflow', async ({
+  test('expand/collapse all lives in unified header bar and works on narrow 360px viewport without overflow or truncation', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 740 });
@@ -85,9 +85,43 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
 
     await page.goto('/work/');
 
-    await page.getByRole('button', { name: 'Expand all' }).tap();
-    await expect(page.getByRole('button', { name: 'Collapse all' })).toBeVisible();
+    const header = page.locator('header');
+    const mainLink = header.getByRole('link', { name: 'Main' });
+    const heading = header.getByRole('heading', { name: 'Alan Ton @ Work' });
+    const expandBtn = header.getByRole('button', { name: 'Expand all' });
+
+    await expect(expandBtn).toBeVisible();
+    await expect(expandBtn).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('main').getByRole('button', { name: /Expand all|Collapse all/ })).toHaveCount(0);
+
+    // Main, title, and Expand all share the same horizontal bar without overlapping
+    const [mainBox, titleBox, btnBox] = await Promise.all([
+      mainLink.boundingBox(),
+      heading.boundingBox(),
+      expandBtn.boundingBox(),
+    ]);
+    expect(mainBox && titleBox && btnBox).toBeTruthy();
+    if (mainBox && titleBox && btnBox) {
+      const mainMidY = mainBox.y + mainBox.height / 2;
+      const titleMidY = titleBox.y + titleBox.height / 2;
+      const btnMidY = btnBox.y + btnBox.height / 2;
+      expect(Math.abs(mainMidY - titleMidY)).toBeLessThan(6);
+      expect(Math.abs(titleMidY - btnMidY)).toBeLessThan(6);
+      expect(mainBox.x + mainBox.width).toBeLessThan(titleBox.x);
+      expect(titleBox.x + titleBox.width).toBeLessThan(btnBox.x);
+    }
+
+    await expandBtn.tap();
+    const collapseBtn = header.getByRole('button', { name: 'Collapse all' });
+    await expect(collapseBtn).toBeVisible();
+    await expect(collapseBtn).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText('Component Engineering & Assurance Office')).toBeVisible();
+
+    // Title text stays untruncated even with the wider "Collapse all" label at 360px
+    const titleTruncated = await heading.locator('span').evaluate(
+      (el) => el.scrollWidth > el.clientWidth + 1
+    );
+    expect(titleTruncated).toBe(false);
 
     // All locations use uniform "City, ST" formatting
     await expect(page.getByText('New York, NY')).toHaveCount(2);
@@ -96,8 +130,9 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
     await expect(page.getByText('Seattle, WA')).toBeVisible();
     await expect(page.getByText('Pasadena, CA')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Collapse all' }).tap();
-    await expect(page.getByRole('button', { name: 'Expand all' })).toBeVisible();
+    await collapseBtn.tap();
+    await expect(header.getByRole('button', { name: 'Expand all' })).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Expand all' })).toHaveAttribute('aria-pressed', 'false');
     await expect(page.getByText('Fixed Income & Macro')).toHaveCount(0);
 
     const hasOverflow = await page.evaluate(
@@ -111,17 +146,32 @@ test.describe('Alan Ton @ Work — Mobile (390x844, touch)', () => {
 test.describe('Alan Ton @ Work — Desktop (1280x800)', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test('renders cleanly with interactive accordions and zero runtime errors', async ({ page }) => {
+  test('renders cleanly with unified header expand toggle, interactive accordions, and zero runtime errors', async ({
+    page,
+  }) => {
     const errors = trackRuntimeErrors(page);
 
     await page.goto('/work/');
 
-    await expect(page.getByRole('heading', { name: 'Alan Ton @ Work' })).toBeVisible();
+    const header = page.locator('header');
+    await expect(header.getByRole('heading', { name: 'Alan Ton @ Work' })).toBeVisible();
+    const expandBtn = header.getByRole('button', { name: 'Expand all' });
+    await expect(expandBtn).toBeVisible();
+    await expect(expandBtn).toHaveAttribute('aria-pressed', 'false');
+
     const metaBtn = page.getByRole('button', { name: /^Sep 2020 – Oct 2023.*Meta/i });
     await expect(metaBtn).toHaveAttribute('aria-expanded', 'false');
     await metaBtn.click();
     await expect(metaBtn).toHaveAttribute('aria-expanded', 'true');
     await expect(page.getByText('Messaging Infrastructure')).toBeVisible();
+
+    await expandBtn.click();
+    await expect(header.getByRole('button', { name: 'Collapse all' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByText('Component Engineering & Assurance Office')).toBeVisible();
+
+    await header.getByRole('button', { name: 'Collapse all' }).click();
+    await expect(header.getByRole('button', { name: 'Expand all' })).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByText('Messaging Infrastructure')).toHaveCount(0);
 
     expect(errors).toEqual([]);
   });
