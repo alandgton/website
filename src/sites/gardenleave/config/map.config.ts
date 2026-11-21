@@ -11,6 +11,5 @@ export const MAP_CONFIG: MapRenderConfig = {
   bidirectionalParallelOffset: 2.6,
   antimeridianThresholdRatio: 0.5,
   countriesTopoJsonUrl: 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-10m.json',
-  admin1GeoJsonUrl:
-    'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_1_states_provinces.geojson',
+  admin1GeoJsonUrl: '/gardenleave/admin1-50m.topo.json',
 };

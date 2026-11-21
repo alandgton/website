@@ -13,6 +13,7 @@ interface GeographyLayerProps {
   visitedAdmin1FeatureIds: Set<string>;
   activeAdmin1FeatureIds: Set<string>;
   isSubregion: boolean;
+  isLoadingAdmin1: boolean;
   isNone: boolean;
   showGraticule: boolean;
   isJapanVisited: boolean;
@@ -31,11 +32,14 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
   visitedAdmin1FeatureIds,
   activeAdmin1FeatureIds,
   isSubregion,
+  isLoadingAdmin1,
   isNone,
   showGraticule,
   isJapanVisited,
   isJapanActive,
 }) => {
+  const suppressCountryHighlight = isNone || (isSubregion && isLoadingAdmin1);
+
   const countriesElement = useMemo(
     () => (
       <g className="countries-layer">
@@ -46,9 +50,13 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
             Boolean(country.normName && subdividedCountryNames.has(country.normName));
 
           const isVisitedCountry =
-            !isNone && !isSubdividedInAdmin1 && visitedCountryFeatureIds.has(country.id);
+            !suppressCountryHighlight &&
+            !isSubdividedInAdmin1 &&
+            visitedCountryFeatureIds.has(country.id);
           const isActiveCountry =
-            !isNone && !isSubdividedInAdmin1 && activeCountryFeatureIds.has(country.id);
+            !suppressCountryHighlight &&
+            !isSubdividedInAdmin1 &&
+            activeCountryFeatureIds.has(country.id);
 
           return (
             <path
@@ -81,9 +89,9 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
       activeCountryFeatureIds,
       admin1Paths.length,
       countryPaths,
-      isNone,
       isSubregion,
       subdividedCountryNames,
+      suppressCountryHighlight,
       visitedCountryFeatureIds,
     ]
   );
@@ -130,8 +138,8 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
     () => (
       <g className="seto-islands-layer">
         {setoIslandPaths.map((island) => {
-          const isActiveIsland = !isNone && isJapanActive;
-          const isVisitedIsland = !isNone && isJapanVisited;
+          const isActiveIsland = !suppressCountryHighlight && isJapanActive;
+          const isVisitedIsland = !suppressCountryHighlight && isJapanVisited;
 
           return (
             <path
@@ -162,7 +170,7 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
         })}
       </g>
     ),
-    [isJapanActive, isJapanVisited, isNone, setoIslandPaths]
+    [isJapanActive, isJapanVisited, setoIslandPaths, suppressCountryHighlight]
   );
 
   return (

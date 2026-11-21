@@ -230,4 +230,47 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  test('loads self-hosted Admin-1 TopoJSON without flashing whole-country highlights while pending', async ({
+    page,
+  }) => {
+    const errors = trackRuntimeErrors(page);
+    const githubRequests: string[] = [];
+    let sawLocalAdmin1Request = false;
+    let releaseAdmin1!: () => void;
+    const admin1Gate = new Promise<void>((resolve) => {
+      releaseAdmin1 = resolve;
+    });
+
+    page.on('request', (req) => {
+      if (req.url().includes('raw.githubusercontent.com')) {
+        githubRequests.push(req.url());
+      }
+    });
+
+    await page.route('**/gardenleave/admin1-50m.topo.json', async (route) => {
+      sawLocalAdmin1Request = true;
+      await admin1Gate;
+      await route.continue();
+    });
+
+    await page.goto('/gardenleave/');
+
+    // Wait for base 50m country polygons to mount while Admin-1 is still held
+    await expect(page.locator('.countries-layer path').first()).toBeVisible();
+    expect(sawLocalAdmin1Request).toBe(true);
+
+    // No whole-country highlight flash while Admin-1 is still loading in Subregion mode
+    await expect(page.locator('.countries-layer path[fill="#183052"]')).toHaveCount(0);
+    await expect(page.locator('.admin1-layer')).toHaveCount(0);
+
+    // Release Admin-1 TopoJSON and verify subregion + non-subdivided country highlights appear together
+    releaseAdmin1();
+
+    await expect(page.locator('.admin1-layer path[fill="#183052"]').first()).toBeVisible();
+    await expect(page.locator('.countries-layer path[fill="#183052"]').first()).toBeVisible();
+
+    expect(githubRequests).toEqual([]);
+    expect(errors).toEqual([]);
+  });
 });

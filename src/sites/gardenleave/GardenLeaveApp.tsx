@@ -575,6 +575,7 @@ export const App: React.FC = () => {
           visibleModes={visibleModes}
           countriesGeoJson={countriesGeoJson}
           admin1GeoJson={admin1GeoJson}
+          isLoadingAdmin1={isLoadingAdmin1}
           granularity={granularity}
           showGraticule={showGraticule}
           selectedCityId={selectedCityId}

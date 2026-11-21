@@ -51,6 +51,7 @@ interface TravelMapCanvasProps {
   visibleModes: Record<TransitMode, boolean>;
   countriesGeoJson: FeatureCollection<Geometry> | null;
   admin1GeoJson: FeatureCollection<Geometry> | null;
+  isLoadingAdmin1?: boolean;
   granularity: MapGranularity;
   showGraticule: boolean;
   selectedCityId: string | null;
@@ -82,6 +83,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   visibleModes,
   countriesGeoJson,
   admin1GeoJson,
+  isLoadingAdmin1 = false,
   granularity,
   showGraticule,
   selectedCityId,
@@ -521,6 +523,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
             visitedAdmin1FeatureIds={visitedAdmin1FeatureIds}
             activeAdmin1FeatureIds={activeAdmin1FeatureIds}
             isSubregion={isSubregion}
+            isLoadingAdmin1={isLoadingAdmin1}
             isNone={isNone}
             showGraticule={showGraticule}
             isJapanVisited={isJapanVisited}

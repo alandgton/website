@@ -97,7 +97,7 @@ export interface MapRenderConfig {
   antimeridianThresholdRatio: number;
   /** Remote TopoJSON URL for countries / landmass */
   countriesTopoJsonUrl: string;
-  /** Remote GeoJSON URL for Admin-1 state/province boundary lines */
+  /** TopoJSON or GeoJSON URL for Admin-1 state/province boundary polygons */
   admin1GeoJsonUrl: string;
 }
 

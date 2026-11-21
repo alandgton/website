@@ -36,7 +36,7 @@ export function useMapTopology(
   const [isLoadingCountries, setIsLoadingCountries] = useState<boolean>(
     !topologyCache.has(fallback50mUrl) && !topologyCache.has(countriesTopoJsonUrl)
   );
-  const [isLoadingAdmin1, setIsLoadingAdmin1] = useState<boolean>(false);
+  const [admin1Failed, setAdmin1Failed] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // 1. Always load lightweight 50m polygons immediately (< 80ms) for smooth 60fps mobile panning below 6x zoom
@@ -117,11 +117,11 @@ export function useMapTopology(
     let cancelled = false;
     if (topologyCache.has(admin1GeoJsonUrl)) {
       setAdmin1GeoJson(topologyCache.get(admin1GeoJsonUrl)!);
-      setIsLoadingAdmin1(false);
+      setAdmin1Failed(false);
       return;
     }
 
-    setIsLoadingAdmin1(true);
+    setAdmin1Failed(false);
     fetch(admin1GeoJsonUrl)
       .then((res) => {
         if (!res.ok) {
@@ -129,22 +129,26 @@ export function useMapTopology(
         }
         return res.json();
       })
-      .then((geojson: FeatureCollection<Geometry>) => {
+      .then((data: TopoJSONTopology | FeatureCollection<Geometry>) => {
         if (cancelled) return;
-        const normalized = normalizeGeoJsonWinding(geojson);
+        const normalized =
+          data && data.type === 'Topology'
+            ? decodeTopoJSON(data, 'admin1')
+            : normalizeGeoJsonWinding(data);
         topologyCache.set(admin1GeoJsonUrl, normalized);
         setAdmin1GeoJson(normalized);
-        setIsLoadingAdmin1(false);
       })
       .catch(() => {
         if (cancelled) return;
-        setIsLoadingAdmin1(false);
+        setAdmin1Failed(true);
       });
 
     return () => {
       cancelled = true;
     };
   }, [admin1GeoJsonUrl, enableAdmin1]);
+
+  const isLoadingAdmin1 = enableAdmin1 && !admin1GeoJson && !admin1Failed;
 
   const countriesGeoJson =
     useHighResCountries && countriesPrimary ? countriesPrimary : (countries50m ?? countriesPrimary);
