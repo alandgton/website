@@ -126,13 +126,6 @@ export const App: React.FC = () => {
   const [granularity, setGranularity] = useState<MapGranularity>('subregion');
   const [showGraticule, setShowGraticule] = useState<boolean>(true);
 
-  const [visibleModes, setVisibleModes] = useState<Record<TransitMode, boolean>>({
-    Flight: true,
-    Train: true,
-    Drive: true,
-    Bike: true,
-  });
-
   // Selection State
   const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
   const [selectedLegId, setSelectedLegId] = useState<number | null>(null);
@@ -465,13 +458,6 @@ export const App: React.FC = () => {
     [flyToRegion]
   );
 
-  const handleToggleMode = useCallback((mode: TransitMode) => {
-    setVisibleModes((prev) => ({
-      ...prev,
-      [mode]: !prev[mode],
-    }));
-  }, []);
-
   const handleSelectCity = useCallback((cityId: string) => {
     if (!cityId) {
       setSelectedCityId(null);
@@ -570,7 +556,6 @@ export const App: React.FC = () => {
           cityPhotos={CITY_PHOTOS}
           itinerary={ITINERARY_LEGS}
           transitModes={TRANSIT_MODES}
-          visibleModes={visibleModes}
           countriesGeoJson={countriesGeoJson}
           admin1GeoJson={admin1GeoJson}
           isLoadingAdmin1={isLoadingAdmin1}
@@ -648,9 +633,7 @@ export const App: React.FC = () => {
           {!isTimelineEnabled && (
             <TransitLegendBar
               transitModes={TRANSIT_MODES}
-              visibleModes={visibleModes}
               legsByMode={legsByMode}
-              onToggleMode={handleToggleMode}
             />
           )}
 
@@ -661,9 +644,7 @@ export const App: React.FC = () => {
             itinerary={ITINERARY_LEGS}
             cities={resolvedCities}
             transitModes={TRANSIT_MODES}
-            visibleModes={visibleModes}
             legsByMode={legsByMode}
-            onToggleMode={handleToggleMode}
             playbackSpeedMs={playbackSpeedMs}
             destPhotos={postcardPhotos}
             activePhotoIndex={activePhotoIndex}

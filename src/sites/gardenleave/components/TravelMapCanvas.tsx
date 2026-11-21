@@ -48,7 +48,6 @@ interface TravelMapCanvasProps {
   cityPhotos?: Record<string, CityPhotoConfig[]>;
   itinerary: ItineraryLegConfig[];
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
-  visibleModes: Record<TransitMode, boolean>;
   countriesGeoJson: FeatureCollection<Geometry> | null;
   admin1GeoJson: FeatureCollection<Geometry> | null;
   isLoadingAdmin1?: boolean;
@@ -80,7 +79,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   cityPhotos,
   itinerary,
   transitModes,
-  visibleModes,
   countriesGeoJson,
   admin1GeoJson,
   isLoadingAdmin1 = false,
@@ -532,7 +530,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
 
           <TransitLinesLayer
             computedLines={computedLines}
-            visibleModes={visibleModes}
             transitModes={transitModes}
             isTimelineEnabled={isTimelineEnabled}
             currentTimelineLegIndex={currentTimelineLegIndex}
@@ -562,7 +559,6 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
 
           <TransitArrowsLayer
             computedLines={computedLines}
-            visibleModes={visibleModes}
             transitModes={transitModes}
             isTimelineEnabled={isTimelineEnabled}
             selectedLegId={selectedLegId}

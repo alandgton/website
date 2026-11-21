@@ -8,7 +8,6 @@ import type { ComputedLineEntry } from './types';
 
 interface TransitLinesLayerProps {
   computedLines: ComputedLineEntry[];
-  visibleModes: Record<TransitMode, boolean>;
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
   isTimelineEnabled: boolean;
   currentTimelineLegIndex: number;
@@ -23,7 +22,6 @@ interface TransitLinesLayerProps {
 
 export const TransitLinesLayer: React.FC<TransitLinesLayerProps> = React.memo(({
   computedLines,
-  visibleModes,
   transitModes,
   isTimelineEnabled,
   currentTimelineLegIndex,
@@ -38,8 +36,6 @@ export const TransitLinesLayer: React.FC<TransitLinesLayerProps> = React.memo(({
   return (
     <g className="transit-lines-layer">
       {computedLines.map(({ leg, index, line }) => {
-        if (!visibleModes[leg.transport]) return null;
-
         const isCurrentTimeline = isTimelineEnabled && index === currentTimelineLegIndex;
         const isFutureTimeline = isTimelineEnabled && index > currentTimelineLegIndex;
 

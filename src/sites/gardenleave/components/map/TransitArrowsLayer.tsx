@@ -5,7 +5,6 @@ import type { ComputedLineEntry } from './types';
 
 interface TransitArrowsLayerProps {
   computedLines: ComputedLineEntry[];
-  visibleModes: Record<TransitMode, boolean>;
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
   isTimelineEnabled: boolean;
   selectedLegId: number | null;
@@ -16,7 +15,6 @@ interface TransitArrowsLayerProps {
 
 export const TransitArrowsLayer: React.FC<TransitArrowsLayerProps> = React.memo(({
   computedLines,
-  visibleModes,
   transitModes,
   isTimelineEnabled,
   selectedLegId,
@@ -29,8 +27,6 @@ export const TransitArrowsLayer: React.FC<TransitArrowsLayerProps> = React.memo(
   return (
     <g className="transit-arrows-layer pointer-events-none">
       {computedLines.map(({ leg, line }) => {
-        if (!visibleModes[leg.transport]) return null;
-
         const modeStyle = transitModes[leg.transport];
         const isSelectedLeg = selectedLegId === leg.id;
         const isConnectedToSelectedCity =
