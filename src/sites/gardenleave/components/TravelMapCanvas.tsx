@@ -7,6 +7,7 @@ import {
   CityConfig,
   CityPhotoConfig,
   ItineraryLegConfig,
+  LegStatus,
   MapGranularity,
   MapRenderConfig,
   TransitMode,
@@ -48,6 +49,9 @@ interface TravelMapCanvasProps {
   cityPhotos?: Record<string, CityPhotoConfig[]>;
   itinerary: ItineraryLegConfig[];
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
+  legStatuses: Record<number, LegStatus>;
+  cityStatuses: Record<string, LegStatus>;
+  currentCityId: string | null;
   countriesGeoJson: FeatureCollection<Geometry> | null;
   admin1GeoJson: FeatureCollection<Geometry> | null;
   isLoadingAdmin1?: boolean;
@@ -79,6 +83,9 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   cityPhotos,
   itinerary,
   transitModes,
+  legStatuses,
+  cityStatuses,
+  currentCityId,
   countriesGeoJson,
   admin1GeoJson,
   isLoadingAdmin1 = false,
@@ -295,6 +302,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
       const connectionCount = meta?.connectionCount ?? 0;
       const isHomeCity = meta?.isHomeCity ?? false;
 
+      const isCurrentCity = !isTimelineEnabled && currentCityId === city.id;
       const isSelected = selectedCityId === city.id;
       const isTimelineActiveDest = activeTimelineDest === city.id;
       const isTimelineActiveSource = activeTimelineSource === city.id;
@@ -313,6 +321,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
       if (isSelected) priority += 100000;
       if (isTimelineActiveDest) priority += 90000;
       if (isTimelineActiveSource) priority += 80000;
+      if (isCurrentCity) priority += 78000;
       if (isHomeCity) priority += 75000;
       if (isConnectedToSelectedCity) priority += 50000;
 
@@ -323,7 +332,12 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
         y,
         radius,
         priority,
-        forceShow: isSelected || isTimelineActiveDest || isTimelineActiveSource || isHomeCity,
+        forceShow:
+          isSelected ||
+          isTimelineActiveDest ||
+          isTimelineActiveSource ||
+          isHomeCity ||
+          isCurrentCity,
       };
     });
 
@@ -332,7 +346,9 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
     activeTimelineDest,
     activeTimelineSource,
     cityViewMeta,
+    currentCityId,
     invScale,
+    isTimelineEnabled,
     labelFontSize,
     projectedCities,
     selectedCityId,
@@ -340,15 +356,20 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   ]);
 
   // Compute highlighted country feature IDs and Admin-1 province/state feature IDs
+  // segmented into Done (`visited*`) vs Booked (`booked*`) so TBD areas remain unvisited land.
   const {
     visitedCountryFeatureIds,
+    bookedCountryFeatureIds,
     activeCountryFeatureIds,
     visitedAdmin1FeatureIds,
+    bookedAdmin1FeatureIds,
     activeAdmin1FeatureIds,
   } = useMemo(() => {
     const visitedCountries = new Set<string>();
+    const bookedCountries = new Set<string>();
     const activeCountries = new Set<string>();
     const visitedAdmin1 = new Set<string>();
+    const bookedAdmin1 = new Set<string>();
     const activeAdmin1 = new Set<string>();
 
     const activeCityIds = visitedCitiesInTimeline
@@ -356,11 +377,21 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
       : Object.keys(cities);
 
     for (const cityId of activeCityIds) {
-      for (const cId of cityToCountryFeatureIds[cityId] ?? []) {
-        visitedCountries.add(cId);
-      }
-      for (const aId of cityToAdmin1Ids[cityId] ?? []) {
-        visitedAdmin1.add(aId);
+      const status = cityStatuses[cityId] ?? 'tbd';
+      if (status === 'done') {
+        for (const cId of cityToCountryFeatureIds[cityId] ?? []) {
+          visitedCountries.add(cId);
+        }
+        for (const aId of cityToAdmin1Ids[cityId] ?? []) {
+          visitedAdmin1.add(aId);
+        }
+      } else if (status === 'booked') {
+        for (const cId of cityToCountryFeatureIds[cityId] ?? []) {
+          bookedCountries.add(cId);
+        }
+        for (const aId of cityToAdmin1Ids[cityId] ?? []) {
+          bookedAdmin1.add(aId);
+        }
       }
     }
 
@@ -376,13 +407,16 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
 
     return {
       visitedCountryFeatureIds: visitedCountries,
+      bookedCountryFeatureIds: bookedCountries,
       activeCountryFeatureIds: activeCountries,
       visitedAdmin1FeatureIds: visitedAdmin1,
+      bookedAdmin1FeatureIds: bookedAdmin1,
       activeAdmin1FeatureIds: activeAdmin1,
     };
   }, [
     activeTimelineDest,
     cities,
+    cityStatuses,
     cityToAdmin1Ids,
     cityToCountryFeatureIds,
     selectedCityId,
@@ -392,6 +426,11 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
   const isJapanVisited = useMemo(
     () => hasJapanFeature(visitedCountryFeatureIds),
     [visitedCountryFeatureIds]
+  );
+
+  const isJapanBooked = useMemo(
+    () => !isJapanVisited && hasJapanFeature(bookedCountryFeatureIds),
+    [bookedCountryFeatureIds, isJapanVisited]
   );
 
   const isJapanActive = useMemo(
@@ -517,20 +556,24 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
             graticulePath={graticulePath}
             subdividedCountryNames={subdividedCountryNames}
             visitedCountryFeatureIds={visitedCountryFeatureIds}
+            bookedCountryFeatureIds={bookedCountryFeatureIds}
             activeCountryFeatureIds={activeCountryFeatureIds}
             visitedAdmin1FeatureIds={visitedAdmin1FeatureIds}
+            bookedAdmin1FeatureIds={bookedAdmin1FeatureIds}
             activeAdmin1FeatureIds={activeAdmin1FeatureIds}
             isSubregion={isSubregion}
             isLoadingAdmin1={isLoadingAdmin1}
             isNone={isNone}
             showGraticule={showGraticule}
             isJapanVisited={isJapanVisited}
+            isJapanBooked={isJapanBooked}
             isJapanActive={isJapanActive}
           />
 
           <TransitLinesLayer
             computedLines={computedLines}
             transitModes={transitModes}
+            legStatuses={legStatuses}
             isTimelineEnabled={isTimelineEnabled}
             currentTimelineLegIndex={currentTimelineLegIndex}
             selectedLegId={selectedLegId}
@@ -545,6 +588,8 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
           <CitiesLayer
             projectedCities={projectedCities}
             cityViewMeta={cityViewMeta}
+            cityStatuses={cityStatuses}
+            currentCityId={currentCityId}
             selectedCityId={selectedCityId}
             activeTimelineSource={activeTimelineSource}
             activeTimelineDest={activeTimelineDest}
@@ -570,6 +615,7 @@ export const TravelMapCanvas: React.FC<TravelMapCanvasProps> = React.memo(({
           <CityLabelsLayer
             projectedCities={projectedCities}
             cityViewMeta={cityViewMeta}
+            cityStatuses={cityStatuses}
             smartLabelPlacements={smartLabelPlacements}
             selectedCityId={selectedCityId}
             activeTimelineDest={activeTimelineDest}

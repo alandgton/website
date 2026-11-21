@@ -1,14 +1,23 @@
 import React from 'react';
 import type {
   ItineraryLegConfig,
+  LegStatus,
   TransitMode,
   TransitModeStyleConfig,
 } from '../../config/types';
 import type { ComputedLineEntry } from './types';
 
+const TBD_MODE_COLORS: Record<TransitMode, string> = {
+  Flight: '#86a6c7',
+  Train: '#59a68b',
+  Drive: '#c49d56',
+  Bike: '#c06d80',
+};
+
 interface TransitLinesLayerProps {
   computedLines: ComputedLineEntry[];
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
+  legStatuses: Record<number, LegStatus>;
   isTimelineEnabled: boolean;
   currentTimelineLegIndex: number;
   selectedLegId: number | null;
@@ -23,6 +32,7 @@ interface TransitLinesLayerProps {
 export const TransitLinesLayer: React.FC<TransitLinesLayerProps> = React.memo(({
   computedLines,
   transitModes,
+  legStatuses,
   isTimelineEnabled,
   currentTimelineLegIndex,
   selectedLegId,
@@ -33,6 +43,8 @@ export const TransitLinesLayer: React.FC<TransitLinesLayerProps> = React.memo(({
   onMoveLeg,
   onLeaveLeg,
 }) => {
+  const hasSelectionFocus = selectedLegId !== null || selectedCityId !== null;
+
   return (
     <g className="transit-lines-layer">
       {computedLines.map(({ leg, index, line }) => {
@@ -44,32 +56,53 @@ export const TransitLinesLayer: React.FC<TransitLinesLayerProps> = React.memo(({
         }
 
         const modeStyle = transitModes[leg.transport];
+        const status: LegStatus = legStatuses[leg.id] ?? 'tbd';
         const isSelectedLeg = selectedLegId === leg.id || isCurrentTimeline;
         const isConnectedToSelectedCity =
           selectedCityId !== null &&
           (leg.source === selectedCityId || leg.dest === selectedCityId);
 
-        // Compute opacity based on selection / timeline state
-        let strokeOpacity = 0.84;
+        const strokeColor =
+          status === 'tbd' && !isSelectedLeg
+            ? TBD_MODE_COLORS[leg.transport]
+            : modeStyle.color;
+
+        const baseStatusOpacity =
+          status === 'done' ? 0.94 : status === 'booked' ? 0.72 : 0.56;
+        const statusWidthFactor =
+          status === 'done' ? 1.05 : status === 'booked' ? 0.88 : 0.84;
+
+        // Compute opacity based on status + selection / timeline state
+        let strokeOpacity = baseStatusOpacity;
         if (isTimelineEnabled) {
-          strokeOpacity = isCurrentTimeline ? 1 : 0.72;
+          strokeOpacity = isCurrentTimeline ? 1 : Math.min(baseStatusOpacity, 0.68);
         } else if (selectedLegId !== null) {
-          strokeOpacity = isSelectedLeg ? 1 : 0.25;
+          strokeOpacity = isSelectedLeg ? 1 : 0.22;
         } else if (selectedCityId !== null) {
-          strokeOpacity = isConnectedToSelectedCity ? 0.96 : 0.22;
+          strokeOpacity = isConnectedToSelectedCity
+            ? Math.min(1, baseStatusOpacity + 0.14)
+            : 0.22;
         }
 
-        const strokeMultiplier = isSelectedLeg
-          ? 1.55
+        const focusMultiplier = isSelectedLeg
+          ? 1.5
           : isConnectedToSelectedCity
-            ? 1.25
+            ? 1.22
             : 1.0;
 
-        const strokeWidth = modeStyle.baseStrokeWidth * strokeMultiplier * invScale;
+        const strokeWidth =
+          modeStyle.baseStrokeWidth * statusWidthFactor * focusMultiplier * invScale;
+        const strokeDasharray =
+          status === 'tbd' ? `${4.4 * invScale} ${4.2 * invScale}` : undefined;
+
+        const showFocusGlow = isSelectedLeg || isConnectedToSelectedCity;
+        const showDoneAmbientGlow =
+          status === 'done' && !isTimelineEnabled && !hasSelectionFocus;
 
         return (
           <g
             key={leg.id}
+            data-leg-status={status}
             className="cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
@@ -87,14 +120,14 @@ export const TransitLinesLayer: React.FC<TransitLinesLayerProps> = React.memo(({
               strokeWidth={10 * invScale}
             />
 
-            {/* Subtle outer glow for active or selected leg */}
-            {(isSelectedLeg || isConnectedToSelectedCity) && (
+            {/* Subtle outer glow for focused legs or idle Done legs */}
+            {(showFocusGlow || showDoneAmbientGlow) && (
               <path
                 d={line.pathData}
                 fill="none"
-                stroke={modeStyle.color}
-                strokeWidth={strokeWidth * 2.4}
-                strokeOpacity={0.22}
+                stroke={strokeColor}
+                strokeWidth={strokeWidth * (showFocusGlow ? 2.4 : 2.15)}
+                strokeOpacity={showFocusGlow ? 0.22 : 0.13}
                 strokeLinecap="round"
               />
             )}
@@ -103,10 +136,11 @@ export const TransitLinesLayer: React.FC<TransitLinesLayerProps> = React.memo(({
             <path
               d={line.pathData}
               fill="none"
-              stroke={modeStyle.color}
+              stroke={strokeColor}
               strokeWidth={strokeWidth}
               strokeOpacity={strokeOpacity}
               strokeLinecap="round"
+              strokeDasharray={strokeDasharray}
             />
           </g>
         );

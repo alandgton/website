@@ -14,6 +14,7 @@ import { useMapTopology } from './hooks/useMapTopology';
 import { usePhotoPreloader } from './hooks/usePhotoPreloader';
 import { useResolvedCities } from './hooks/useResolvedCities';
 import { computeAllCityStats, computeLegsByMode, formatNights } from './utils/itineraryStats';
+import { computeJourneyStatuses } from './utils/legStatus';
 import { CityPhotoPostcard } from './components/CityPhotoPostcard';
 import { ItineraryModal } from './components/ItineraryModal';
 import { RegionSelectorBar } from './components/RegionSelectorBar';
@@ -224,6 +225,11 @@ export const App: React.FC = () => {
   );
 
   const legsByMode = useMemo(() => computeLegsByMode(ITINERARY_LEGS), []);
+
+  const journeyStatuses = useMemo(
+    () => computeJourneyStatuses(ITINERARY_LEGS, ITINERARY_LEGS[0]?.source ?? 'NYC'),
+    []
+  );
 
   // Track active camera zoom and playback speed in refs so Follow Camera calculations read
   // latest values without re-triggering the timeline follow effect when zoom settles or speed changes.
@@ -556,6 +562,9 @@ export const App: React.FC = () => {
           cityPhotos={CITY_PHOTOS}
           itinerary={ITINERARY_LEGS}
           transitModes={TRANSIT_MODES}
+          legStatuses={journeyStatuses.legStatuses}
+          cityStatuses={journeyStatuses.cityStatuses}
+          currentCityId={journeyStatuses.currentCityId}
           countriesGeoJson={countriesGeoJson}
           admin1GeoJson={admin1GeoJson}
           isLoadingAdmin1={isLoadingAdmin1}
@@ -593,6 +602,9 @@ export const App: React.FC = () => {
           isOpen={isItineraryModalOpen}
           itinerary={ITINERARY_LEGS}
           cities={resolvedCities}
+          legStatuses={journeyStatuses.legStatuses}
+          liveCurrentLegId={journeyStatuses.currentLegId}
+          todayIso={journeyStatuses.todayIso}
           onClose={() => setIsItineraryModalOpen(false)}
         />
 
@@ -644,6 +656,7 @@ export const App: React.FC = () => {
             itinerary={ITINERARY_LEGS}
             cities={resolvedCities}
             transitModes={TRANSIT_MODES}
+            legStatuses={journeyStatuses.legStatuses}
             legsByMode={legsByMode}
             playbackSpeedMs={playbackSpeedMs}
             destPhotos={postcardPhotos}

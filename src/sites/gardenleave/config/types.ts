@@ -1,5 +1,7 @@
 export type TransitMode = 'Flight' | 'Train' | 'Drive' | 'Bike';
 
+export type LegStatus = 'done' | 'booked' | 'tbd';
+
 export type MapGranularity = 'subregion' | 'country' | 'none';
 
 export interface TransitModeStyleConfig {
@@ -39,6 +41,7 @@ export interface ItineraryOriginStopInput {
   startDate?: string;
   endDate?: string;
   transport?: TransitMode;
+  booked?: boolean;
 }
 
 export interface ItineraryTransitStopInput {
@@ -46,6 +49,8 @@ export interface ItineraryTransitStopInput {
   endDate: string;
   city: string;
   transport: TransitMode;
+  /** Whether this upcoming leg/stop is confirmed & booked (defaults to false -> TBD) */
+  booked?: boolean;
 }
 
 export type ItineraryStopInput = ItineraryOriginStopInput | ItineraryTransitStopInput;
@@ -62,6 +67,8 @@ export interface ItineraryLegConfig {
   /** Derived from stops[i].city */
   dest: string;
   transport: TransitMode;
+  /** Whether this leg/stop is booked (defaults to false; past/current legs auto-resolve to 'done') */
+  booked: boolean;
 }
 
 export interface RegionCameraConfig {

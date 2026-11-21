@@ -1,11 +1,20 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Calendar, List, X } from 'lucide-react';
-import { CityConfig, ItineraryLegConfig } from '../config/types';
+import { CityConfig, ItineraryLegConfig, LegStatus } from '../config/types';
+import {
+  findCurrentActiveLeg,
+  getLocalTodayIso,
+  LEG_STATUS_META,
+  resolveLegStatus,
+} from '../utils/legStatus';
 
 interface ItineraryModalProps {
   isOpen: boolean;
   itinerary: ItineraryLegConfig[];
   cities: Record<string, CityConfig>;
+  legStatuses?: Record<number, LegStatus>;
+  liveCurrentLegId?: number | null;
+  todayIso?: string;
   onClose: () => void;
 }
 
@@ -251,10 +260,126 @@ function StickyMonthGutter({ label, zClass }: { label: string; zClass: string })
   );
 }
 
+function StatusPinGlyph({
+  status,
+  isLiveNow = false,
+}: {
+  status: LegStatus;
+  isLiveNow?: boolean;
+}) {
+  if (isLiveNow) {
+    return (
+      <span
+        className="inline-block h-2.5 w-2.5 rounded-full bg-sky-400 animate-now-dot-pulse shrink-0"
+        title="Current stop"
+        aria-hidden="true"
+      />
+    );
+  }
+  if (status === 'done') {
+    return (
+      <svg width="10" height="10" viewBox="0 0 10 10" className="shrink-0" aria-hidden="true">
+        <circle cx="5" cy="5" r="3.8" fill="#f8fafc" />
+      </svg>
+    );
+  }
+  if (status === 'booked') {
+    return (
+      <svg width="10" height="10" viewBox="0 0 10 10" className="shrink-0" aria-hidden="true">
+        <circle cx="5" cy="5" r="3.6" fill="#060913" stroke="#f8fafc" strokeWidth="1.6" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" className="shrink-0" aria-hidden="true">
+      <circle
+        cx="5"
+        cy="5"
+        r="3.5"
+        fill="none"
+        stroke="#94a3b8"
+        strokeWidth="1.3"
+        strokeDasharray="2 1.6"
+      />
+    </svg>
+  );
+}
+
+function ItineraryStatusKey({ mode }: { mode: 'calendar' | 'list' }) {
+  if (mode === 'calendar') {
+    return (
+      <>
+        <span className="inline-flex items-center gap-1.5 text-slate-200">
+          <span
+            className="inline-block h-2.5 w-4 rounded-sm bg-sky-900/75 border border-sky-400/50"
+            aria-hidden="true"
+          />
+          <span>{LEG_STATUS_META.done.label}</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-slate-200">
+          <span
+            className="inline-block h-2.5 w-4 rounded-sm bg-slate-950/90 border border-slate-300/70"
+            aria-hidden="true"
+          />
+          <span>{LEG_STATUS_META.booked.label}</span>
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-slate-400">
+          <span
+            className="inline-block h-2.5 w-4 rounded-sm bg-slate-950/30 border border-dashed border-slate-500/80"
+            aria-hidden="true"
+          />
+          <span>{LEG_STATUS_META.tbd.label}</span>
+        </span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <span className="inline-flex items-center gap-1.5 text-slate-200">
+        <StatusPinGlyph status="done" />
+        <span>{LEG_STATUS_META.done.label}</span>
+      </span>
+      <span className="inline-flex items-center gap-1.5 text-slate-200">
+        <StatusPinGlyph status="booked" />
+        <span>{LEG_STATUS_META.booked.label}</span>
+      </span>
+      <span className="inline-flex items-center gap-1.5 text-slate-400">
+        <StatusPinGlyph status="tbd" />
+        <span>{LEG_STATUS_META.tbd.label}</span>
+      </span>
+    </>
+  );
+}
+
+function getCalendarBarClasses(status: LegStatus, isIntraday: boolean, idx: number): string {
+  if (status === 'done') {
+    if (isIntraday) {
+      return 'bg-amber-500/25 border-amber-400/50 text-amber-100';
+    }
+    return idx % 2 === 0
+      ? 'bg-sky-900/65 border-sky-400/50 text-sky-100'
+      : 'bg-slate-800/95 border-sky-500/40 text-sky-100';
+  }
+  if (status === 'booked') {
+    if (isIntraday) {
+      return 'bg-slate-950/90 border-amber-300/65 text-amber-200';
+    }
+    return 'bg-slate-950/90 border-slate-300/65 text-slate-100';
+  }
+  if (isIntraday) {
+    return 'bg-slate-950/25 border-dashed border-amber-400/50 text-amber-300/80';
+  }
+  return 'bg-slate-950/25 border-dashed border-slate-500/75 text-slate-400';
+}
+
 export const ItineraryModal: React.FC<ItineraryModalProps> = ({
   isOpen,
   itinerary,
   cities,
+  legStatuses,
+  liveCurrentLegId,
+  todayIso: todayIsoProp,
   onClose,
 }) => {
   const months = useMemo<TripMonth[]>(() => {
@@ -283,10 +408,24 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
   const listContainerRef = useRef<HTMLDivElement>(null);
   const currentLegRowRef = useRef<HTMLDivElement>(null);
 
-  const now = new Date();
-  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-    now.getDate()
-  ).padStart(2, '0')}`;
+  const todayIso = useMemo(
+    () => todayIsoProp ?? getLocalTodayIso(),
+    [todayIsoProp]
+  );
+
+  const resolvedLiveCurrentLegId = useMemo(
+    () =>
+      liveCurrentLegId !== undefined
+        ? liveCurrentLegId
+        : (findCurrentActiveLeg(itinerary, todayIso)?.id ?? null),
+    [itinerary, liveCurrentLegId, todayIso]
+  );
+
+  const getStatusForLeg = useCallback(
+    (leg: ItineraryLegConfig): LegStatus =>
+      legStatuses?.[leg.id] ?? resolveLegStatus(leg, todayIso),
+    [legStatuses, todayIso]
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -500,9 +639,17 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
             </button>
           </div>
 
+          {/* Static Read-Only Status Key (Desktop inline) */}
+          <div
+            data-testid="itinerary-status-key-desktop"
+            className="hidden sm:flex items-center gap-2.5 text-[11px] select-none cursor-default"
+          >
+            <ItineraryStatusKey mode={activeMode} />
+          </div>
+
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {activeMode === 'list' && (
-              <span className="hidden sm:inline-block rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-300">
+              <span className="hidden md:inline-block rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-slate-300">
                 {itinerary.length} stops
               </span>
             )}
@@ -516,6 +663,14 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
+        </div>
+
+        {/* Static Read-Only Status Key (Mobile slim strip below header, keeping Close pinned top-right) */}
+        <div
+          data-testid="itinerary-status-key-mobile"
+          className="flex sm:hidden items-center justify-center gap-3 px-3 py-1.5 border-b border-slate-800/80 bg-slate-950/50 text-[11px] select-none cursor-default shrink-0"
+        >
+          <ItineraryStatusKey mode={activeMode} />
         </div>
 
         {/* Calendar View (Scrollable Multi-Month Sections with Sticky Left Gutter) */}
@@ -621,7 +776,7 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                                 </span>
                                 {isToday && (
                                   <span
-                                    className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0"
+                                    className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-now-dot-pulse shrink-0"
                                     aria-hidden="true"
                                   />
                                 )}
@@ -647,17 +802,15 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                             const spanCols = Math.max(1, cEnd - cStart + 1);
                             const cityName = cities[leg.dest]?.name ?? leg.dest;
                             const isIntraday = leg.nights === 0;
-                            const barStyle = isIntraday
-                              ? 'bg-amber-500/20 border-amber-400/40 text-amber-200'
-                              : idx % 2 === 0
-                                ? 'bg-slate-800/95 border-sky-500/35 text-sky-200'
-                                : 'bg-sky-950/80 border-sky-500/25 text-slate-200';
+                            const status = getStatusForLeg(leg);
+                            const barStyle = getCalendarBarClasses(status, isIntraday, idx);
 
                             return (
                               <div
                                 key={`${week.wStart}-${leg.id}`}
+                                data-status={status}
                                 style={{ gridColumn: `${cStart + 1} / span ${spanCols}` }}
-                                title={`${cityName}: ${formatDateRange(leg.startDate, leg.endDate)}`}
+                                title={`${cityName} (${LEG_STATUS_META[status].label}): ${formatDateRange(leg.startDate, leg.endDate)}`}
                                 className={`truncate rounded border px-1 sm:px-1.5 py-0.5 text-left text-[11px] sm:text-xs font-medium select-text ${barStyle}`}
                               >
                                 {leg.dest}
@@ -687,10 +840,14 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                     const cityName = city?.name ?? leg.dest;
                     const flag = getCountryFlag(city?.country, leg.dest);
                     const isCurrentLeg = leg.id === currentLegId;
+                    const isLiveNow = leg.id === resolvedLiveCurrentLegId;
+                    const status = getStatusForLeg(leg);
+                    const isTbd = status === 'tbd';
 
                     return (
                       <div
                         key={leg.id}
+                        data-status={status}
                         ref={isCurrentLeg ? currentLegRowRef : undefined}
                         aria-current={isCurrentLeg ? 'date' : undefined}
                         className={`flex items-center justify-between gap-3 px-3.5 py-2 text-xs ${
@@ -700,25 +857,28 @@ export const ItineraryModal: React.FC<ItineraryModalProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
+                          <StatusPinGlyph status={status} isLiveNow={isLiveNow} />
                           <span className="text-sm leading-none shrink-0" aria-hidden="true">
                             {flag}
                           </span>
                           <span
                             className={`font-semibold truncate ${
-                              isCurrentLeg ? 'text-sky-300' : 'text-white'
+                              isCurrentLeg
+                                ? 'text-sky-300'
+                                : isTbd
+                                  ? 'text-slate-400'
+                                  : 'text-white'
                             }`}
                           >
                             {cityName}
                           </span>
-                          {isCurrentLeg && (
-                            <span
-                              className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0"
-                              aria-hidden="true"
-                            />
-                          )}
                         </div>
 
-                        <span className="font-mono text-[11px] sm:text-xs text-slate-300 tabular-nums shrink-0">
+                        <span
+                          className={`font-mono text-[11px] sm:text-xs tabular-nums shrink-0 ${
+                            isTbd ? 'text-slate-500' : 'text-slate-300'
+                          }`}
+                        >
                           {formatDateRange(leg.startDate, leg.endDate)}
                         </span>
                       </div>

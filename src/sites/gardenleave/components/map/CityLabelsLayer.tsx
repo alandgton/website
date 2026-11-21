@@ -1,4 +1,5 @@
 import React from 'react';
+import type { LegStatus } from '../../config/types';
 import type { LabelPlacement } from '../../utils/labelLayout';
 import type { CityViewMeta, ProjectedCityNode } from './types';
 import { getCityNodeOpacity } from './utils';
@@ -6,6 +7,7 @@ import { getCityNodeOpacity } from './utils';
 interface CityLabelsLayerProps {
   projectedCities: Record<string, ProjectedCityNode>;
   cityViewMeta: Record<string, CityViewMeta>;
+  cityStatuses: Record<string, LegStatus>;
   smartLabelPlacements: Record<string, LabelPlacement>;
   selectedCityId: string | null;
   activeTimelineDest: string | undefined;
@@ -19,6 +21,7 @@ interface CityLabelsLayerProps {
 export const CityLabelsLayer: React.FC<CityLabelsLayerProps> = React.memo(({
   projectedCities,
   cityViewMeta,
+  cityStatuses,
   smartLabelPlacements,
   selectedCityId,
   activeTimelineDest,
@@ -32,6 +35,7 @@ export const CityLabelsLayer: React.FC<CityLabelsLayerProps> = React.memo(({
     <g className="city-labels-layer pointer-events-none">
       {Object.values(projectedCities).map(({ city, x, y }) => {
         const meta = cityViewMeta[city.id];
+        const status: LegStatus = cityStatuses[city.id] ?? 'tbd';
         const isSelected = selectedCityId === city.id;
         const isHomeCity = meta?.isHomeCity ?? false;
         const isTimelineActiveDest = activeTimelineDest === city.id;
@@ -71,7 +75,9 @@ export const CityLabelsLayer: React.FC<CityLabelsLayerProps> = React.memo(({
                   ? '#fde68a'
                   : isSelected || isTimelineActiveDest
                     ? '#f8fafc'
-                    : '#cbd5e1'
+                    : status === 'tbd'
+                      ? '#94a3b8'
+                      : '#cbd5e1'
               }
               stroke="#060913"
               strokeWidth={2.4 * invScale * Math.sqrt(labelScaleBoost)}

@@ -14,6 +14,7 @@ import {
   CityConfig,
   CityPhotoConfig,
   ItineraryLegConfig,
+  LegStatus,
   TransitMode,
   TransitModeStyleConfig,
 } from '../config/types';
@@ -24,6 +25,7 @@ import {
 } from './CityPhotoCarousel';
 import { TransitModeLegendItems } from './TransitLegendBar';
 import { formatNights } from '../utils/itineraryStats';
+import { LEG_STATUS_META } from '../utils/legStatus';
 
 interface JourneyPlaybackProps {
   isEnabled: boolean;
@@ -32,6 +34,7 @@ interface JourneyPlaybackProps {
   itinerary: ItineraryLegConfig[];
   cities: Record<string, CityConfig>;
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
+  legStatuses?: Record<number, LegStatus>;
   legsByMode?: Record<TransitMode, number>;
   playbackSpeedMs: number;
   destPhotos?: CityPhotoConfig[];
@@ -53,6 +56,7 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
   itinerary,
   cities,
   transitModes,
+  legStatuses,
   legsByMode,
   playbackSpeedMs,
   destPhotos = [],
@@ -73,6 +77,9 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
   const sourceCity = currentLeg ? cities[currentLeg.source] : undefined;
   const destCity = currentLeg ? cities[currentLeg.dest] : undefined;
   const modeStyle = currentLeg ? transitModes[currentLeg.transport] : undefined;
+  const currentStatusMeta = currentLeg
+    ? LEG_STATUS_META[legStatuses?.[currentLeg.id] ?? (currentLeg.booked ? 'booked' : 'tbd')]
+    : undefined;
 
   const hasPhotos = destPhotos.length > 0;
   const safePhotoIndex = hasPhotos
@@ -285,7 +292,7 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
 
           {/* Active Leg Metadata Banner */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-950/75 border border-slate-800/90 px-3 py-1.5">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {modeStyle && (
                 <span
                   className="rounded-md px-2 py-0.5 text-xs font-semibold"
@@ -296,6 +303,20 @@ export const JourneyPlayback: React.FC<JourneyPlaybackProps> = ({
                   }}
                 >
                   {currentLeg.transport}
+                </span>
+              )}
+
+              {currentStatusMeta && (
+                <span
+                  data-testid="playback-leg-status"
+                  className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold select-none"
+                  style={{
+                    backgroundColor: currentStatusMeta.badgeBg,
+                    color: currentStatusMeta.badgeColor,
+                    border: `1px solid ${currentStatusMeta.badgeBorder}`,
+                  }}
+                >
+                  {currentStatusMeta.label}
                 </span>
               )}
 

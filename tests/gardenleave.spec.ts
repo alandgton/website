@@ -125,6 +125,66 @@ test.describe('Garden Leave Travel Map — Mobile (390x844, touch)', () => {
     await expect(dialog).toHaveCount(0);
     expect(errors).toEqual([]);
   });
+
+  test('renders static Done/Booked/TBD unified bottom legend, mobile Itinerary status key, and playback status pill without toggles', async ({
+    page,
+  }) => {
+    const errors = trackRuntimeErrors(page);
+
+    await page.goto('/gardenleave/');
+
+    // Unified Bottom Legend Card includes static read-only Done / Booked / TBD items (0 toggle buttons)
+    const statusLegend = page.getByTestId('status-legend');
+    await expect(statusLegend).toBeVisible();
+    await expect(statusLegend.getByText('Done', { exact: true })).toBeVisible();
+    await expect(statusLegend.getByText('Booked', { exact: true })).toBeVisible();
+    await expect(statusLegend.getByText('TBD', { exact: true })).toBeVisible();
+    await expect(statusLegend.locator('button')).toHaveCount(0);
+
+    // Unified Bottom Legend Card fits inside 390px viewport with zero horizontal overflow
+    const legendBox = await statusLegend.boundingBox();
+    expect(legendBox).not.toBeNull();
+    expect(legendBox!.x).toBeGreaterThanOrEqual(0);
+    expect(legendBox!.x + legendBox!.width).toBeLessThanOrEqual(390);
+
+    // Clicking Done/Booked/TBD legend text does not filter or hide any transit legs
+    const totalLegsBefore = await page.locator('.transit-lines-layer > g').count();
+    await statusLegend.getByText('Done', { exact: true }).tap();
+    await statusLegend.getByText('TBD', { exact: true }).tap();
+    expect(await page.locator('.transit-lines-layer > g').count()).toBe(totalLegsBefore);
+
+    // Mobile Itinerary modal renders static read-only status strip below header across Calendar & List
+    await page.getByRole('button', { name: 'Itinerary' }).tap();
+    const dialog = page.getByRole('dialog', { name: 'Itinerary' });
+    const mobileKey = dialog.getByTestId('itinerary-status-key-mobile');
+    await expect(mobileKey).toBeVisible();
+    await expect(mobileKey.locator('button')).toHaveCount(0);
+    await expect(mobileKey.getByText('Done', { exact: true })).toBeVisible();
+    await expect(mobileKey.getByText('Booked', { exact: true })).toBeVisible();
+    await expect(mobileKey.getByText('TBD', { exact: true })).toBeVisible();
+
+    await dialog.getByRole('tab', { name: 'List' }).tap();
+    await expect(mobileKey).toBeVisible();
+    await expect(dialog.locator('[data-status="tbd"]').first()).toBeVisible();
+    await dialog.getByRole('button', { name: 'Close Itinerary' }).tap();
+
+    // Journey Playback leg banner shows compact read-only status pill across Done, Booked, and TBD legs
+    await page.locator('button[title="Start Interactive Journey Playback"]').tap();
+    const statusPill = page.getByTestId('playback-leg-status');
+    await expect(statusPill).toBeVisible();
+    await expect(statusPill).toHaveText('Done');
+
+    // Scrub to last leg (Rusutsu — TBD)
+    const scrubber = page.locator('input[type="range"]');
+    await scrubber.fill(String(ITINERARY.length - 1));
+    await expect(statusPill).toHaveText('TBD');
+
+    // Scrub to Sapporo Jan leg (index length - 2 — Booked)
+    await scrubber.fill(String(ITINERARY.length - 2));
+    await expect(statusPill).toHaveText('Booked');
+
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
@@ -284,6 +344,90 @@ test.describe('Garden Leave Travel Map — Desktop (1280x800)', () => {
     await expect(page.locator('aside[aria-label^="Photos from"]')).toHaveCount(0);
 
     expect(externalTopologyRequests).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  test('encodes Done/Booked/TBD on lines, pins, landmass, and ItineraryModal while keeping MapHoverTooltip free of status pills', async ({
+    page,
+  }) => {
+    const errors = trackRuntimeErrors(page);
+
+    await page.goto('/gardenleave/');
+    await expect(page.locator('.cities-layer g').first()).toBeVisible();
+
+    // Unified static bottom status legend has zero toggle buttons
+    const statusLegend = page.getByTestId('status-legend');
+    await expect(statusLegend).toBeVisible();
+    await expect(statusLegend.locator('button')).toHaveCount(0);
+    await expect(statusLegend.getByText('Done', { exact: true })).toBeVisible();
+    await expect(statusLegend.getByText('Booked', { exact: true })).toBeVisible();
+    await expect(statusLegend.getByText('TBD', { exact: true })).toBeVisible();
+
+    // Map encodes Done, Booked, and TBD legs (with dashed stroke on TBD legs)
+    expect(await page.locator('.transit-lines-layer g[data-leg-status="done"]').count()).toBeGreaterThan(0);
+    expect(await page.locator('.transit-lines-layer g[data-leg-status="booked"]').count()).toBeGreaterThan(0);
+    const tbdLeg = page.locator('.transit-lines-layer g[data-leg-status="tbd"]').first();
+    await expect(tbdLeg).toBeVisible();
+    const tbdDash = await tbdLeg.locator('path').last().getAttribute('stroke-dasharray');
+    expect(tbdDash).toBeTruthy();
+
+    // Only Vail, Whistler, Vancouver, and Rusutsu are TBD cities
+    for (const cityId of ['Vail', 'Whistler', 'Vancouver', 'Rusutsu']) {
+      await expect(page.locator(`.cities-layer g[data-city-id="${cityId}"]`)).toHaveAttribute(
+        'data-city-status',
+        'tbd'
+      );
+    }
+    await expect(page.locator('.cities-layer g[data-city-id="Sapporo"]')).toHaveAttribute(
+      'data-city-status',
+      'booked'
+    );
+
+    // Pulsing Now ring renders on the live active stop when today is inside the trip window
+    const nowCity = page.locator('.cities-layer g[data-city-now="true"]');
+    await expect(nowCity).toHaveCount(1);
+    await expect(nowCity.locator('.animate-now-pulse-ring')).toHaveCount(1);
+
+    // Booked landmass tier (#142540) renders cleanly alongside Done landmass (#183052)
+    await expect(page.locator('.countries-layer path[fill="#142540"]').first()).toBeVisible();
+
+    // MapHoverTooltip intentionally omits Done/Booked/TBD status labels
+    const firstDoneLegPath = page
+      .locator('.transit-lines-layer g[data-leg-status="done"] path')
+      .first();
+    await firstDoneLegPath.dispatchEvent('mouseover', {
+      bubbles: true,
+      clientX: 400,
+      clientY: 300,
+    });
+    const legTooltip = page.locator('div.pointer-events-none.absolute.z-30');
+    await expect(legTooltip).toBeVisible();
+    await expect(legTooltip).toContainText('Leg #');
+    await expect(legTooltip).not.toContainText(/\b(Done|Booked|TBD)\b/);
+
+    // City hover tooltip also intentionally omits Done/Booked/TBD status labels
+    const vailPin = page.locator('.cities-layer g[data-city-id="Vail"] circle').first();
+    await vailPin.dispatchEvent('mouseover', {
+      bubbles: true,
+      clientX: 400,
+      clientY: 300,
+    });
+    await expect(legTooltip).toContainText('Vail');
+    await expect(legTooltip).not.toContainText(/\b(Done|Booked|TBD)\b/);
+
+    // Desktop Itinerary modal shows inline static status key and status-styled Calendar/List items
+    await page.getByRole('button', { name: 'Itinerary' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Itinerary' });
+    const desktopKey = dialog.getByTestId('itinerary-status-key-desktop');
+    await expect(desktopKey).toBeVisible();
+    await expect(desktopKey.locator('button')).toHaveCount(0);
+    await expect(dialog.locator('[data-status="done"]').first()).toBeVisible();
+    await expect(dialog.locator('[data-status="booked"]').first()).toBeVisible();
+
+    await dialog.getByRole('tab', { name: 'List' }).click();
+    await expect(desktopKey).toBeVisible();
+    await expect(dialog.locator('[data-status="tbd"]').first()).toBeVisible();
+
     expect(errors).toEqual([]);
   });
 });

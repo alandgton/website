@@ -80,3 +80,39 @@ body {
 .wheel-scroll::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes nowPulseRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.78;
+  }
+  75% {
+    transform: scale(2.45);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.45);
+    opacity: 0;
+  }
+}
+
+.animate-now-pulse-ring {
+  transform-origin: 0 0;
+  animation: nowPulseRing 2.2s cubic-bezier(0.2, 0.7, 0.2, 1) infinite;
+}
+
+@keyframes nowDotPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.75);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(56, 189, 248, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 5px rgba(56, 189, 248, 0);
+  }
+}
+
+.animate-now-dot-pulse {
+  animation: nowDotPulse 2.1s cubic-bezier(0.2, 0.7, 0.2, 1) infinite;
+}

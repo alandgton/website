@@ -1,10 +1,13 @@
 import React from 'react';
+import type { LegStatus } from '../../config/types';
 import type { CityViewMeta, ProjectedCityNode } from './types';
 import { getCityNodeOpacity, getCityPinRadius } from './utils';
 
 interface CitiesLayerProps {
   projectedCities: Record<string, ProjectedCityNode>;
   cityViewMeta: Record<string, CityViewMeta>;
+  cityStatuses: Record<string, LegStatus>;
+  currentCityId: string | null;
   selectedCityId: string | null;
   activeTimelineSource: string | undefined;
   activeTimelineDest: string | undefined;
@@ -20,6 +23,8 @@ interface CitiesLayerProps {
 export const CitiesLayer: React.FC<CitiesLayerProps> = React.memo(({
   projectedCities,
   cityViewMeta,
+  cityStatuses,
+  currentCityId,
   selectedCityId,
   activeTimelineSource,
   activeTimelineDest,
@@ -35,6 +40,8 @@ export const CitiesLayer: React.FC<CitiesLayerProps> = React.memo(({
     <g className="cities-layer">
       {Object.values(projectedCities).map(({ city, x, y }) => {
         const meta = cityViewMeta[city.id];
+        const status: LegStatus = cityStatuses[city.id] ?? 'tbd';
+        const isCurrentCity = !isTimelineEnabled && currentCityId === city.id;
         const isSelected = selectedCityId === city.id;
         const isTimelineActiveDest = activeTimelineDest === city.id;
         const isTimelineActiveSource = activeTimelineSource === city.id;
@@ -66,6 +73,9 @@ export const CitiesLayer: React.FC<CitiesLayerProps> = React.memo(({
         return (
           <g
             key={city.id}
+            data-city-id={city.id}
+            data-city-status={status}
+            data-city-now={isCurrentCity ? 'true' : undefined}
             transform={`translate(${x}, ${y})`}
             className="cursor-pointer"
             style={{ opacity: pinOpacity }}
@@ -87,6 +97,17 @@ export const CitiesLayer: React.FC<CitiesLayerProps> = React.memo(({
               fillOpacity={0.88}
             />
 
+            {/* Subtle pulsing sky-blue Now ring on the current live stop */}
+            {isCurrentCity && (
+              <circle
+                r={radius}
+                fill="none"
+                stroke="#38bdf8"
+                strokeWidth={1.3 * invScale}
+                className="animate-now-pulse-ring pointer-events-none"
+              />
+            )}
+
             {isHomeCity ? (
               <>
                 {/* Home City Pin: amber circle with a house glyph */}
@@ -103,13 +124,30 @@ export const CitiesLayer: React.FC<CitiesLayerProps> = React.memo(({
                   fill="#0f172a"
                 />
               </>
-            ) : (
-              /* Main City Pin Circle (uniform color & style for every non-home city) */
+            ) : status === 'done' ? (
+              /* Done City Pin: solid slate-white circle */
               <circle
                 r={radius}
                 fill="#f8fafc"
                 stroke="#0f172a"
                 strokeWidth={0.75 * invScale}
+              />
+            ) : status === 'booked' ? (
+              /* Booked City Pin: hollow dark core with crisp white ring */
+              <circle
+                r={Math.max(radius * 0.88, radius - 0.35 * invScale)}
+                fill="#060913"
+                stroke="#f8fafc"
+                strokeWidth={1.45 * invScale}
+              />
+            ) : (
+              /* TBD City Pin: hollow dark core with muted dashed slate ring */
+              <circle
+                r={radius * 0.9}
+                fill="#060913"
+                stroke="#94a3b8"
+                strokeWidth={1.15 * invScale}
+                strokeDasharray={`${1.9 * invScale} ${1.6 * invScale}`}
               />
             )}
           </g>

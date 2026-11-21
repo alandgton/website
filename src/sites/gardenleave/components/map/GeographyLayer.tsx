@@ -9,14 +9,17 @@ interface GeographyLayerProps {
   graticulePath: string;
   subdividedCountryNames: Set<string>;
   visitedCountryFeatureIds: Set<string>;
+  bookedCountryFeatureIds: Set<string>;
   activeCountryFeatureIds: Set<string>;
   visitedAdmin1FeatureIds: Set<string>;
+  bookedAdmin1FeatureIds: Set<string>;
   activeAdmin1FeatureIds: Set<string>;
   isSubregion: boolean;
   isLoadingAdmin1: boolean;
   isNone: boolean;
   showGraticule: boolean;
   isJapanVisited: boolean;
+  isJapanBooked: boolean;
   isJapanActive: boolean;
 }
 
@@ -28,14 +31,17 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
   graticulePath,
   subdividedCountryNames,
   visitedCountryFeatureIds,
+  bookedCountryFeatureIds,
   activeCountryFeatureIds,
   visitedAdmin1FeatureIds,
+  bookedAdmin1FeatureIds,
   activeAdmin1FeatureIds,
   isSubregion,
   isLoadingAdmin1,
   isNone,
   showGraticule,
   isJapanVisited,
+  isJapanBooked,
   isJapanActive,
 }) => {
   const suppressCountryHighlight = isNone || (isSubregion && isLoadingAdmin1);
@@ -53,6 +59,11 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
             !suppressCountryHighlight &&
             !isSubdividedInAdmin1 &&
             visitedCountryFeatureIds.has(country.id);
+          const isBookedCountry =
+            !suppressCountryHighlight &&
+            !isSubdividedInAdmin1 &&
+            !isVisitedCountry &&
+            bookedCountryFeatureIds.has(country.id);
           const isActiveCountry =
             !suppressCountryHighlight &&
             !isSubdividedInAdmin1 &&
@@ -67,16 +78,28 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
                   ? '#203e66'
                   : isVisitedCountry
                     ? '#183052'
-                    : '#111b2e'
+                    : isBookedCountry
+                      ? '#142540'
+                      : '#111b2e'
               }
               stroke={
                 isActiveCountry
                   ? '#38bdf8'
                   : isVisitedCountry
                     ? '#2b5485'
-                    : '#26354d'
+                    : isBookedCountry
+                      ? '#28456c'
+                      : '#26354d'
               }
-              strokeWidth={isActiveCountry ? 1.25 : isVisitedCountry ? 0.95 : 0.7}
+              strokeWidth={
+                isActiveCountry
+                  ? 1.25
+                  : isVisitedCountry
+                    ? 0.95
+                    : isBookedCountry
+                      ? 0.85
+                      : 0.7
+              }
               vectorEffect="non-scaling-stroke"
               strokeLinejoin="round"
             />
@@ -87,6 +110,7 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
     [
       activeCountryFeatureIds,
       admin1Paths.length,
+      bookedCountryFeatureIds,
       countryPaths,
       isSubregion,
       subdividedCountryNames,
@@ -101,6 +125,7 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
         <g className="admin1-layer pointer-events-none">
           {admin1Paths.map((prov, idx) => {
             const isVisitedProv = visitedAdmin1FeatureIds.has(prov.id);
+            const isBookedProv = !isVisitedProv && bookedAdmin1FeatureIds.has(prov.id);
             const isActiveProv = activeAdmin1FeatureIds.has(prov.id);
 
             return (
@@ -112,17 +137,35 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
                     ? '#203e66'
                     : isVisitedProv
                       ? '#183052'
-                      : 'none'
+                      : isBookedProv
+                        ? '#142540'
+                        : 'none'
                 }
                 stroke={
                   isActiveProv
                     ? '#38bdf8'
-                    : isVisitedProv
+                    : isVisitedProv || isBookedProv
                       ? '#38bdf8'
                       : '#334155'
                 }
-                strokeOpacity={isActiveProv ? 0.85 : isVisitedProv ? 0.55 : 0.5}
-                strokeWidth={isActiveProv ? 1.1 : isVisitedProv ? 0.85 : 0.5}
+                strokeOpacity={
+                  isActiveProv
+                    ? 0.85
+                    : isVisitedProv
+                      ? 0.55
+                      : isBookedProv
+                        ? 0.34
+                        : 0.5
+                }
+                strokeWidth={
+                  isActiveProv
+                    ? 1.1
+                    : isVisitedProv
+                      ? 0.85
+                      : isBookedProv
+                        ? 0.7
+                        : 0.5
+                }
                 vectorEffect="non-scaling-stroke"
                 strokeLinejoin="round"
               />
@@ -130,7 +173,13 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
           })}
         </g>
       ) : null,
-    [activeAdmin1FeatureIds, admin1Paths, isSubregion, visitedAdmin1FeatureIds]
+    [
+      activeAdmin1FeatureIds,
+      admin1Paths,
+      bookedAdmin1FeatureIds,
+      isSubregion,
+      visitedAdmin1FeatureIds,
+    ]
   );
 
   const setoIslandsElement = useMemo(
@@ -139,6 +188,8 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
         {setoIslandPaths.map((island) => {
           const isActiveIsland = !suppressCountryHighlight && isJapanActive;
           const isVisitedIsland = !suppressCountryHighlight && isJapanVisited;
+          const isBookedIsland =
+            !suppressCountryHighlight && !isVisitedIsland && isJapanBooked;
 
           return (
             <path
@@ -149,16 +200,28 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
                   ? '#203e66'
                   : isVisitedIsland
                     ? '#183052'
-                    : '#111b2e'
+                    : isBookedIsland
+                      ? '#142540'
+                      : '#111b2e'
               }
               stroke={
                 isActiveIsland
                   ? '#38bdf8'
                   : isVisitedIsland
                     ? '#2b5485'
-                    : '#26354d'
+                    : isBookedIsland
+                      ? '#28456c'
+                      : '#26354d'
               }
-              strokeWidth={isActiveIsland ? 1.25 : isVisitedIsland ? 0.95 : 0.7}
+              strokeWidth={
+                isActiveIsland
+                  ? 1.25
+                  : isVisitedIsland
+                    ? 0.95
+                    : isBookedIsland
+                      ? 0.85
+                      : 0.7
+              }
               vectorEffect="non-scaling-stroke"
               strokeLinejoin="round"
             />
@@ -166,7 +229,7 @@ export const GeographyLayer: React.FC<GeographyLayerProps> = React.memo(({
         })}
       </g>
     ),
-    [isJapanActive, isJapanVisited, setoIslandPaths, suppressCountryHighlight]
+    [isJapanActive, isJapanBooked, isJapanVisited, setoIslandPaths, suppressCountryHighlight]
   );
 
   return (

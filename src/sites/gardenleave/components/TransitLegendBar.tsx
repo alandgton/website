@@ -68,6 +68,80 @@ export const TransitModeLegendItems: React.FC<TransitModeLegendItemsProps> = ({
   );
 };
 
+export const StatusLegendItems: React.FC = () => {
+  return (
+    <div
+      data-testid="status-legend"
+      aria-label="Leg and city status key"
+      className="flex items-center justify-center gap-2 sm:gap-2.5 text-[11px] sm:text-xs text-slate-200 select-none cursor-default"
+    >
+      <span
+        className="inline-flex items-center gap-1"
+        title="Done: already traveled"
+      >
+        <svg width="22" height="12" viewBox="0 0 22 12" className="shrink-0" aria-hidden="true">
+          <line x1="1" y1="6" x2="14" y2="6" stroke="#38bdf8" strokeWidth="2.2" strokeLinecap="round" />
+          <circle cx="17" cy="6" r="3.4" fill="#f8fafc" stroke="#0f172a" strokeWidth="0.9" />
+        </svg>
+        <span>Done</span>
+      </span>
+
+      <span className="text-slate-700" aria-hidden="true">·</span>
+
+      <span
+        className="inline-flex items-center gap-1"
+        title="Booked: upcoming and confirmed"
+      >
+        <svg width="22" height="12" viewBox="0 0 22 12" className="shrink-0" aria-hidden="true">
+          <line
+            x1="1"
+            y1="6"
+            x2="14"
+            y2="6"
+            stroke="#38bdf8"
+            strokeWidth="1.8"
+            strokeOpacity="0.72"
+            strokeLinecap="round"
+          />
+          <circle cx="17" cy="6" r="3.2" fill="#060913" stroke="#f8fafc" strokeWidth="1.5" />
+        </svg>
+        <span>Booked</span>
+      </span>
+
+      <span className="text-slate-700" aria-hidden="true">·</span>
+
+      <span
+        className="inline-flex items-center gap-1 text-slate-300"
+        title="TBD: planned, not yet booked"
+      >
+        <svg width="22" height="12" viewBox="0 0 22 12" className="shrink-0" aria-hidden="true">
+          <line
+            x1="1"
+            y1="6"
+            x2="14"
+            y2="6"
+            stroke="#86a6c7"
+            strokeWidth="1.6"
+            strokeDasharray="3.2 3.2"
+            strokeOpacity="0.68"
+            strokeLinecap="round"
+          />
+          <circle
+            cx="17"
+            cy="6"
+            r="3"
+            fill="#060913"
+            stroke="#94a3b8"
+            strokeWidth="1.2"
+            strokeDasharray="1.8 1.5"
+          />
+        </svg>
+        <span>TBD</span>
+      </span>
+    </div>
+  );
+};
+
 interface TransitLegendBarProps {
   transitModes: Record<TransitMode, TransitModeStyleConfig>;
   legsByMode: Record<TransitMode, number>;
@@ -78,14 +152,23 @@ export const TransitLegendBar: React.FC<TransitLegendBarProps> = ({
   legsByMode,
 }) => {
   return (
-    <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-800/90 bg-slate-900/85 px-3 py-1.5 shadow-lg backdrop-blur-md">
-      <span className="text-[11px] font-medium text-slate-400 mr-1 hidden xl:inline">
-        Transit Modes:
-      </span>
-      <TransitModeLegendItems
-        transitModes={transitModes}
-        legsByMode={legsByMode}
-      />
+    <div className="pointer-events-auto flex flex-col sm:flex-row items-center gap-1.5 sm:gap-2 rounded-xl border border-slate-800/90 bg-slate-900/85 px-2.5 sm:px-3 py-1.5 shadow-lg backdrop-blur-md">
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
+        <span className="text-[11px] font-medium text-slate-400 mr-1 hidden xl:inline">
+          Transit Modes:
+        </span>
+        <TransitModeLegendItems
+          transitModes={transitModes}
+          legsByMode={legsByMode}
+        />
+      </div>
+
+      {/* Hairline divider: horizontal on mobile stacked card, vertical on sm+ desktop */}
+      <div className="sm:hidden h-px w-full bg-slate-800/80" aria-hidden="true" />
+      <div className="hidden sm:block h-4 w-px bg-slate-700/80 shrink-0" aria-hidden="true" />
+
+      {/* Static Read-Only Status Key (Done · Booked · TBD) */}
+      <StatusLegendItems />
     </div>
   );
 };
