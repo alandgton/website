@@ -5,7 +5,7 @@ The unified codebase for **alanton.at**, hosted on **Cloudflare Pages**. Built w
 The site serves multiple isolated sub-sites from one repository:
 1. **Landing Page (`/`)** — Interactive neural mesh background connecting to each section of the site.
 2. **Home (`/home/`)** — Personal home space (under active development).
-3. **Work (`/work/`)** — Professional portfolio & projects (under active development).
+3. **Work (`/work/`)** — Mobile-first vertical career experience timeline with unified floating expand/collapse controls.
 4. **Garden Leave (`/gardenleave/`)** — Interactive 2D vector travel map (2026–2027) with D3 projection, journey playback, and mobile-optimized physics.
 
 ---
@@ -66,7 +66,10 @@ website/
 │       │   └── main.tsx
 │       ├── home/                   # Home section
 │       │   └── main.tsx
-│       ├── work/                   # Work section
+│       ├── work/                   # Work section (experience timeline)
+│       │   ├── WorkPage.tsx        # Vertical career timeline UI
+│       │   ├── components/         # Unified floating header & experience cards
+│       │   ├── config/             # Declarative career entries
 │       │   └── main.tsx
 │       ├── gardenleave/            # Garden Leave 2D Travel Map
 │       │   ├── GardenLeaveApp.tsx  # Root travel map application
@@ -77,6 +80,7 @@ website/
 │       │   └── utils/              # TopoJSON, geocoding, collision culling, arc math
 │       └── shared/                 # Shared across sites
 │           ├── mountSite.tsx       # Standardized React root mount bootstrap
+│           ├── FloatingHeader.tsx  # Shared glassmorphic header primitives
 │           └── PlaceholderPage.tsx # Reusable "Work in Progress" page
 ├── tailwind.config.js
 ├── tsconfig.json

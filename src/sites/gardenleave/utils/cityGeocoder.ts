@@ -19,19 +19,19 @@ const BUILTIN_GAZETTEER: Record<string, GazetteerEntry> = {
     name: 'New York City',
     country: 'USA',
     coordinates: [-74.006, 40.7128],
-    aliases: ['New York', 'New York City', 'New York, USA', 'JFK', 'EWR'],
+    aliases: ['New York', 'New York, USA', 'JFK', 'EWR'],
   },
   SF: {
     name: 'San Francisco',
     country: 'USA',
     coordinates: [-122.4194, 37.7749],
-    aliases: ['San Francisco', 'San Francisco, USA', 'SFO'],
+    aliases: ['SFO'],
   },
   LA: {
     name: 'Los Angeles',
     country: 'USA',
     coordinates: [-118.2437, 34.0522],
-    aliases: ['Los Angeles', 'Los Angeles, USA', 'LAX'],
+    aliases: ['LAX'],
   },
   Stockholm: {
     name: 'Stockholm',
@@ -124,11 +124,11 @@ const BUILTIN_GAZETTEER: Record<string, GazetteerEntry> = {
     country: 'China',
     coordinates: [103.9186, 33.26],
   },
-  'Emeishan': {
+  Emeishan: {
     name: 'Emeishan',
     country: 'China',
     coordinates: [103.4844, 29.6012],
-    aliases: ['Emeishan', 'Mt Emei', 'Mt. Emei'],
+    aliases: ['Mt Emei', 'Mt. Emei'],
   },
   Chongqing: {
     name: 'Chongqing',
@@ -316,15 +316,17 @@ for (const [key, entry] of Object.entries(BUILTIN_GAZETTEER)) {
 }
 
 const memoryGeoCache = new Map<string, CityConfig>();
+let localStorageCacheSnapshot: Record<string, CityConfig> | null = null;
 
 function loadLocalStorageCache(): Record<string, CityConfig> {
+  if (localStorageCacheSnapshot) return localStorageCacheSnapshot;
   try {
     const raw = window.localStorage.getItem(LOCAL_STORAGE_CACHE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as Record<string, CityConfig>;
+    localStorageCacheSnapshot = raw ? (JSON.parse(raw) as Record<string, CityConfig>) : {};
   } catch {
-    return {};
+    localStorageCacheSnapshot = {};
   }
+  return localStorageCacheSnapshot;
 }
 
 function saveToLocalStorageCache(cityId: string, config: CityConfig): void {

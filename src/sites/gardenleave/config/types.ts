@@ -67,7 +67,7 @@ export interface ItineraryLegConfig {
 export interface RegionCameraConfig {
   id: string;
   label: string;
-  shortLabel: string;
+  shortLabel?: string;
   /** [longitude, latitude] center coordinate */
   center: [number, number];
   zoom: number;
@@ -102,10 +102,8 @@ export interface MapRenderConfig {
 }
 
 export interface TravelMapConfig {
-  id: string;
   title: string;
   subtitle: string;
-  description: string;
   regions: Record<string, RegionCameraConfig>;
   itinerary: ItineraryLegConfig[];
   transitModes: Record<TransitMode, TransitModeStyleConfig>;

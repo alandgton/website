@@ -63,9 +63,12 @@ export function getPhotosForCity(
   if (!cityId) return [];
   if (photosMap[cityId]) return photosMap[cityId];
 
-  const normalized = normalizeCityKey(cityId).toLowerCase();
+  const normalizedKey = normalizeCityKey(cityId);
+  if (photosMap[normalizedKey]) return photosMap[normalizedKey];
+
+  const normalizedLower = normalizedKey.toLowerCase();
   for (const [key, list] of Object.entries(photosMap)) {
-    if (key.toLowerCase() === normalized || normalizeCityKey(key).toLowerCase() === normalized) {
+    if (key.toLowerCase() === normalizedLower || normalizeCityKey(key).toLowerCase() === normalizedLower) {
       return list;
     }
   }

@@ -252,6 +252,9 @@ export const GENERATED_CITY_PHOTOS: Record<string, CityPhotoConfig[]> = ${JSON.s
 `;
 
   fs.mkdirSync(path.dirname(MANIFEST_PATH), { recursive: true });
+  if (fs.existsSync(MANIFEST_PATH) && fs.readFileSync(MANIFEST_PATH, 'utf8') === fileContent) {
+    return;
+  }
   fs.writeFileSync(MANIFEST_PATH, fileContent, 'utf8');
 }
 

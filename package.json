@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "d3-geo": "^3.1.1",
-    "d3-interpolate": "^3.0.1",
     "d3-selection": "^3.0.0",
     "d3-transition": "^3.0.1",
     "d3-zoom": "^3.0.0",
@@ -23,7 +22,6 @@
   "devDependencies": {
     "@playwright/test": "^1.65.1",
     "@types/d3-geo": "^3.1.0",
-    "@types/d3-interpolate": "^3.0.4",
     "@types/d3-selection": "^3.0.11",
     "@types/d3-transition": "^3.0.9",
     "@types/d3-zoom": "^3.0.8",

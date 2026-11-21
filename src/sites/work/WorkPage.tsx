@@ -32,7 +32,7 @@ export const WorkPage: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#060913] text-slate-100 selection:bg-sky-500/30 selection:text-sky-200 overflow-x-hidden">
+    <div className="relative min-h-screen bg-slate-950 text-slate-100 selection:bg-sky-500/30 selection:text-sky-200 overflow-x-hidden">
       {/* Subtle atmospheric glow matching LandingPage */}
       <div
         className="pointer-events-none fixed inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_at_top,rgba(56,189,248,0.08),transparent_70%)]"

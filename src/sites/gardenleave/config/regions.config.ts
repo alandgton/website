@@ -12,7 +12,6 @@ export const REGIONS_CONFIG: Record<string, RegionCameraConfig> = {
   us: {
     id: 'us',
     label: 'North America',
-    shortLabel: 'North America',
     center: [-98, 38],
     zoom: 3.2,
     description: 'North America flights & drives across the US & Canada (NYC, SF, LA, Vail, Vancouver, Whistler)',
@@ -20,7 +19,6 @@ export const REGIONS_CONFIG: Record<string, RegionCameraConfig> = {
   europe: {
     id: 'europe',
     label: 'Europe',
-    shortLabel: 'Europe',
     center: [13.5, 50.5],
     zoom: 5.5,
     description: 'Scandinavia, Swiss Alps, Central Europe & German rail corridor',
@@ -28,7 +26,6 @@ export const REGIONS_CONFIG: Record<string, RegionCameraConfig> = {
   mena: {
     id: 'mena',
     label: 'Egypt & Gulf',
-    shortLabel: 'Egypt & Gulf',
     center: [42, 27],
     zoom: 4.5,
     description: 'Nile Valley (Cairo & Luxor) and Arabian Gulf (Dubai)',
@@ -36,7 +33,6 @@ export const REGIONS_CONFIG: Record<string, RegionCameraConfig> = {
   china: {
     id: 'china',
     label: 'China',
-    shortLabel: 'China',
     center: [111.5, 27.5],
     zoom: 4.8,
     description: 'Sichuan, Chongqing, Hunan, Hainan, Pearl River Delta, Chaoshan & Jiangnan',
@@ -44,7 +40,6 @@ export const REGIONS_CONFIG: Record<string, RegionCameraConfig> = {
   east_asia: {
     id: 'east_asia',
     label: 'Japan & Korea',
-    shortLabel: 'Japan & Korea',
     center: [134.5, 36.8],
     zoom: 5.8,
     description: 'South Korea (Seoul, Busan) and Japan (Kyushu, Honshu, Shikoku, Hokkaido)',
@@ -52,7 +47,6 @@ export const REGIONS_CONFIG: Record<string, RegionCameraConfig> = {
   shimanami: {
     id: 'shimanami',
     label: 'Shimanami Kaido',
-    shortLabel: 'Shimanami Kaido',
     center: [133.06, 34.238],
     zoom: 185,
     fitCities: ['Onomichi', 'Setoda', 'Omishima', 'Imabari'],

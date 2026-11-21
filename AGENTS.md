@@ -29,8 +29,8 @@ You are an expert full-stack engineer, minimalist UX architect, and cartographic
   - `/` → `src/sites/landing/` (Master landing portal with interactive canvas `NeuralMeshBackground`)
   - `/gardenleave/` → `src/sites/gardenleave/` (Interactive 2D vector travel map: `GardenLeaveApp.tsx`, `components/`, `config/`, `hooks/`, `utils/`)
   - `/home/` → `src/sites/home/` (Personal home space placeholder using `PlaceholderPage`)
-  - `/work/` → `src/sites/work/` (Professional portfolio placeholder using `PlaceholderPage`)
-  - Shared modules → `src/sites/shared/` (`mountSite.tsx` standardized React root bootstrap, `PlaceholderPage.tsx` reusable WIP page)
+  - `/work/` → `src/sites/work/` (Mobile-first vertical career experience timeline: `WorkPage.tsx`, `components/`, `config/experience.config.ts`)
+  - Shared modules → `src/sites/shared/` (`mountSite.tsx` standardized React root bootstrap, `FloatingHeader.tsx` shared floating header primitives, `PlaceholderPage.tsx` reusable WIP page)
 
 ### Multi-Page HTML & Sub-Site Runbook
 Vite is configured with a multi-page rollup (`rollupOptions.input` in `vite.config.ts`) mapping HTML files directly to clean Cloudflare Pages URL routes:

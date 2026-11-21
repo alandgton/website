@@ -4,7 +4,6 @@ dist/
 .DS_Store
 *.local
 ARCHITECTURE_AND_LEARNINGS.md
-prompt.md
 FEATURE_RECOMMENDATIONS.md
 photos/raw/*
 !photos/raw/README.md

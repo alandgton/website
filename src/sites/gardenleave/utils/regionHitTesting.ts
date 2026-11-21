@@ -66,16 +66,6 @@ const COUNTRY_NAME_ALIASES: Record<string, string[]> = {
   czechia: ['czechia', 'czech republic'],
   'south korea': ['south korea', 'korea, republic of', 'republic of korea', 'korea'],
   'china (sar)': ['hong kong', 'china'],
-  china: ['china'],
-  sweden: ['sweden'],
-  denmark: ['denmark'],
-  switzerland: ['switzerland'],
-  austria: ['austria'],
-  hungary: ['hungary'],
-  germany: ['germany'],
-  egypt: ['egypt'],
-  singapore: ['singapore'],
-  japan: ['japan'],
 };
 
 // Compass probe offsets (in degrees) to handle coastal/harbor cities on simplified 50m coastlines
