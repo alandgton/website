@@ -66,3 +66,13 @@ body {
   animation: postcardStackDealOdd 440ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
   will-change: transform, opacity;
 }
+
+.wheel-scroll {
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.wheel-scroll::-webkit-scrollbar {
+  display: none;
+}
