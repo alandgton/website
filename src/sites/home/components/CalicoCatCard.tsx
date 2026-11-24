@@ -105,7 +105,7 @@ export const CalicoCatCard: React.FC<CalicoCatCardProps> = ({
 
   return (
     <section
-      aria-label="Interactive Calico Cat"
+      aria-label={`${config.name} — Interactive Calico Cat`}
       data-cat-mood={status.mood}
       className="relative w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/75 backdrop-blur-md shadow-2xl shadow-black/40"
     >
@@ -158,7 +158,7 @@ export const CalicoCatCard: React.FC<CalicoCatCardProps> = ({
         ref={stageRef}
         tabIndex={0}
         role="application"
-        aria-label="Interactive 3D calico cat. Stroke across the cat to pet, or press Space to give a friendly pat."
+        aria-label={`Interactive 3D calico cat named ${config.name}. Stroke across ${config.name} to pet, or press Space to give a friendly pat.`}
         onKeyDown={handleStageKeyDown}
         className="relative h-[340px] sm:h-[395px] w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-400/60"
       >

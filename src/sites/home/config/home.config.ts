@@ -75,9 +75,9 @@ export const HOME_PROFILE_CONFIG: HomeProfileConfig = {
  * Customize the cat's name, hints, or coat palette here without editing 3D scene code.
  */
 export const HOME_CAT_CONFIG: HomeCatConfig = {
-  name: 'Calico',
+  name: 'Candy',
   subtitle: 'Say hi',
-  desktopHint: 'Stroke over the cat to pet · Drag outside to orbit',
+  desktopHint: 'Stroke over Candy to pet · Drag outside to orbit',
   touchHint: 'Stroke to pet · Drag outside to rotate',
   palette: {
     cream: '#f4f0e8',
@@ -89,7 +89,7 @@ export const HOME_CAT_CONFIG: HomeCatConfig = {
     charcoalDeep: '#0e0c0a',
     charcoalHighlight: '#8b7452',
     nosePink: '#2c1f1d',
-    earPink: '#9f7b7a',
+    earPink: '#927170',
     eyeOuter: '#6b8756',
     eyeInner: '#bec98c',
     cushionBase: '#383b43',

@@ -700,13 +700,13 @@ export class CalicoCatScene {
 
     this.rig.leftEarPivot.rotation.set(
       0.08 - this.earRelaxAmount * 0.12 + curiousPerk,
-      0.20 - this.earRelaxAmount * 0.16,
-      -0.28 - this.earRelaxAmount * 0.28 + leftTwitch,
+      0.18 - this.earRelaxAmount * 0.14,
+      -0.42 - this.earRelaxAmount * 0.24 + leftTwitch,
     );
     this.rig.rightEarPivot.rotation.set(
       0.08 - this.earRelaxAmount * 0.12 + curiousPerk,
-      -0.20 + this.earRelaxAmount * 0.16,
-      0.28 + this.earRelaxAmount * 0.28 - rightTwitch,
+      -0.18 + this.earRelaxAmount * 0.14,
+      0.42 + this.earRelaxAmount * 0.24 - rightTwitch,
     );
 
     // 7. Continuous Smooth Procedural Tricolor Calico Tail Wave

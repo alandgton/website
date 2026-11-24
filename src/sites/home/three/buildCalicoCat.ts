@@ -73,56 +73,85 @@ function createFurShellGeometry(
   return geom;
 }
 
-/** Creates natural domestic shorthair feline ears (Photo 3 proportions: grounded base, softly rounded tips). */
+/**
+ * Creates anatomical wide-based triangular domestic shorthair cat ears (Candy's low-set ears):
+ * Widest at the skull base (embedded cleanly into the cranium — zero teardrop pinch!)
+ * tapering monotonically to a softly rounded feline triangle tip with a subtle front pinna hollow.
+ */
 function createSculptedEarGeometry(): THREE.BufferGeometry {
-  const geom = new THREE.SphereGeometry(1, 24, 20);
+  const geom = new THREE.CylinderGeometry(0.14, 1.0, 1.0, 28, 18, false);
   const pos = geom.attributes.position;
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
-    const y = pos.getY(i);
+    const y = pos.getY(i); // [-0.5, +0.5]
     const z = pos.getZ(i);
 
-    const t = (y + 1) * 0.5;
-    const widthProfile =
-      0.130 *
-      (1 - 0.78 * Math.pow(t, 1.38)) *
-      (0.76 + 0.24 * Math.sin(Math.min(1, t * 2.2) * Math.PI * 0.5));
-    const depthProfile = 0.062 * (1 - 0.72 * Math.pow(t, 1.25));
+    const t = clamp(y + 0.5, 0, 1); // 0 = wide skull base, 1 = softly rounded tip
+    const r = Math.hypot(x, z);
+    const ang = r > 1e-5 ? Math.atan2(z, x) : 0;
+    const ux = r > 1e-5 ? x / r : 0;
+    const uz = r > 1e-5 ? z / r : 0;
 
-    const nx = x * widthProfile;
-    const ny = t * 0.235;
-    let nz = z * depthProfile;
+    // Monotonically tapering triangular width & thickness (strictly widest at base t=0!)
+    let tipRound = 1.0;
+    if (t > 0.84) {
+      const capT = (t - 0.84) / 0.16;
+      tipRound = Math.sqrt(Math.max(0.015, 1 - capT * capT));
+    }
+    const baseRadiusFrac = r / Math.max(0.05, 1.0 - 0.86 * t); // preserves interior cap vertices at top/bottom
+    const widthProfile = 0.142 * (1 - 0.78 * Math.pow(t, 1.08)) * tipRound * clamp(baseRadiusFrac, 0, 1);
+    const depthProfile = 0.082 * (1 - 0.68 * Math.pow(t, 1.05)) * tipRound * clamp(baseRadiusFrac, 0, 1);
 
-    // Authentic concave pinna scoop on front face (+Z)
-    if (z > 0) {
-      const centerMask = Math.max(0, 1 - x * x * 1.35) * Math.sin(t * Math.PI);
-      nz -= centerMask * 0.026;
+    const nx = Math.cos(ang) * widthProfile;
+    let ny = t * 0.245;
+    let nz = Math.sin(ang) * depthProfile;
+
+    // Subtle soft dome at the top tip cap
+    if (t > 0.88) {
+      ny += (1 - clamp(baseRadiusFrac, 0, 1)) * 0.012;
     }
 
-    pos.setXYZ(i, nx, ny, nz + Math.pow(t, 2) * 0.012);
+    // Gentle concave pinna hollow on the front face (+Z) of the ear
+    if (uz > 0 && t > 0.18 && t < 0.92) {
+      const scoop =
+        Math.max(0, 1 - ux * ux * 1.45) *
+        Math.sin(((t - 0.18) / 0.74) * Math.PI) *
+        uz;
+      nz -= scoop * 0.032;
+    }
+
+    // Subtle natural forward cup toward the tip
+    nz += Math.pow(t, 2) * 0.014;
+    pos.setXYZ(i, nx, ny, nz);
   }
 
   geom.computeVertexNormals();
   return geom;
 }
 
-/** Creates the concave inner ear pinna nestled snugly inside the outer ear shell. */
+/** Creates the understated concave triangular inner ear pinna nestled smoothly inside the ear shell. */
 function createInnerEarGeometry(): THREE.BufferGeometry {
-  const geom = new THREE.SphereGeometry(1, 18, 14);
+  const geom = new THREE.CylinderGeometry(0.12, 1.0, 1.0, 20, 12, false);
   const pos = geom.attributes.position;
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
     const z = pos.getZ(i);
-    const t = (y + 1) * 0.5;
+    const t = clamp(y + 0.5, 0, 1);
+    const r = Math.hypot(x, z);
+    const ang = r > 1e-5 ? Math.atan2(z, x) : 0;
+    const baseFrac = clamp(r / Math.max(0.05, 1.0 - 0.88 * t), 0, 1);
+    const tipRound = t > 0.85 ? Math.sqrt(Math.max(0.02, 1 - Math.pow((t - 0.85) / 0.15, 2))) : 1;
 
-    const widthProfile = 0.074 * (1 - 0.82 * Math.pow(t, 1.34));
-    const depthProfile = 0.016 * (1 - 0.62 * t);
-    const ny = 0.025 + t * 0.162;
-    const nz = z * depthProfile + 0.018 + Math.pow(t, 2) * 0.009;
-    pos.setXYZ(i, x * widthProfile, ny, nz);
+    const widthProfile = 0.074 * (1 - 0.82 * Math.pow(t, 1.1)) * tipRound * baseFrac;
+    const depthProfile = 0.012 * (1 - 0.55 * t) * tipRound * baseFrac;
+
+    const nx = Math.cos(ang) * widthProfile;
+    const ny = 0.055 + t * 0.138;
+    const nz = Math.sin(ang) * depthProfile + 0.024 * (1 - t * 0.42) + Math.pow(t, 2) * 0.011;
+    pos.setXYZ(i, nx, ny, nz);
   }
 
   geom.computeVertexNormals();
@@ -994,7 +1023,7 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
   const leftEye = buildRealisticEye(1);
   const rightEye = buildRealisticEye(-1);
 
-  // --- Natural Domestic Shorthair Tabby Ears + Fine Pale Cream Ear Furnishings ---
+  // --- Low-Set Wide-Base Domestic Shorthair Ears (embedded deeply into the upper skull like Candy!) ---
   const outerEarGeom = trackGeom(createSculptedEarGeometry());
   const innerEarGeom = trackGeom(createInnerEarGeometry());
   const earHairMat = trackMat(
@@ -1002,14 +1031,15 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
       color: '#ede5d6',
       roughness: 0.76,
       transparent: true,
-      opacity: 0.78,
+      opacity: 0.82,
     }),
   );
 
   const buildEar = (sign: 1 | -1): THREE.Group => {
     const pivot = new THREE.Group();
-    pivot.position.set(sign * 0.142, 0.184, 0.008);
-    pivot.rotation.set(0.08, sign * 0.20, -sign * 0.28);
+    // Seated much lower & embedded deep into the upper-outer skull so the base blends seamlessly
+    pivot.position.set(sign * 0.145, 0.098, -0.012);
+    pivot.rotation.set(0.08, sign * 0.18, -sign * 0.42);
     headCenter.add(pivot);
 
     const outer = new THREE.Mesh(outerEarGeom, tabbyEarMat);
@@ -1023,16 +1053,16 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
     tagPettable(inner, 'head');
     pivot.add(inner);
 
-    // Subtle wispy pale cream inner-ear hair furnishings
+    // Soft pale cream inner-ear hair furnishings across the lower concave hollow
     for (let k = 0; k < 4; k++) {
-      const yBase = 0.034 + k * 0.022;
+      const yBase = 0.078 + k * 0.021;
       const curve = new THREE.QuadraticBezierCurve3(
-        new THREE.Vector3(-sign * 0.044, yBase, 0.018),
-        new THREE.Vector3(-sign * 0.009, yBase + 0.010, 0.028),
-        new THREE.Vector3(sign * 0.016, yBase + 0.018, 0.021),
+        new THREE.Vector3(-sign * 0.052, yBase, 0.022),
+        new THREE.Vector3(-sign * 0.010, yBase + 0.009, 0.032),
+        new THREE.Vector3(sign * 0.022, yBase + 0.016, 0.024),
       );
       const wisp = new THREE.Mesh(
-        trackGeom(new THREE.TubeGeometry(curve, 7, 0.002 - k * 0.0002, 5, false)),
+        trackGeom(new THREE.TubeGeometry(curve, 7, 0.0022 - k * 0.0002, 5, false)),
         earHairMat,
       );
       pivot.add(wisp);

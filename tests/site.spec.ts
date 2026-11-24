@@ -203,10 +203,11 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
     await page.goto('/home/');
 
     const profile = page.getByRole('region', { name: 'Profile' });
-    const catCard = page.getByRole('region', { name: 'Interactive Calico Cat' });
+    const catCard = page.getByRole('region', { name: /Candy — Interactive Calico Cat/ });
     const canvas = catCard.locator('canvas');
 
     await expect(catCard).toBeVisible();
+    await expect(catCard.getByRole('heading', { name: 'Candy' })).toBeVisible();
     await expect(canvas).toBeVisible();
     await expect(catCard).toHaveAttribute('data-cat-mood', 'relaxed');
 
