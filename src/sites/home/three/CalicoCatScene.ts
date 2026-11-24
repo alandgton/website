@@ -40,6 +40,7 @@ export class CalicoCatScene {
   private readonly onStatusChange?: (status: CatSceneStatus) => void;
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene: THREE.Scene;
+  private readonly envRenderTarget: THREE.WebGLRenderTarget;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly rig: CalicoCatRig;
   private readonly feedback: PetFeedbackSystem;
@@ -148,11 +149,38 @@ export class CalicoCatScene {
     canvas.setAttribute('aria-label', 'Interactive 3D calico cat — stroke to pet or drag outside to rotate');
     this.container.appendChild(canvas);
 
+    // --- Lightweight Procedural Studio Environment (soft corneal & fur sheen reflections) ---
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const envScene = new THREE.Scene();
+    envScene.background = new THREE.Color('#141c2f');
+    const softboxTop = new THREE.Mesh(
+      new THREE.PlaneGeometry(8, 8),
+      new THREE.MeshBasicMaterial({ color: '#fff3e4', side: THREE.DoubleSide }),
+    );
+    softboxTop.position.set(2, 5, 3);
+    softboxTop.lookAt(0, 0, 0);
+    envScene.add(softboxTop);
+    const softboxRim = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 6),
+      new THREE.MeshBasicMaterial({ color: '#7dd3fc', side: THREE.DoubleSide }),
+    );
+    softboxRim.position.set(-4, 2.5, -4);
+    softboxRim.lookAt(0, 0, 0);
+    envScene.add(softboxRim);
+    this.envRenderTarget = pmrem.fromScene(envScene, 0.04);
+    this.scene.environment = this.envRenderTarget.texture;
+    this.scene.environmentIntensity = 0.42;
+    softboxTop.geometry.dispose();
+    (softboxTop.material as THREE.Material).dispose();
+    softboxRim.geometry.dispose();
+    (softboxRim.material as THREE.Material).dispose();
+    pmrem.dispose();
+
     // --- Studio Three-Point + Sky Rim Lighting ---
-    const hemiLight = new THREE.HemisphereLight('#d6e6ff', '#1b2238', 0.96);
+    const hemiLight = new THREE.HemisphereLight('#d6e6ff', '#1b2238', 0.92);
     this.scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight('#fff2df', 1.85);
+    const keyLight = new THREE.DirectionalLight('#fff2df', 1.78);
     keyLight.position.set(2.3, 3.8, 3.1);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(1024, 1024);
@@ -681,12 +709,12 @@ export class CalicoCatScene {
     this.rig.leftEarPivot.rotation.set(
       0.11 - this.earRelaxAmount * 0.14 + curiousPerk,
       0.24 - this.earRelaxAmount * 0.18,
-      -0.45 - this.earRelaxAmount * 0.22 + leftTwitch,
+      -0.43 - this.earRelaxAmount * 0.22 + leftTwitch,
     );
     this.rig.rightEarPivot.rotation.set(
       0.11 - this.earRelaxAmount * 0.14 + curiousPerk,
       -0.24 + this.earRelaxAmount * 0.18,
-      0.45 + this.earRelaxAmount * 0.22 - rightTwitch,
+      0.43 + this.earRelaxAmount * 0.22 - rightTwitch,
     );
 
     // 7. Continuous Smooth Procedural Tricolor Calico Tail Wave
@@ -725,6 +753,7 @@ export class CalicoCatScene {
 
     this.rig.dispose();
     this.feedback.dispose();
+    this.envRenderTarget.dispose();
     this.renderer.dispose();
     if (canvas.parentElement === this.container) {
       this.container.removeChild(canvas);
