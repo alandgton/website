@@ -100,11 +100,11 @@ function createSculptedEarGeometry(): THREE.BufferGeometry {
       tipRound = Math.sqrt(Math.max(0.015, 1 - capT * capT));
     }
     const baseRadiusFrac = r / Math.max(0.05, 1.0 - 0.86 * t); // preserves interior cap vertices at top/bottom
-    const widthProfile = 0.142 * (1 - 0.78 * Math.pow(t, 1.08)) * tipRound * clamp(baseRadiusFrac, 0, 1);
-    const depthProfile = 0.082 * (1 - 0.68 * Math.pow(t, 1.05)) * tipRound * clamp(baseRadiusFrac, 0, 1);
+    const widthProfile = 0.122 * (1 - 0.78 * Math.pow(t, 1.08)) * tipRound * clamp(baseRadiusFrac, 0, 1);
+    const depthProfile = 0.076 * (1 - 0.68 * Math.pow(t, 1.05)) * tipRound * clamp(baseRadiusFrac, 0, 1);
 
     const nx = Math.cos(ang) * widthProfile;
-    let ny = t * 0.245;
+    let ny = t * 0.255;
     let nz = Math.sin(ang) * depthProfile;
 
     // Subtle soft dome at the top tip cap
@@ -1055,8 +1055,8 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
 
   const buildEar = (sign: 1 | -1): THREE.Group => {
     const pivot = new THREE.Group();
-    // Seated much lower & embedded deep into the upper-outer skull so the base blends seamlessly
-    pivot.position.set(sign * 0.145, 0.098, -0.012);
+    // Seated inward & deep inside the upper skull so the entire base ring stays embedded from all angles (including low/bottom pitch)
+    pivot.position.set(sign * 0.118, 0.108, -0.014);
     pivot.rotation.set(0.08, sign * 0.18, -sign * 0.42);
     headCenter.add(pivot);
 
