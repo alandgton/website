@@ -128,7 +128,7 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
     expect(errors).toEqual([]);
   });
 
-  test('home placeholder uses centered floating header on narrow mobile without overflow', async ({
+  test('home page renders minimalist profile card on narrow mobile without overflow, hobbies, or map', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 360, height: 740 });
@@ -139,6 +139,47 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
     const header = page.locator('header');
     await expect(header.getByRole('link', { name: 'Main' })).toHaveAttribute('href', '/');
     await expect(header.getByRole('heading', { name: 'Alan Ton @ Home' })).toBeVisible();
+
+    const profile = page.getByRole('region', { name: 'Profile' });
+    await expect(profile.getByRole('img', { name: 'Alan Ton portrait placeholder' })).toBeVisible();
+    await expect(profile.getByRole('heading', { name: 'Alan Ton' })).toBeVisible();
+    await expect(profile.getByText('Software engineer living in NYC')).toBeVisible();
+
+    const linkedin = profile.getByRole('link', { name: 'LinkedIn' });
+    const instagram = profile.getByRole('link', { name: 'Instagram' });
+    await expect(linkedin).toHaveAttribute('href', '#linkedin');
+    await expect(instagram).toHaveAttribute('href', '#instagram');
+    await linkedin.click();
+    await instagram.click();
+    await expect(page).toHaveURL(/\/home\/$/);
+
+    // No WIP placeholder, hobbies, Garden Leave copy, or map SVG on /home/
+    const bodyText = await page.locator('main').innerText();
+    expect(bodyText).not.toMatch(/Work in Progress|Garden Leave|guitar|snowboard|scuba/i);
+    await expect(page.locator('main svg[role="img"]')).toHaveCount(0);
+
+    const hasOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth
+    );
+    expect(hasOverflow).toBe(false);
+    expect(errors).toEqual([]);
+  });
+
+  test('home page centers single horizontal profile pill cleanly on desktop', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const errors = trackRuntimeErrors(page);
+    await page.goto('/home/');
+
+    const profile = page.getByRole('region', { name: 'Profile' });
+    const avatarBox = await profile.getByRole('img', { name: 'Alan Ton portrait placeholder' }).boundingBox();
+    const linksBox = await profile.getByRole('navigation', { name: 'Social links' }).boundingBox();
+    expect(avatarBox).not.toBeNull();
+    expect(linksBox).not.toBeNull();
+    // On sm+ desktop viewports, social links sit beside the identity block without overlapping
+    expect(avatarBox!.x + avatarBox!.width).toBeLessThan(linksBox!.x);
+    expect(Math.abs((avatarBox!.y + avatarBox!.height / 2) - (linksBox!.y + linksBox!.height / 2))).toBeLessThan(8);
 
     const hasOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 /**
  * Shared glassmorphic pill chrome for top floating headers across sub-sites
@@ -42,3 +43,43 @@ export const HeaderDivider: React.FC<HeaderDividerProps> = ({ className = '' }) 
     aria-hidden="true"
   />
 );
+
+interface CenteredSubsiteHeaderProps {
+  /** Section name shown after "Alan Ton @", e.g. "Home". */
+  section: string;
+  /** Optional monospace subtext shown as title tooltip. */
+  subtitle?: string;
+  /** Icon rendered inside the header title badge. */
+  icon: LucideIcon;
+}
+
+/**
+ * Centered floating sub-site navigation header with dead-center title alignment
+ * on narrow mobile viewports (`← Main` left, title center).
+ */
+export const CenteredSubsiteHeader: React.FC<CenteredSubsiteHeaderProps> = ({
+  section,
+  subtitle,
+  icon: Icon,
+}) => {
+  const heading = `Alan Ton @ ${section}`;
+
+  return (
+    <header className="pointer-events-none absolute top-0 left-0 right-0 z-20 flex justify-center px-3 pt-3 sm:px-4 sm:pt-4">
+      <div
+        className={`${FLOATING_ISLAND_BASE_CLASS} w-full max-w-[390px] sm:w-auto sm:max-w-none grid grid-cols-[1fr_auto_1fr] sm:flex items-center justify-center gap-2 sm:gap-2.5 px-3.5 py-2 sm:px-4`}
+      >
+        <MainBackLink className="justify-self-start" />
+        <HeaderDivider />
+        <h1
+          className="justify-self-center flex items-center gap-1.5 font-bold tracking-tight text-white whitespace-nowrap"
+          title={subtitle ? `${heading} — ${subtitle}` : heading}
+        >
+          <Icon className="h-3.5 w-3.5 text-sky-400 shrink-0" aria-hidden="true" />
+          <span>{heading}</span>
+        </h1>
+        <span className="sm:hidden" aria-hidden="true" />
+      </div>
+    </header>
+  );
+};
