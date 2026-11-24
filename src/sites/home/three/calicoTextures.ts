@@ -950,6 +950,82 @@ export function createForelegTexture(
 }
 
 /**
+ * Generates plush coat-matched hind-leg textures for Candy's stout folded back legs
+ * (v = 0 upper thigh/calf inside torso -> v = 0.35 rear furred hock -> v = 1.0 snowy-white hind paw):
+ * - 'left' (+X): soft golden-orange & light tabby feathering across the upper-rear hock into plush snowy white.
+ * - 'right' (-X): dark charcoal-brown tabby across the upper-rear hip/hock into plush snowy white.
+ */
+export function createHindLegTexture(
+  palette: CalicoCoatPalette,
+  side: 'left' | 'right',
+  size = 256,
+): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const img = ctx.createImageData(size, size);
+  const data = img.data;
+  const c = parseCoatPalette(palette);
+
+  for (let py = 0; py < size; py++) {
+    const v = 1 - (py + 0.5) / size; // 0 = upper thigh/calf inside body, 1 = front paw tip
+    for (let px = 0; px < size; px++) {
+      const phi = ((px + 0.5) / size) * Math.PI * 2;
+      const cosP = Math.cos(phi); // +1 = +X, -1 = -X
+      const sinP = Math.sin(phi); // +1 = top/rear-top of hock, -1 = sole facing floor
+
+      const strandVal = valueNoise3(cosP * 54, v * 26, sinP * 54);
+      const tickVal = valueNoise3(cosP * 98 + 2.1, v * 52, sinP * 98 - 1.4);
+      const n =
+        (fbm3(cosP * 4.4 + 1.3, v * 4.8, sinP * 4.4 - 0.7) - 0.5) * 0.22 +
+        (strandVal - 0.5) * 0.09;
+
+      // Wrap haunch coat 360° around the upper thigh & rear hock bend so the rear heel blends
+      // invisibly into the lower rump from behind, feathering smoothly into snowy white toward the paw
+      let gingerW = 0;
+      let tabbyW = 0;
+      let stripeDark = 0.50;
+
+      if (side === 'left') {
+        const haunchFade = smoothstep(0.42, 0.16, v + n * 0.22);
+        const outerWrap = smoothstep(-0.35, 0.35, cosP);
+        gingerW = haunchFade * (0.64 + outerWrap * 0.28);
+        tabbyW = haunchFade * (0.34 - outerWrap * 0.14);
+        stripeDark = clamp(0.34 + fbm3(cosP * 6.0, v * 10.0, sinP * 6.0) * 0.32, 0.24, 0.72);
+      } else {
+        const haunchFade = smoothstep(0.56, 0.24, v + n * 0.22);
+        tabbyW = haunchFade * 0.96;
+        const bar = smoothstep(0.05, 0.72, Math.sin(v * 26.0 + sinP * 2.8 + n * 4.0));
+        stripeDark = clamp(0.46 + bar * 0.44, 0.34, 0.94);
+      }
+
+      const footBottomShadow = 1 - smoothstep(0.45, 0.80, v) * smoothstep(-0.15, -0.85, sinP) * 0.14;
+      const legAo = (0.90 + 0.10 * smoothstep(0.0, 0.28, v)) * footBottomShadow;
+
+      const idx = (py * size + px) * 4;
+      writeTabicoPixel(
+        data,
+        idx,
+        c,
+        gingerW,
+        tabbyW * (1 - gingerW * 0.65),
+        stripeDark,
+        strandVal,
+        tickVal,
+        0,
+        legAo,
+        tabbyW * 0.28,
+        gingerW * 0.22,
+      );
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
+  return finalizeTexture(canvas, THREE.SRGBColorSpace);
+}
+
+/**
  * Generates high-detail hair-strand fur textures for cream paws, asymmetric orange-chestnut ears,
  * and warm amber-brown eyelid shells (Aerial + Photo 5 accurate!).
  */

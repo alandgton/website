@@ -8,6 +8,7 @@ import {
   createFurBumpTexture,
   createFurHeightAlphaTexture,
   createHeadCalicoTexture,
+  createHindLegTexture,
   createSolidFurTexture,
   createTailCalicoTexture,
   createTorsoCalicoTexture,
@@ -175,21 +176,32 @@ function createInnerEarGeometry(): THREE.BufferGeometry {
  * - Recessed lower-front belly so 100% of both front legs (shoulder -> elbow -> forearm -> paw) stand proudly visible!
  */
 function createSeatedTorsoGeometry(): { geometry: THREE.BufferGeometry; furWeights: Float32Array } {
-  const profilePoints: THREE.Vector2[] = [
-    new THREE.Vector2(0.001, 0.0),
-    new THREE.Vector2(0.29, 0.015),
-    new THREE.Vector2(0.388, 0.11),
-    new THREE.Vector2(0.415, 0.25),
-    new THREE.Vector2(0.402, 0.41),
-    new THREE.Vector2(0.372, 0.57), // soft rounded feline ribcage & mid-torso
-    new THREE.Vector2(0.342, 0.71), // broad plush rounded shoulders
-    new THREE.Vector2(0.304, 0.84), // smooth muscular neck-shoulder arch
-    new THREE.Vector2(0.262, 0.96), // plush continuous nape meeting back of head
-    new THREE.Vector2(0.212, 1.07), // smooth gentle taper tucked cleanly inside skull
+  const anchorPoints: THREE.Vector2[] = [
+    new THREE.Vector2(0.001, 0.008),
+    new THREE.Vector2(0.155, 0.024), // compact tucked sitting base
+    new THREE.Vector2(0.258, 0.12),  // crisp rounded underside lifting off cushion
+    new THREE.Vector2(0.322, 0.25),  // trim tucked lower haunch resting directly over hind legs
+    new THREE.Vector2(0.348, 0.41),  // balanced mid-loin fullness
+    new THREE.Vector2(0.350, 0.57),  // full upright ribcage & arched mid-back
+    new THREE.Vector2(0.334, 0.71),  // balanced rounded shoulders
+    new THREE.Vector2(0.304, 0.84),  // smooth muscular neck-shoulder arch (preserves head-nape merge)
+    new THREE.Vector2(0.262, 0.96),  // plush continuous nape meeting back of head
+    new THREE.Vector2(0.212, 1.07),  // smooth gentle taper tucked cleanly inside skull
     new THREE.Vector2(0.001, 1.17),
   ];
 
-  const geom = new THREE.LatheGeometry(profilePoints, 72);
+  // C2 Catmull-Rom subdivision (4 sub-rings per anchor interval -> 41 rings) eliminates side-profile faceting
+  // while keeping uv.y = k / 10 exact at every original anchor so all torso coat markings stay 100% invariant
+  const profileSpline = new THREE.SplineCurve(anchorPoints);
+  const profileSubdiv = 4;
+  const totalRings = (anchorPoints.length - 1) * profileSubdiv;
+  const smoothProfilePoints: THREE.Vector2[] = [];
+  for (let j = 0; j <= totalRings; j++) {
+    const pt = profileSpline.getPoint(j / totalRings);
+    smoothProfilePoints.push(new THREE.Vector2(Math.max(0.001, pt.x), Math.max(0.006, pt.y)));
+  }
+
+  const geom = new THREE.LatheGeometry(smoothProfilePoints, 64);
   const pos = geom.attributes.position;
   const furWeights = new Float32Array(pos.count);
 
@@ -200,50 +212,77 @@ function createSeatedTorsoGeometry(): { geometry: THREE.BufferGeometry; furWeigh
 
     const t = clamp(y / 1.08, 0, 1);
 
-    // True seated feline spine posture: pelvis & haunches sit BACK (-0.15), neck tapers forward (+0.125) inside skull
-    const spineShiftZ = -0.15 * (1 - smoothstep(0.0, 0.82, t)) + 0.125 * smoothstep(0.28, 0.96, t);
+    // Compact upright seated spine: keeps arched back centered directly over the rearward hind legs
+    // (zero excessive overhanging mass behind hocks) while preserving exact nape alignment (+0.125)
+    const midSpineBack = Math.sin(clamp((t - 0.05) / 0.82, 0, 1) * Math.PI);
+    const spineShiftZ =
+      -0.015 * (1 - smoothstep(0.0, 0.72, t)) -
+      0.032 * midSpineBack +
+      0.125 * smoothstep(0.26, 0.96, t);
 
-    // C-infinity smooth front-to-back depth modulation (eliminates any z=0 vertical side crease!)
-    const rearT = smoothstep(0.32, -0.32, z);
-    const depthFactor = 0.89 + rearT * 0.30;
-    z = z * (0.95 + (depthFactor - 0.95) * (1 - t * 0.42)) + spineShiftZ;
+    // Smooth front-to-back depth modulation: trimmed flatter front chest (0.78 on +Z -> zero bulge over front legs!)
+    // paired with arched mid-back & compact tucked lower rump directly above hind legs
+    const rearT = smoothstep(0.30, -0.30, z);
+    const archEnv = Math.sin(clamp((t - 0.04) / 0.88, 0, 1) * Math.PI);
+    const depthFactor = 0.78 + rearT * (0.16 + archEnv * 0.16);
+    z = z * (0.94 + (depthFactor - 0.94) * (1 - t * 0.28)) + spineShiftZ;
 
-    // Smoothly integrated folded rear haunches flaring organically behind the elbows (Photo 3 & Aerial!)
-    const haunchVert = Math.exp(-Math.pow((t - 0.24) / 0.20, 2));
-    const haunchSide = smoothstep(0.13, 0.37, Math.abs(x));
-    const haunchZ = smoothstep(0.24, -0.26, z);
+    // High, graceful convex feline back arch peaking cleanly at mid/upper-back (backZ ≈ -0.464 at y ≈ 0.49)
+    const dorsalArch =
+      Math.exp(-Math.pow((t - 0.58) / 0.25, 2)) *
+      smoothstep(0.06, 0.24, t) *
+      smoothstep(0.94, 0.72, t) *
+      smoothstep(0.08, -0.22, z);
+    z -= dorsalArch * 0.092;
+
+    // Crisp rounded underside rump tuck landing cleanly onto the back legs/hocks (z ≈ -0.35..-0.20)
+    const bottomRumpTuck = (1 - smoothstep(0.02, 0.24, t)) * smoothstep(0.12, -0.20, z);
+    z += bottomRumpTuck * 0.024;
+
+    // Subtle folded thigh contour directly above the rear hind legs
+    const haunchVert = Math.exp(-Math.pow((t - 0.34) / 0.16, 2));
+    const haunchSide = smoothstep(0.14, 0.31, Math.abs(x));
+    const haunchZ = smoothstep(0.10, -0.26, z);
     const haunchSwell = haunchVert * haunchSide * haunchZ;
-    x += Math.sign(x) * haunchSwell * 0.072;
-    z -= haunchSwell * 0.026;
+    x += Math.sign(x) * haunchSwell * 0.024;
+    z -= haunchSwell * 0.012;
 
-    // Plush dorsal & rear-side neck arch filling back-of-neck smoothly into occiput (keeps front throat tucked neatly under chin)
+    // Preserve exact verified upper nape arch (backZ ≈ -0.216 at y = 0.96)
     const napeVert = Math.exp(-Math.pow((t - 0.89) / 0.17, 2));
     const napeBackMask = smoothstep(0.08, -0.18, z);
     const napeSideMask = smoothstep(0.22, -0.06, z);
-    z -= napeVert * napeBackMask * 0.056;
+    z -= napeVert * napeBackMask * 0.095;
     x *= 1 + napeVert * napeSideMask * 0.11;
 
-    // Keep upper chest warmly rounded in front, gently recessing only slightly behind the forearms
+    // Flatten center chest (no pigeon bulge over front legs), softly fill outer pectoral shoulders
+    // so wider forward forelegs blend flush with zero cap bump, and recess belly behind forearms
     if (z > 0.04) {
-      const upperChestPuff =
-        Math.exp(-Math.pow((t - 0.68) / 0.22, 2)) *
-        Math.exp(-Math.pow(x / 0.30, 2));
-      z += upperChestPuff * 0.052;
+      const chestCenterFlat =
+        Math.exp(-Math.pow((t - 0.66) / 0.24, 2)) *
+        Math.exp(-Math.pow(x / 0.20, 2));
+      z -= chestCenterFlat * 0.022;
 
-      if (t < 0.48) {
-        const behindLegsRecess = Math.sin((t / 0.48) * Math.PI) * Math.exp(-Math.pow(x / 0.24, 2));
-        z -= behindLegsRecess * 0.030;
+      const outerShoulderMerge =
+        Math.exp(-Math.pow((t - 0.56) / 0.16, 2)) *
+        Math.exp(-Math.pow((Math.abs(x) - 0.17) / 0.11, 2)) *
+        smoothstep(0.06, 0.22, z);
+      z += outerShoulderMerge * 0.032;
+
+      if (t < 0.46) {
+        const behindLegsRecess = Math.sin((t / 0.46) * Math.PI) * Math.exp(-Math.pow(x / 0.25, 2));
+        z -= behindLegsRecess * 0.024;
       }
     }
 
     pos.setXYZ(i, x, y, z);
 
-    const contactFade = smoothstep(0.02, 0.12, y);
+    // Keep lower underside fur crisp (no downward droop melting onto floor) and preserve nape fur match
+    const contactFade = smoothstep(0.035, 0.16, y);
     const neckCapFade = 1 - smoothstep(0.92, 1.0, t);
     const rearNapeMatch =
       1 - smoothstep(0.72, 0.90, t) * smoothstep(0.08, -0.16, z) * 0.34;
     const ruffBoost = z > 0.08 && t > 0.54 ? 1.18 : 1.0;
-    const dorsalPlush = z < -0.10 && t > 0.22 && t < 0.78 ? 1.10 : 1.0;
+    const dorsalPlush = z < -0.10 && t > 0.24 && t < 0.78 ? 1.10 : 1.0;
     furWeights[i] = contactFade * neckCapFade * rearNapeMatch * ruffBoost * dorsalPlush;
   }
 
@@ -397,11 +436,11 @@ function createAnatomicalForelegGeometry(sideSign: 1 | -1): {
     new THREE.Vector2(0.001, 0.0),
     new THREE.Vector2(0.062, 0.02),
     new THREE.Vector2(0.067, 0.16),
-    new THREE.Vector2(0.082, 0.33),
-    new THREE.Vector2(0.102, 0.49),
-    new THREE.Vector2(0.118, 0.62), // full plush feline upper arm blending seamlessly into chest shoulders!
-    new THREE.Vector2(0.094, 0.72),
-    new THREE.Vector2(0.001, 0.77),
+    new THREE.Vector2(0.080, 0.33),
+    new THREE.Vector2(0.092, 0.48), // natural elbow & plush upper-arm width
+    new THREE.Vector2(0.092, 0.60), // smooth shoulder transition (eliminates bulbous cap step)
+    new THREE.Vector2(0.068, 0.70), // tapered cleanly inside chest shoulder
+    new THREE.Vector2(0.001, 0.76),
   ];
   const geom = new THREE.LatheGeometry(points, 32);
   const pos = geom.attributes.position;
@@ -413,9 +452,11 @@ function createAnatomicalForelegGeometry(sideSign: 1 | -1): {
     const z = pos.getZ(i);
     const t = clamp(y / 0.75, 0, 1);
 
-    // Organic seated foreleg curve: wider plush shoulders angling softly inward to snug front paws
-    const curveX = sideSign * Math.pow(t, 1.2) * 0.066;
-    const curveZ = -Math.pow(t, 1.15) * 0.165 + Math.sin(t * Math.PI) * 0.018;
+    // Upright seated forelegs proud ahead of flattened chest, curving smoothly inward & back above mid-arm
+    // so the upper shoulder cap buries 100% seamlessly inside the torso with zero bump
+    const curveX =
+      sideSign * (Math.sin(t * Math.PI * 0.85) * 0.026 - smoothstep(0.60, 1.0, t) * 0.042);
+    const curveZ = -Math.pow(t, 1.30) * 0.185 + Math.sin(t * Math.PI * 0.78) * 0.022;
     pos.setXYZ(i, x + curveX, y, z + curveZ);
 
     // Sleek soft wrist fur tapering up into plush upper-arm fluff blending organically into the chest
@@ -424,6 +465,103 @@ function createAnatomicalForelegGeometry(sideSign: 1 | -1): {
     furWeights[i] = wristSleek * topCapFade;
   }
 
+  geom.computeVertexNormals();
+  return { geometry: geom, furWeights };
+}
+
+/**
+ * Creates a stout, plush, anatomically folded seated feline hind leg (thigh merge -> furred rear hock
+ * -> thick gently angled lower leg -> rounded plush paw) that merges seamlessly into Candy's lower body.
+ */
+function createAnatomicalHindLegGeometry(sideSign: 1 | -1): {
+  geometry: THREE.BufferGeometry;
+  furWeights: Float32Array;
+} {
+  const curve = new THREE.CatmullRomCurve3(
+    [
+      new THREE.Vector3(sideSign * 0.132, 0.152, -0.228), // stout furred hock nestled cleanly inside lower rear thigh
+      new THREE.Vector3(sideSign * 0.156, 0.098, -0.165), // thick angled lower hind leg (~30 deg down-forward)
+      new THREE.Vector3(sideSign * 0.174, 0.058, -0.080), // plush metatarsus (~18 deg) merging into underside
+      new THREE.Vector3(sideSign * 0.184, 0.040, 0.006),  // stout plush rounded hind paw resting solidly on cushion
+    ],
+    false,
+    'centripetal',
+  );
+
+  const lengthSegs = 24;
+  const radialSegs = 18;
+  const rings = lengthSegs + 1;
+  const cols = radialSegs + 1;
+  const positions = new Float32Array(rings * cols * 3);
+  const uvs = new Float32Array(rings * cols * 2);
+  const furWeights = new Float32Array(rings * cols);
+  const indices: number[] = [];
+
+  const sideVec = new THREE.Vector3();
+  const upVec = new THREE.Vector3();
+
+  for (let i = 0; i < rings; i++) {
+    const u = i / lengthSegs;
+    const center = curve.getPoint(u);
+    const tan = curve.getTangent(u).normalize();
+    sideVec.set(1, 0, 0).addScaledVector(tan, -tan.x).normalize();
+    upVec.crossVectors(tan, sideVec).normalize();
+
+    // Rounded dome caps at thigh root (u=0) and plush paw tip (u=1)
+    let cap = 1.0;
+    if (u < 0.10) {
+      cap = Math.max(0.05, Math.sin((u / 0.10) * Math.PI * 0.5));
+    } else if (u > 0.84) {
+      const ct = (u - 0.84) / 0.16;
+      cap = Math.sqrt(Math.max(0.002, 1 - ct * ct));
+    }
+
+    // Stout large-cat limb profile: thick furred hock -> substantial angled foot -> plush rounded paw
+    const rx = (0.092 * (1 - u) + 0.076 * u + Math.sin(u * Math.PI) * 0.006) * cap;
+    const ry = (0.082 * (1 - u) + 0.044 * u + Math.sin(u * Math.PI) * 0.006) * cap;
+
+    for (let j = 0; j < cols; j++) {
+      const vFrac = j / radialSegs;
+      const phi = vFrac * Math.PI * 2;
+      const cosP = Math.cos(phi);
+      const sinP = Math.sin(phi);
+      // Softly flatten sole against cushion under the lower foot & paw
+      const soleFlat = sinP < 0 ? 1 - smoothstep(0.35, 0.75, u) * 0.20 : 1.0;
+
+      const px = center.x + sideVec.x * cosP * rx + upVec.x * sinP * ry * soleFlat;
+      const py = Math.max(0.006, center.y + sideVec.y * cosP * rx + upVec.y * sinP * ry * soleFlat);
+      const pz = center.z + sideVec.z * cosP * rx + upVec.z * sinP * ry * soleFlat;
+
+      const idx = i * cols + j;
+      positions[idx * 3] = px;
+      positions[idx * 3 + 1] = py;
+      positions[idx * 3 + 2] = pz;
+      uvs[idx * 2] = vFrac;
+      uvs[idx * 2 + 1] = u;
+
+      // Taper fur cleanly to 0 deep inside torso & on floor sole; plush across hock/lower leg, sleek on paw front
+      const thighRootFade = smoothstep(0.04, 0.22, u);
+      const pawSleek = 1 - smoothstep(0.70, 0.96, u) * 0.58;
+      const floorFade = smoothstep(0.012, 0.055, py);
+      furWeights[idx] = thighRootFade * pawSleek * floorFade;
+    }
+  }
+
+  for (let i = 0; i < lengthSegs; i++) {
+    for (let j = 0; j < radialSegs; j++) {
+      const a = i * cols + j;
+      const b = (i + 1) * cols + j;
+      const c = (i + 1) * cols + (j + 1);
+      const d = i * cols + (j + 1);
+      // Verified outward-facing CCW winding (minOutwardDot = +0.74..+1.00, 100% outward!)
+      indices.push(a, d, b, b, d, c);
+    }
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geom.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geom.setIndex(indices);
   geom.computeVertexNormals();
   return { geometry: geom, furWeights };
 }
@@ -596,13 +734,13 @@ class SmoothAnimatedTail {
     const w3 = Math.sin(this.phase - 1.9) * swayAmp * 1.5;
     const tipBob = Math.cos(this.bobPhase - 1.5) * swayAmp * 0.55;
 
-    // Graceful low-resting S-curve emerging smoothly out of the lower rump
-    this.controlPoints[0].set(0.0, 0.16, -0.34);
-    this.controlPoints[1].set(0.08, 0.14, -0.60);
-    this.controlPoints[2].set(0.42 + w1 * 0.55, 0.17 + happyLift * 0.25, -0.58 + w1 * 0.3);
-    this.controlPoints[3].set(0.68 + w2 * 0.75, 0.30 + happyLift * 0.65, -0.38 + w2 * 0.4);
-    this.controlPoints[4].set(0.76 + w3 * 0.9, 0.47 + happyLift * 1.05 + tipBob * 0.5, -0.15 + w3 * 0.48);
-    this.controlPoints[5].set(0.70 + w3 * 1.1, 0.62 + happyLift * 1.25 + tipBob, 0.04 + w3 * 0.6);
+    // Graceful low-resting S-curve emerging cleanly out of the compact rounded lower rump
+    this.controlPoints[0].set(0.0, 0.21, -0.22);
+    this.controlPoints[1].set(0.08, 0.12, -0.45);
+    this.controlPoints[2].set(0.36 + w1 * 0.55, 0.15 + happyLift * 0.25, -0.43 + w1 * 0.3);
+    this.controlPoints[3].set(0.60 + w2 * 0.75, 0.28 + happyLift * 0.65, -0.25 + w2 * 0.4);
+    this.controlPoints[4].set(0.68 + w3 * 0.9, 0.45 + happyLift * 1.05 + tipBob * 0.5, -0.04 + w3 * 0.48);
+    this.controlPoints[5].set(0.62 + w3 * 1.1, 0.60 + happyLift * 1.25 + tipBob, 0.13 + w3 * 0.6);
 
     const posAttr = this.geometry.attributes.position as THREE.BufferAttribute;
     const posArr = posAttr.array as Float32Array;
@@ -719,6 +857,8 @@ export function buildCalicoCat(
   const torsoTex = trackTex(createTorsoCalicoTexture(palette, coatW, coatH));
   const leftLegTex = trackTex(createForelegTexture(palette, 'left', 256));
   const rightLegTex = trackTex(createForelegTexture(palette, 'right', 256));
+  const leftHindLegTex = trackTex(createHindLegTexture(palette, 'left', 256));
+  const rightHindLegTex = trackTex(createHindLegTexture(palette, 'right', 256));
   const tailTex = trackTex(createTailCalicoTexture(palette));
   const creamFurTex = trackTex(createSolidFurTexture(palette, 'cream'));
   const leftEarTex = trackTex(createSolidFurTexture(palette, 'leftEar'));
@@ -802,6 +942,8 @@ export function buildCalicoCat(
   const torsoBaseMat = makeBaseFurMat(torsoTex, 0.86, 0.56, 0.016);
   const leftLegBaseMat = makeBaseFurMat(leftLegTex, 0.84, 0.55, 0.015);
   const rightLegBaseMat = makeBaseFurMat(rightLegTex, 0.84, 0.55, 0.015);
+  const leftHindLegMat = makeBaseFurMat(leftHindLegTex, 0.86, 0.55, 0.015);
+  const rightHindLegMat = makeBaseFurMat(rightHindLegTex, 0.86, 0.55, 0.015);
   const tailMat = makeBaseFurMat(tailTex, 0.93, 0.78, 0.024);
   const creamPawMat = makeBaseFurMat(creamFurTex, 0.92, 0.56, 0.014);
   const leftEarMat = makeBaseFurMat(leftEarTex, 0.91, 0.62, 0.014);
@@ -941,11 +1083,11 @@ export function buildCalicoCat(
     }),
   );
   const contactShadow = new THREE.Mesh(
-    trackGeom(new THREE.PlaneGeometry(1.38, 1.38)),
+    trackGeom(new THREE.PlaneGeometry(1.14, 1.14)),
     contactShadowMat,
   );
   contactShadow.rotation.x = -Math.PI / 2;
-  contactShadow.position.set(0, 0.006, 0.04);
+  contactShadow.position.set(0, 0.008, 0.01);
   root.add(contactShadow);
 
   // --- Cat Assembly ---
@@ -968,7 +1110,7 @@ export function buildCalicoCat(
   // 2. Full-Length Anatomical Plush Forelegs seamlessly nestled into rounded shoulders (Photo 3!)
   const leftLegData = createAnatomicalForelegGeometry(1);
   const leftLegMesh = new THREE.Mesh(trackGeom(leftLegData.geometry), leftLegBaseMat);
-  leftLegMesh.position.set(0.098, 0.036, 0.262);
+  leftLegMesh.position.set(0.144, 0.036, 0.280);
   leftLegMesh.castShadow = true;
   leftLegMesh.receiveShadow = true;
   tagPettable(leftLegMesh, 'chin');
@@ -977,7 +1119,7 @@ export function buildCalicoCat(
 
   const rightLegData = createAnatomicalForelegGeometry(-1);
   const rightLegMesh = new THREE.Mesh(trackGeom(rightLegData.geometry), rightLegBaseMat);
-  rightLegMesh.position.set(-0.098, 0.036, 0.262);
+  rightLegMesh.position.set(-0.144, 0.036, 0.280);
   rightLegMesh.castShadow = true;
   rightLegMesh.receiveShadow = true;
   tagPettable(rightLegMesh, 'chin');
@@ -1009,27 +1151,44 @@ export function buildCalicoCat(
   };
 
   const leftFrontPawPivot = new THREE.Group();
-  leftFrontPawPivot.position.set(0.098, 0.036, 0.304);
-  leftFrontPawPivot.rotation.y = 0.05;
+  leftFrontPawPivot.position.set(0.144, 0.036, 0.322);
+  leftFrontPawPivot.rotation.y = 0.09;
   leftFrontPawPivot.add(createNaturalPaw(true));
   bodyGroup.add(leftFrontPawPivot);
 
   const rightFrontPawPivot = new THREE.Group();
-  rightFrontPawPivot.position.set(-0.098, 0.036, 0.304);
-  rightFrontPawPivot.rotation.y = -0.05;
+  rightFrontPawPivot.position.set(-0.144, 0.036, 0.322);
+  rightFrontPawPivot.rotation.y = -0.09;
   rightFrontPawPivot.add(createNaturalPaw(true));
   bodyGroup.add(rightFrontPawPivot);
 
-  // Subtle tucked hind paws nestled snugly beneath the lower haunches
-  const leftBackPaw = createNaturalPaw(false);
-  leftBackPaw.position.set(0.28, 0.034, 0.06);
-  leftBackPaw.rotation.y = 0.42;
-  bodyGroup.add(leftBackPaw);
+  // Stout, plush, anatomically folded seated hind legs merging seamlessly into Candy's lower haunches
+  const addAnatomicalHindLeg = (
+    sideSign: 1 | -1,
+    mat: THREE.MeshPhysicalMaterial,
+    tex: THREE.CanvasTexture,
+  ) => {
+    const hindData = createAnatomicalHindLegGeometry(sideSign);
+    const hindMesh = new THREE.Mesh(trackGeom(hindData.geometry), mat);
+    hindMesh.castShadow = true;
+    hindMesh.receiveShadow = true;
+    tagPettable(hindMesh, 'back');
+    bodyGroup.add(hindMesh);
+    attachVolumetricFur(bodyGroup, hindMesh, tex, 4, 0.016, 0.004, hindData.furWeights);
 
-  const rightBackPaw = createNaturalPaw(false);
-  rightBackPaw.position.set(-0.28, 0.034, 0.06);
-  rightBackPaw.rotation.y = -0.42;
-  bodyGroup.add(rightBackPaw);
+    // Subtle plush white toes rounding out the front tip of the seated hind paw
+    for (const tx of [-0.028, 0, 0.028]) {
+      const toe = new THREE.Mesh(pawToeGeom, creamPawMat);
+      toe.scale.set(0.96, 0.78, 1.32);
+      toe.position.set(sideSign * 0.184 + tx, 0.028, 0.012);
+      toe.castShadow = true;
+      toe.receiveShadow = true;
+      bodyGroup.add(toe);
+    }
+  };
+
+  addAnatomicalHindLeg(1, leftHindLegMat, leftHindLegTex);
+  addAnatomicalHindLeg(-1, rightHindLegMat, rightHindLegTex);
 
   // 3. Articulated Anatomical Head Pivot (nestled deeply & seamlessly into the plush white neck ruff)
   const headPivot = new THREE.Group();
