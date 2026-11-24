@@ -181,11 +181,11 @@ export class CalicoCatScene {
     pmrem.dispose();
 
     // --- Natural Daylight Window + Soft Rim Studio Lighting ---
-    const hemiLight = new THREE.HemisphereLight('#e8f1ff', '#1b202e', 0.96);
+    const hemiLight = new THREE.HemisphereLight('#edf3ff', '#222736', 1.02);
     this.scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight('#fff8ef', 1.85);
-    keyLight.position.set(2.4, 3.6, 3.2);
+    const keyLight = new THREE.DirectionalLight('#fff8ef', 1.82);
+    keyLight.position.set(2.4, 3.7, 3.1);
     keyLight.castShadow = true;
     const shadowSize = isCompactViewport ? 512 : 1024;
     keyLight.shadow.mapSize.set(shadowSize, shadowSize);
@@ -195,13 +195,13 @@ export class CalicoCatScene {
     keyLight.shadow.camera.right = 1.8;
     keyLight.shadow.camera.top = 2.0;
     keyLight.shadow.camera.bottom = -1.2;
-    keyLight.shadow.bias = -0.0005;
-    keyLight.shadow.normalBias = 0.018;
+    keyLight.shadow.bias = -0.0004;
+    keyLight.shadow.normalBias = 0.028;
     this.scene.add(keyLight);
 
-    // Subtle cool skylight rim tracing the volumetric fur silhouette against dark slate
-    const rimLight = new THREE.DirectionalLight('#93c5fd', 1.18);
-    rimLight.position.set(-2.7, 2.3, -2.5);
+    // Soft daylight skylight rim tracing the volumetric fur silhouette & keeping dorsal/aerial colors true
+    const rimLight = new THREE.DirectionalLight('#c4dbf8', 1.05);
+    rimLight.position.set(-2.4, 3.0, -2.5);
     this.scene.add(rimLight);
 
     // Gentle warm front bounce so snowy chest fur & muzzle details stay crisp
@@ -432,7 +432,7 @@ export class CalicoCatScene {
 
     if (this.dragMode === 'orbit' && this.activePointerId === e.pointerId) {
       this.targetYaw -= dx * 0.0085;
-      this.targetPitch = clamp(this.targetPitch + dy * 0.0065, 0.02, 0.78);
+      this.targetPitch = clamp(this.targetPitch + dy * 0.0065, 0.02, 1.18);
       this.emitStatusIfChanged();
       return;
     }
@@ -671,11 +671,11 @@ export class CalicoCatScene {
     this.rig.leftEyeBall.rotation.set(this.eyeGazeY, this.eyeGazeX, 0);
     this.rig.rightEyeBall.rotation.set(this.eyeGazeY, this.eyeGazeX, 0);
 
-    // Upper eyelid sweeps smoothly from bright open (-0.88) -> soft closed (+0.14)
-    // Lower eyelid gently lifts from open (+0.84) -> blissful closed smile (+0.18)
+    // Upper eyelid sweeps smoothly from natural feline almond open (-0.64) -> soft blissful close (+0.16)
+    // Lower eyelid gently lifts from calm open (+0.68) -> blissful closed smile (+0.20)
     const closeFactor = Math.max(blinkClose, this.squintAmount * 0.94);
-    const upperLidRotX = -0.88 + closeFactor * 1.02;
-    const lowerLidRotX = 0.84 - (this.squintAmount * 0.62 + blinkClose * 0.18);
+    const upperLidRotX = -0.64 + closeFactor * 0.80;
+    const lowerLidRotX = 0.68 - (this.squintAmount * 0.48 + blinkClose * 0.16);
 
     this.rig.leftUpperLid.rotation.x = upperLidRotX;
     this.rig.rightUpperLid.rotation.x = upperLidRotX;
