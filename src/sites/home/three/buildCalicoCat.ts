@@ -273,17 +273,17 @@ function createAnatomicalHeadGeometry(): {
       x *= 1 - smoothstep(-0.28, -0.92, uy) * 0.15;
     }
 
-    // Recessed orbital eye sockets at (±0.38, +0.06, +0.92)
-    const socketDist = Math.hypot((absX - 0.38) / 0.21, (uy - 0.06) / 0.175);
-    const socketMask = Math.exp(-socketDist * socketDist) * smoothstep(0.45, 0.86, uz);
-    z -= socketMask * 0.026;
+    // Recessed orbital eye sockets sized generously for Candy's large expressive eyes
+    const socketDist = Math.hypot((absX - 0.40) / 0.25, (uy - 0.08) / 0.215);
+    const socketMask = Math.exp(-socketDist * socketDist) * smoothstep(0.42, 0.86, uz);
+    z -= socketMask * 0.032;
 
     // Subtle feline brow ridge above sockets
     const browMask =
-      Math.exp(-Math.pow((absX - 0.33) / 0.22, 2)) *
-      Math.exp(-Math.pow((uy - 0.27) / 0.13, 2)) *
+      Math.exp(-Math.pow((absX - 0.36) / 0.24, 2)) *
+      Math.exp(-Math.pow((uy - 0.31) / 0.13, 2)) *
       smoothstep(0.5, 0.88, uz);
-    z += browMask * 0.014;
+    z += browMask * 0.015;
 
     // Continuous sculpted forward feline muzzle / snout
     const snoutMask =
@@ -310,7 +310,7 @@ function createAnatomicalHeadGeometry(): {
     pos.setXYZ(i, x, y, z);
 
     // Clear eye sockets & bare nose pad so volumetric fur shells never clip eyes/nose
-    const eyeClear = 1 - smoothstep(0.34, 0.16, Math.hypot(absX - 0.38, uy - 0.06)) * smoothstep(0.54, 0.82, uz);
+    const eyeClear = 1 - smoothstep(0.41, 0.21, Math.hypot(absX - 0.40, uy - 0.08)) * smoothstep(0.52, 0.82, uz);
     const noseClear = 1 - smoothstep(0.18, 0.08, Math.hypot(ux, uy + 0.18)) * smoothstep(0.84, 0.96, uz);
     const muzzleSleek = 1 - snoutMask * 0.56;
     const cheekPlush = 1 + cheekMask * 0.42;
@@ -985,54 +985,54 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
     );
   }
 
-  // --- Recessed Glossy Eyes with Real Animated Furry Upper & Lower Eyelids ---
-  const eyeballGeom = trackGeom(new THREE.SphereGeometry(0.059, 28, 22));
+  // --- Large Expressive Recessed Glossy Eyes with Animated Furry Upper & Lower Eyelids ---
+  const eyeballGeom = trackGeom(new THREE.SphereGeometry(0.072, 28, 22));
   const upperLidGeom = trackGeom(
-    new THREE.SphereGeometry(0.064, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.52),
+    new THREE.SphereGeometry(0.0775, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.52),
   );
   const lowerLidGeom = trackGeom(
-    new THREE.SphereGeometry(0.0635, 22, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5),
+    new THREE.SphereGeometry(0.077, 22, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5),
   );
-  const lidRimGeom = trackGeom(new THREE.TorusGeometry(0.064, 0.0028, 8, 28));
+  const lidRimGeom = trackGeom(new THREE.TorusGeometry(0.0775, 0.0032, 8, 28));
 
   const buildRealisticEye = (sign: 1 | -1) => {
     const socket = new THREE.Group();
-    socket.position.set(sign * 0.097, 0.016, 0.214);
-    socket.rotation.set(-0.03, sign * 0.33, sign * 0.05);
+    socket.position.set(sign * 0.104, 0.020, 0.205);
+    socket.rotation.set(-0.03, sign * 0.34, sign * 0.05);
     headCenter.add(socket);
 
     const eyeBallGroup = new THREE.Group();
     socket.add(eyeBallGroup);
 
     const eyeball = new THREE.Mesh(eyeballGeom, eyeMat);
-    eyeball.scale.set(1.06, 0.98, 0.86);
+    eyeball.scale.set(1.06, 1.0, 0.84);
     tagPettable(eyeball, 'head');
     eyeBallGroup.add(eyeball);
 
-    // Animated furry upper eyelid (alert open at -0.82 -> soft blissful close at +0.12)
+    // Animated furry upper eyelid (bright open at -0.88 -> soft blissful close at +0.14)
     const upperLid = new THREE.Group();
     const upperCap = new THREE.Mesh(upperLidGeom, eyelidMat);
-    upperCap.scale.set(1.08, 0.99, 0.92);
+    upperCap.scale.set(1.08, 1.01, 0.90);
     upperLid.add(upperCap);
 
     const upperRim = new THREE.Mesh(lidRimGeom, featureDarkMat);
     upperRim.rotation.x = Math.PI / 2;
-    upperRim.scale.set(1.08, 0.92, 1.0);
+    upperRim.scale.set(1.08, 0.90, 1.0);
     upperLid.add(upperRim);
-    upperLid.rotation.x = -0.82;
+    upperLid.rotation.x = -0.88;
     socket.add(upperLid);
 
     // Animated furry lower eyelid
     const lowerLid = new THREE.Group();
     const lowerCap = new THREE.Mesh(lowerLidGeom, eyelidMat);
-    lowerCap.scale.set(1.07, 0.98, 0.91);
+    lowerCap.scale.set(1.07, 1.0, 0.89);
     lowerLid.add(lowerCap);
 
     const lowerRim = new THREE.Mesh(lidRimGeom, featureDarkMat);
     lowerRim.rotation.x = Math.PI / 2;
-    lowerRim.scale.set(1.07, 0.91, 0.72);
+    lowerRim.scale.set(1.07, 0.89, 0.72);
     lowerLid.add(lowerRim);
-    lowerLid.rotation.x = 0.78;
+    lowerLid.rotation.x = 0.84;
     socket.add(lowerLid);
 
     return { eyeBallGroup, upperLid, lowerLid };

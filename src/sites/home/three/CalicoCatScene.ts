@@ -667,11 +667,11 @@ export class CalicoCatScene {
     this.rig.leftEyeBall.rotation.set(this.eyeGazeY, this.eyeGazeX, 0);
     this.rig.rightEyeBall.rotation.set(this.eyeGazeY, this.eyeGazeX, 0);
 
-    // Upper eyelid sweeps smoothly from bright open (-0.82) -> soft closed (+0.14)
-    // Lower eyelid gently lifts from open (+0.78) -> blissful closed smile (+0.18)
+    // Upper eyelid sweeps smoothly from bright open (-0.88) -> soft closed (+0.14)
+    // Lower eyelid gently lifts from open (+0.84) -> blissful closed smile (+0.18)
     const closeFactor = Math.max(blinkClose, this.squintAmount * 0.94);
-    const upperLidRotX = -0.82 + closeFactor * 0.96;
-    const lowerLidRotX = 0.78 - (this.squintAmount * 0.56 + blinkClose * 0.16);
+    const upperLidRotX = -0.88 + closeFactor * 1.02;
+    const lowerLidRotX = 0.84 - (this.squintAmount * 0.62 + blinkClose * 0.18);
 
     this.rig.leftUpperLid.rotation.x = upperLidRotX;
     this.rig.rightUpperLid.rotation.x = upperLidRotX;
