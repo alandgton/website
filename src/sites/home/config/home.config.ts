@@ -58,14 +58,12 @@ export const HOME_PROFILE_CONFIG: HomeProfileConfig = {
     {
       id: 'linkedin',
       label: 'LinkedIn',
-      href: '#linkedin',
-      isPlaceholder: true,
+      href: 'https://www.linkedin.com/in/alanton/',
     },
     {
       id: 'instagram',
       label: 'Instagram',
-      href: '#instagram',
-      isPlaceholder: true,
+      href: 'https://www.instagram.com/alan.ton/',
     },
   ],
 };
