@@ -31,7 +31,7 @@ export interface CalicoCatRig {
   leftFrontPawPivot: THREE.Group;
   rightFrontPawPivot: THREE.Group;
   pettableMeshes: THREE.Object3D[];
-  updateTail: (time: number, purrLevel: number, tailPlayPulse: number) => void;
+  updateTail: (dt: number, purrLevel: number, tailPlayPulse: number) => void;
   dispose: () => void;
 }
 
@@ -393,6 +393,12 @@ class SmoothAnimatedTail {
   private readonly quat = new THREE.Quaternion();
   private readonly refUp = new THREE.Vector3(0, 1, 0);
 
+  // Continuous phase-integrated motion state (eliminates frequency-change phase jumps!)
+  private phase = 0;
+  private bobPhase = 0;
+  private smoothedAmp = 0.062;
+  private smoothedLift = 0;
+
   constructor(material: THREE.Material) {
     const rings = this.lengthSegs + 1;
     const cols = this.radialSegs + 1;
@@ -454,15 +460,27 @@ class SmoothAnimatedTail {
     return baseBody;
   }
 
-  update(time: number, purrLevel: number, tailPlayPulse: number): void {
-    const speed = 1.65 + purrLevel * 1.35 + tailPlayPulse * 3.1;
-    const swayAmp = 0.068 + purrLevel * 0.06 + tailPlayPulse * 0.13;
-    const happyLift = purrLevel * 0.2;
+  update(dt: number, purrLevel: number, tailPlayPulse: number): void {
+    // Calm, strictly capped feline tail sway matching the relaxed neutral pace
+    const speed = clamp(1.45 + purrLevel * 0.18 + tailPlayPulse * 0.22, 1.45, 1.8);
+    const targetAmp = clamp(0.062 + purrLevel * 0.012 + tailPlayPulse * 0.016, 0.062, 0.085);
+    const targetLift = clamp(purrLevel * 0.12, 0, 0.12);
 
-    const w1 = Math.sin(time * speed - 0.4) * swayAmp;
-    const w2 = Math.sin(time * speed - 1.1) * swayAmp * 1.3;
-    const w3 = Math.sin(time * speed - 1.9) * swayAmp * 1.6;
-    const tipBob = Math.cos(time * speed * 0.85 - 1.5) * swayAmp * 0.65;
+    const smoothK = 1 - Math.exp(-5.0 * dt);
+    this.smoothedAmp += (targetAmp - this.smoothedAmp) * smoothK;
+    this.smoothedLift += (targetLift - this.smoothedLift) * smoothK;
+
+    // Integrate phase smoothly so transitions never cause sudden whipping
+    this.phase += dt * speed;
+    this.bobPhase += dt * (speed * 0.85);
+
+    const swayAmp = this.smoothedAmp;
+    const happyLift = this.smoothedLift;
+
+    const w1 = Math.sin(this.phase - 0.4) * swayAmp;
+    const w2 = Math.sin(this.phase - 1.1) * swayAmp * 1.25;
+    const w3 = Math.sin(this.phase - 1.9) * swayAmp * 1.5;
+    const tipBob = Math.cos(this.bobPhase - 1.5) * swayAmp * 0.55;
 
     // Graceful low-resting S-curve emerging smoothly out of the lower rump
     this.controlPoints[0].set(0.0, 0.16, -0.34);
@@ -1102,8 +1120,8 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
     leftFrontPawPivot,
     rightFrontPawPivot,
     pettableMeshes,
-    updateTail: (time, purrLevel, tailPlayPulse) =>
-      animatedTail.update(time, purrLevel, tailPlayPulse),
+    updateTail: (dt, purrLevel, tailPlayPulse) =>
+      animatedTail.update(dt, purrLevel, tailPlayPulse),
     dispose,
   };
 }

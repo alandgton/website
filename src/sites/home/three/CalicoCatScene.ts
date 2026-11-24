@@ -56,6 +56,7 @@ export class CalicoCatScene {
   private rafId: number | null = null;
   private lastFrameTime = 0;
   private elapsedTime = 0;
+  private breathPhase = 0;
   private isVisible = true;
   private isDisposed = false;
 
@@ -569,9 +570,10 @@ export class CalicoCatScene {
     this.strokeLeanX = damp(this.strokeLeanX, 0, 4.2, dt);
     this.strokeLeanY = damp(this.strokeLeanY, 0, 4.2, dt);
 
-    // 3. Calm breathing + subtle cozy purr micro-vibration when happy
-    const breathFreq = 2.0 + this.purrLevel * 1.15;
-    const breathWave = Math.sin(t * breathFreq);
+    // 3. Calm phase-continuous breathing + subtle cozy purr micro-vibration when happy
+    const breathFreq = 1.9 + this.purrLevel * 0.65;
+    this.breathPhase += dt * breathFreq;
+    const breathWave = Math.sin(this.breathPhase);
     const targetBackArch =
       this.activeZone === 'back' ? this.activePetPulse * 0.052 : this.purrLevel * 0.018;
     this.backArchAmount = damp(this.backArchAmount, targetBackArch, 7.5, dt);
@@ -709,8 +711,8 @@ export class CalicoCatScene {
       0.42 + this.earRelaxAmount * 0.24 - rightTwitch,
     );
 
-    // 7. Continuous Smooth Procedural Tricolor Calico Tail Wave
-    this.rig.updateTail(t, this.purrLevel, this.tailPlayPulse);
+    // 7. Continuous Smooth Procedural Tricolor Calico Tail Wave (phase-integrated & calm)
+    this.rig.updateTail(dt, this.purrLevel, this.tailPlayPulse);
 
     // 8. Soft Warm Contact Glow Tracking Hand on Fur
     const targetGlow = isActivelyTouching || this.activePetPulse > 0.2 ? 0.26 : 0;
