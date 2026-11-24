@@ -18,9 +18,9 @@ export interface CalicoCatSceneOptions {
   onStatusChange?: (status: CatSceneStatus) => void;
 }
 
-const DEFAULT_YAW = 0.16;
-const DEFAULT_PITCH = 0.21;
-const LOOK_TARGET = new THREE.Vector3(0, 0.64, 0.02);
+const DEFAULT_YAW = 0.14;
+const DEFAULT_PITCH = 0.20;
+const LOOK_TARGET = new THREE.Vector3(0, 0.61, 0.04);
 
 function damp(current: number, target: number, lambda: number, dt: number): number {
   return current + (target - current) * (1 - Math.exp(-lambda * dt));
@@ -176,12 +176,12 @@ export class CalicoCatScene {
     (softboxRim.material as THREE.Material).dispose();
     pmrem.dispose();
 
-    // --- Studio Three-Point + Sky Rim Lighting ---
-    const hemiLight = new THREE.HemisphereLight('#d6e6ff', '#1b2238', 0.92);
+    // --- Natural Daylight Window + Soft Rim Studio Lighting ---
+    const hemiLight = new THREE.HemisphereLight('#e8f1ff', '#1b202e', 0.96);
     this.scene.add(hemiLight);
 
-    const keyLight = new THREE.DirectionalLight('#fff2df', 1.78);
-    keyLight.position.set(2.3, 3.8, 3.1);
+    const keyLight = new THREE.DirectionalLight('#fff8ef', 1.85);
+    keyLight.position.set(2.4, 3.6, 3.2);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(1024, 1024);
     keyLight.shadow.camera.near = 1.0;
@@ -194,18 +194,18 @@ export class CalicoCatScene {
     keyLight.shadow.normalBias = 0.018;
     this.scene.add(keyLight);
 
-    // Signature sky-blue silhouette rim light echoing alanton.at's dark/sky palette
-    const rimLight = new THREE.DirectionalLight('#7dd3fc', 1.28);
-    rimLight.position.set(-2.6, 2.3, -2.5);
+    // Subtle cool skylight rim tracing the volumetric fur silhouette against dark slate
+    const rimLight = new THREE.DirectionalLight('#93c5fd', 1.18);
+    rimLight.position.set(-2.7, 2.3, -2.5);
     this.scene.add(rimLight);
 
-    // Subtle warm front fill so the white bib and muzzle stay soft and welcoming
-    const fillLight = new THREE.PointLight('#f7d9b8', 0.48, 6, 1.4);
+    // Gentle warm front bounce so snowy chest fur & muzzle details stay crisp
+    const fillLight = new THREE.PointLight('#f7e8d4', 0.44, 6, 1.4);
     fillLight.position.set(-1.3, 0.85, 2.1);
     this.scene.add(fillLight);
 
-    // Warm tactile point light that softly glows beneath your hand while stroking
-    this.touchGlowLight = new THREE.PointLight('#ffd8b8', 0, 1.4, 1.8);
+    // Subtle warm point light glowing softly beneath your hand while stroking
+    this.touchGlowLight = new THREE.PointLight('#ffe0c2', 0, 1.35, 1.8);
     this.scene.add(this.touchGlowLight);
 
     // --- Build Sculpted Calico Cat & Feedback Pool ---
@@ -267,8 +267,8 @@ export class CalicoCatScene {
   }
 
   private updateCameraDistanceForAspect(aspect: number): void {
-    // Generous framing so ears, floating hearts, and full cushion/plinth stay clear of overlays
-    this.cameraDistance = aspect < 1.15 ? 4.45 : 4.08;
+    // Balanced portrait framing for realistic adult feline proportions on desktop & mobile
+    this.cameraDistance = aspect < 1.15 ? 4.35 : 3.85;
   }
 
   private handleResize(): void {
@@ -590,12 +590,12 @@ export class CalicoCatScene {
     // Subtle contented front-paw "biscuit kneading" micro-shifts while deeply purring
     if (this.purrLevel > 0.45) {
       const kneadAmt = (this.purrLevel - 0.45) / 0.55;
-      const kneadWave = Math.sin(t * 4.4);
-      this.rig.leftFrontPawPivot.position.y = 0.044 + Math.max(0, kneadWave) * 0.018 * kneadAmt;
-      this.rig.rightFrontPawPivot.position.y = 0.044 + Math.max(0, -kneadWave) * 0.018 * kneadAmt;
+      const kneadWave = Math.sin(t * 4.2);
+      this.rig.leftFrontPawPivot.position.y = 0.036 + Math.max(0, kneadWave) * 0.014 * kneadAmt;
+      this.rig.rightFrontPawPivot.position.y = 0.036 + Math.max(0, -kneadWave) * 0.014 * kneadAmt;
     } else {
-      this.rig.leftFrontPawPivot.position.y = damp(this.rig.leftFrontPawPivot.position.y, 0.044, 8, dt);
-      this.rig.rightFrontPawPivot.position.y = damp(this.rig.rightFrontPawPivot.position.y, 0.044, 8, dt);
+      this.rig.leftFrontPawPivot.position.y = damp(this.rig.leftFrontPawPivot.position.y, 0.036, 8, dt);
+      this.rig.rightFrontPawPivot.position.y = damp(this.rig.rightFrontPawPivot.position.y, 0.036, 8, dt);
     }
 
     // 4. Expressive Head Tracking & Affectionate Petting Lean
@@ -638,53 +638,45 @@ export class CalicoCatScene {
     this.headRotZ = damp(this.headRotZ, clamp(targetHeadZ, -0.34, 0.34), 7.5, dt);
     this.rig.headPivot.rotation.set(this.headRotX, this.headRotY, this.headRotZ);
 
-    // 5. Eyes: Curious Gaze Tracking, Natural Blinking & Happy ^ ^ Squinting
-    const targetSquint = this.purrLevel > 0.28 || this.activePetPulse > 0.35
-      ? clamp((this.purrLevel - 0.18) * 1.4 + this.activePetPulse * 0.55, 0, 1)
-      : 0;
-    this.squintAmount = damp(this.squintAmount, targetSquint, 9.5, dt);
+    // 5. Realistic Animated Furry Eyelids: Calm Gaze, Natural Blinking & Blissful Feline Slow-Blink
+    const targetSquint =
+      this.purrLevel > 0.24 || this.activePetPulse > 0.32
+        ? clamp((this.purrLevel - 0.14) * 1.35 + this.activePetPulse * 0.5, 0, 1)
+        : 0;
+    this.squintAmount = damp(this.squintAmount, targetSquint, 7.2, dt);
 
     // Periodic natural blink when awake
     this.blinkTimer -= dt;
-    if (this.blinkTimer <= 0 && this.squintAmount < 0.3) {
+    if (this.blinkTimer <= 0 && this.squintAmount < 0.35) {
       this.blinkPhase = 1.0;
-      this.blinkTimer = 3.1 + Math.random() * 2.8;
+      this.blinkTimer = 3.2 + Math.random() * 3.0;
     }
     if (this.blinkPhase > 0) {
-      this.blinkPhase = Math.max(0, this.blinkPhase - dt * 6.8);
+      this.blinkPhase = Math.max(0, this.blinkPhase - dt * 6.5);
     }
     const blinkClose = this.blinkPhase > 0 ? Math.sin(this.blinkPhase * Math.PI) : 0;
 
-    // Subtle iris gaze tracking
-    const targetGazeX = this.hasPointerInCanvas ? this.hoveredPointerX * 0.12 : 0;
-    const targetGazeY = this.hasPointerInCanvas ? -this.hoveredPointerY * 0.08 : 0;
+    // Subtle iris gaze tracking toward pointer
+    const targetGazeX = this.hasPointerInCanvas ? this.hoveredPointerX * 0.14 : 0;
+    const targetGazeY = this.hasPointerInCanvas ? -this.hoveredPointerY * 0.09 : 0;
     this.eyeGazeX = damp(this.eyeGazeX, targetGazeX, 10, dt);
     this.eyeGazeY = damp(this.eyeGazeY, targetGazeY, 10, dt);
 
-    const showSquintArc = this.squintAmount > 0.42;
-    const openScaleY = Math.max(0.05, (1 - blinkClose * 0.92) * (1 - clamp(this.squintAmount * 1.5, 0, 0.96)));
+    this.rig.leftEyeBall.rotation.set(this.eyeGazeY, this.eyeGazeX, 0);
+    this.rig.rightEyeBall.rotation.set(this.eyeGazeY, this.eyeGazeX, 0);
 
-    this.rig.leftOpenEye.visible = !showSquintArc;
-    this.rig.rightOpenEye.visible = !showSquintArc;
-    this.rig.leftOpenEye.scale.y = openScaleY;
-    this.rig.rightOpenEye.scale.y = openScaleY;
-    this.rig.leftOpenEye.rotation.set(this.eyeGazeY, this.eyeGazeX, 0);
-    this.rig.rightOpenEye.rotation.set(this.eyeGazeY, this.eyeGazeX, 0);
+    // Upper eyelid sweeps smoothly from bright open (-0.82) -> soft closed (+0.14)
+    // Lower eyelid gently lifts from open (+0.78) -> blissful closed smile (+0.18)
+    const closeFactor = Math.max(blinkClose, this.squintAmount * 0.94);
+    const upperLidRotX = -0.82 + closeFactor * 0.96;
+    const lowerLidRotX = 0.78 - (this.squintAmount * 0.56 + blinkClose * 0.16);
 
-    this.rig.leftSquintArc.visible = showSquintArc;
-    this.rig.rightSquintArc.visible = showSquintArc;
-    if (showSquintArc) {
-      const arcScale = 0.85 + Math.min(1, (this.squintAmount - 0.42) / 0.35) * 0.18;
-      this.rig.leftSquintArc.scale.setScalar(arcScale);
-      this.rig.rightSquintArc.scale.setScalar(arcScale);
-    }
+    this.rig.leftUpperLid.rotation.x = upperLidRotX;
+    this.rig.rightUpperLid.rotation.x = upperLidRotX;
+    this.rig.leftLowerLid.rotation.x = lowerLidRotX;
+    this.rig.rightLowerLid.rotation.x = lowerLidRotX;
 
-    // Rosy cheek blush fades in softly as purring deepens
-    const blushOpacity = clamp((this.purrLevel - 0.22) * 0.68, 0, 0.52);
-    this.rig.leftBlushMat.opacity = blushOpacity;
-    this.rig.rightBlushMat.opacity = blushOpacity;
-
-    // 6. Articulated Ears: Relaxed Airplane-Happy Tilt + Occasional Idle Ear Twitches
+    // 6. Articulated Ears: Natural Relaxed Tilt + Occasional Idle Ear Twitches
     this.earTwitchTimer -= dt;
     if (this.earTwitchTimer <= 0) {
       this.earTwitchPhase = 1.0;
@@ -694,7 +686,7 @@ export class CalicoCatScene {
     if (this.earTwitchPhase > 0) {
       this.earTwitchPhase = Math.max(0, this.earTwitchPhase - dt * 5.2);
     }
-    const earTwitch = this.earTwitchPhase > 0 ? Math.sin(this.earTwitchPhase * Math.PI * 2) * 0.16 : 0;
+    const earTwitch = this.earTwitchPhase > 0 ? Math.sin(this.earTwitchPhase * Math.PI * 2) * 0.15 : 0;
 
     const targetEarRelax =
       this.activeZone === 'head'
@@ -702,19 +694,19 @@ export class CalicoCatScene {
         : this.purrLevel * 0.48;
     this.earRelaxAmount = damp(this.earRelaxAmount, targetEarRelax, 8.0, dt);
 
-    const curiousPerk = this.isHoveringCat && this.purrLevel < 0.25 ? 0.08 : 0;
+    const curiousPerk = this.isHoveringCat && this.purrLevel < 0.25 ? 0.07 : 0;
     const leftTwitch = this.earTwitchSide === 1 ? earTwitch : 0;
     const rightTwitch = this.earTwitchSide === -1 ? earTwitch : 0;
 
     this.rig.leftEarPivot.rotation.set(
-      0.11 - this.earRelaxAmount * 0.14 + curiousPerk,
-      0.24 - this.earRelaxAmount * 0.18,
-      -0.43 - this.earRelaxAmount * 0.22 + leftTwitch,
+      0.08 - this.earRelaxAmount * 0.12 + curiousPerk,
+      0.20 - this.earRelaxAmount * 0.16,
+      -0.28 - this.earRelaxAmount * 0.28 + leftTwitch,
     );
     this.rig.rightEarPivot.rotation.set(
-      0.11 - this.earRelaxAmount * 0.14 + curiousPerk,
-      -0.24 + this.earRelaxAmount * 0.18,
-      0.43 + this.earRelaxAmount * 0.22 - rightTwitch,
+      0.08 - this.earRelaxAmount * 0.12 + curiousPerk,
+      -0.20 + this.earRelaxAmount * 0.16,
+      0.28 + this.earRelaxAmount * 0.28 - rightTwitch,
     );
 
     // 7. Continuous Smooth Procedural Tricolor Calico Tail Wave

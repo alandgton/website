@@ -115,8 +115,8 @@ export class PetFeedbackSystem {
 
     slot.active = true;
     slot.age = 0;
-    slot.lifetime = 1.15 + Math.random() * 0.55;
-    slot.baseScale = (preferHeart ? 0.125 : 0.095) + Math.random() * 0.055;
+    slot.lifetime = 1.15 + Math.random() * 0.5;
+    slot.baseScale = (preferHeart ? 0.095 : 0.08) + Math.random() * 0.04;
     slot.swayFreq = 2.0 + Math.random() * 1.6;
     slot.swayAmp = 0.035 + Math.random() * 0.04;
     slot.swayPhase = Math.random() * Math.PI * 2;
@@ -178,7 +178,7 @@ export class PetFeedbackSystem {
 
       const scale = p.baseScale * (0.45 + 0.65 * easeIn) * (1 - t * 0.18);
       p.sprite.scale.setScalar(scale);
-      p.material.opacity = easeIn * easeOut * 0.82;
+      p.material.opacity = easeIn * easeOut * 0.68;
     }
 
     for (const r of this.ripples) {

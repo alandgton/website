@@ -1,16 +1,16 @@
 import * as THREE from 'three';
 import type { CalicoCoatPalette } from '../config/home.config';
 import {
-  createBlushTexture,
   createCatEyeTexture,
+  createContactShadowTexture,
   createCushionFabricTexture,
+  createForelegTexture,
   createFurBumpTexture,
-  createFurShellAlphaTexture,
+  createFurHeightAlphaTexture,
   createHeadCalicoTexture,
   createSolidFurTexture,
   createTailCalicoTexture,
   createTorsoCalicoTexture,
-  createWhiskerPadTexture,
 } from './calicoTextures';
 
 export type PetZone = 'head' | 'chin' | 'back' | 'tail';
@@ -22,14 +22,12 @@ export interface CalicoCatRig {
   headPivot: THREE.Group;
   leftEarPivot: THREE.Group;
   rightEarPivot: THREE.Group;
-  leftEyePivot: THREE.Group;
-  rightEyePivot: THREE.Group;
-  leftOpenEye: THREE.Group;
-  rightOpenEye: THREE.Group;
-  leftSquintArc: THREE.Mesh;
-  rightSquintArc: THREE.Mesh;
-  leftBlushMat: THREE.MeshBasicMaterial;
-  rightBlushMat: THREE.MeshBasicMaterial;
+  leftEyeBall: THREE.Group;
+  rightEyeBall: THREE.Group;
+  leftUpperLid: THREE.Group;
+  rightUpperLid: THREE.Group;
+  leftLowerLid: THREE.Group;
+  rightLowerLid: THREE.Group;
   leftFrontPawPivot: THREE.Group;
   rightFrontPawPivot: THREE.Group;
   pettableMeshes: THREE.Object3D[];
@@ -37,34 +35,45 @@ export interface CalicoCatRig {
   dispose: () => void;
 }
 
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
 /**
- * Clones a geometry and extrudes vertices softly along their normals to form a lightweight
- * volumetric fur-tip shell (giving a plush fuzzy backlit hair edge along the silhouette).
+ * Extrudes vertices along normals for Lengyel Volumetric Multi-Shell Fur.
+ * Optional per-vertex length multiplier allows sleek shorter fur over the muzzle/eyes
+ * and fuller plush fur over the cheeks, ruff, shoulders, and haunches.
  */
-function createExtrudedFurShellGeometry(
+function createFurShellGeometry(
   source: THREE.BufferGeometry,
   offset: number,
-  gravityDroop = 0.003,
+  gravityDroop: number,
+  lengthWeights?: Float32Array,
 ): THREE.BufferGeometry {
   const geom = source.clone();
   const pos = geom.attributes.position;
   const norm = geom.attributes.normal;
   for (let i = 0; i < pos.count; i++) {
-    const nx = norm.getX(i);
-    const ny = norm.getY(i);
-    const nz = norm.getZ(i);
+    const w = lengthWeights ? lengthWeights[i] : 1.0;
+    const d = offset * w;
+    const droop = gravityDroop * w;
     pos.setXYZ(
       i,
-      pos.getX(i) + nx * offset,
-      pos.getY(i) + ny * offset - gravityDroop,
-      pos.getZ(i) + nz * offset,
+      pos.getX(i) + norm.getX(i) * d,
+      pos.getY(i) + norm.getY(i) * d - droop,
+      pos.getZ(i) + norm.getZ(i) * d,
     );
   }
   pos.needsUpdate = true;
   return geom;
 }
 
-/** Creates a plush sculpted feline ear shell with natural domestic shorthair proportions. */
+/** Creates natural domestic shorthair feline ears (Photo 3 proportions: grounded base, softly rounded tips). */
 function createSculptedEarGeometry(): THREE.BufferGeometry {
   const geom = new THREE.SphereGeometry(1, 24, 20);
   const pos = geom.attributes.position;
@@ -75,32 +84,30 @@ function createSculptedEarGeometry(): THREE.BufferGeometry {
     const z = pos.getZ(i);
 
     const t = (y + 1) * 0.5;
-    // Natural domestic shorthair feline ears with softly rounded triangular tips
     const widthProfile =
-      0.156 *
-      (1 - 0.80 * Math.pow(t, 1.32)) *
-      (0.74 + 0.26 * Math.sin(Math.min(1, t * 2.2) * Math.PI * 0.5));
-    const depthProfile = 0.072 * (1 - 0.72 * Math.pow(t, 1.24));
+      0.130 *
+      (1 - 0.78 * Math.pow(t, 1.38)) *
+      (0.76 + 0.24 * Math.sin(Math.min(1, t * 2.2) * Math.PI * 0.5));
+    const depthProfile = 0.062 * (1 - 0.72 * Math.pow(t, 1.25));
 
     const nx = x * widthProfile;
-    const ny = t * 0.305;
+    const ny = t * 0.235;
     let nz = z * depthProfile;
 
-    // Gentle concave scoop on the front face (+Z) of the ear cup
+    // Authentic concave pinna scoop on front face (+Z)
     if (z > 0) {
       const centerMask = Math.max(0, 1 - x * x * 1.35) * Math.sin(t * Math.PI);
-      nz -= centerMask * 0.032;
+      nz -= centerMask * 0.026;
     }
 
-    const tipCurveZ = Math.pow(t, 2) * 0.018;
-    pos.setXYZ(i, nx, ny, nz + tipCurveZ);
+    pos.setXYZ(i, nx, ny, nz + Math.pow(t, 2) * 0.012);
   }
 
   geom.computeVertexNormals();
   return geom;
 }
 
-/** Creates a soft concave inner-ear pad nestled snugly inside the sculpted ear cup. */
+/** Creates the concave inner ear pinna nestled snugly inside the outer ear shell. */
 function createInnerEarGeometry(): THREE.BufferGeometry {
   const geom = new THREE.SphereGeometry(1, 18, 14);
   const pos = geom.attributes.position;
@@ -111,10 +118,10 @@ function createInnerEarGeometry(): THREE.BufferGeometry {
     const z = pos.getZ(i);
     const t = (y + 1) * 0.5;
 
-    const widthProfile = 0.088 * (1 - 0.84 * Math.pow(t, 1.32));
-    const depthProfile = 0.02 * (1 - 0.62 * t);
-    const ny = 0.03 + t * 0.21;
-    const nz = z * depthProfile + 0.022 + Math.pow(t, 2) * 0.014;
+    const widthProfile = 0.074 * (1 - 0.82 * Math.pow(t, 1.34));
+    const depthProfile = 0.016 * (1 - 0.62 * t);
+    const ny = 0.025 + t * 0.162;
+    const nz = z * depthProfile + 0.018 + Math.pow(t, 2) * 0.009;
     pos.setXYZ(i, x * widthProfile, ny, nz);
   }
 
@@ -123,163 +130,222 @@ function createInnerEarGeometry(): THREE.BufferGeometry {
 }
 
 /**
- * Creates a sculpted organic seated feline torso with cozy haunches, curved spine,
- * fluffy upper chest bib, gently recessed lower front for continuous front legs,
- * and a fuller plush neck transition seamlessly supporting the head.
+ * Creates a true anatomical seated feline body (Photo 3):
+ * - Narrower plush neck beneath the cheeks flowing into rounded shoulders (NO straight cone sides!)
+ * - Ribcage & plush seated haunches shifted naturally BACKWARD behind the upright front legs
+ * - Recessed lower-front belly so 100% of both front legs (shoulder -> elbow -> forearm -> paw) stand proudly visible!
  */
-function createSeatedTorsoGeometry(): THREE.BufferGeometry {
+function createSeatedTorsoGeometry(): { geometry: THREE.BufferGeometry; furWeights: Float32Array } {
   const profilePoints: THREE.Vector2[] = [
     new THREE.Vector2(0.001, 0.0),
-    new THREE.Vector2(0.24, 0.015),
-    new THREE.Vector2(0.365, 0.11),
-    new THREE.Vector2(0.402, 0.26),
-    new THREE.Vector2(0.388, 0.44),
-    new THREE.Vector2(0.352, 0.62),
-    new THREE.Vector2(0.308, 0.78),
-    new THREE.Vector2(0.275, 0.90),
-    new THREE.Vector2(0.248, 1.00),
-    new THREE.Vector2(0.001, 1.07),
+    new THREE.Vector2(0.28, 0.015),
+    new THREE.Vector2(0.375, 0.11),
+    new THREE.Vector2(0.402, 0.24),
+    new THREE.Vector2(0.388, 0.40),
+    new THREE.Vector2(0.352, 0.56),
+    new THREE.Vector2(0.312, 0.70), // rounded feline shoulders
+    new THREE.Vector2(0.248, 0.83), // natural inward curve to plush neck
+    new THREE.Vector2(0.205, 0.94), // distinct plush neck below cheeks
+    new THREE.Vector2(0.185, 1.04),
+    new THREE.Vector2(0.001, 1.10),
   ];
 
-  const geom = new THREE.LatheGeometry(profilePoints, 64);
+  const geom = new THREE.LatheGeometry(profilePoints, 72);
   const pos = geom.attributes.position;
+  const furWeights = new Float32Array(pos.count);
 
   for (let i = 0; i < pos.count; i++) {
     let x = pos.getX(i);
     const y = pos.getY(i);
     let z = pos.getZ(i);
 
-    const t = Math.max(0, Math.min(1, y / 1.0));
+    const t = clamp(y / 1.04, 0, 1);
 
-    // Seated feline posture: rounded haunches sit slightly back, shoulders/neck lean gently forward
-    const spineShiftZ = Math.sin((t - 0.36) * Math.PI) * 0.064 + (t - 0.34) * 0.11;
-    const depthScale = 1.0 + 0.14 * Math.exp(-Math.pow((t - 0.26) / 0.28, 2));
-    z = z * depthScale + spineShiftZ;
+    // True seated feline spine posture: pelvis & haunches sit BACK (-0.15), chest & neck curve smoothly FORWARD (+0.11)
+    const spineShiftZ = -0.15 * (1 - smoothstep(0.0, 0.85, t)) + 0.11 * smoothstep(0.28, 0.95, t);
 
-    // Tuck lower front belly slightly inward so the upright front legs sit cleanly in front
-    if (z > 0.04 && t < 0.50) {
-      const lowerFrontMask = Math.sin((t / 0.50) * Math.PI) * Math.min(1, z / 0.32);
-      z -= lowerFrontMask * 0.072;
+    // C-infinity smooth front-to-back depth modulation (eliminates any z=0 vertical side crease!)
+    const rearT = smoothstep(0.32, -0.32, z);
+    const depthFactor = 0.88 + rearT * 0.30;
+    z = z * (0.95 + (depthFactor - 0.95) * (1 - t * 0.45)) + spineShiftZ;
+
+    // Smoothly integrated folded rear haunches flaring organically behind the elbows (Photo 3!)
+    const haunchVert = Math.exp(-Math.pow((t - 0.23) / 0.19, 2));
+    const haunchSide = smoothstep(0.14, 0.38, Math.abs(x));
+    const haunchZ = smoothstep(0.24, -0.26, z);
+    const haunchSwell = haunchVert * haunchSide * haunchZ;
+    x += Math.sign(x) * haunchSwell * 0.064;
+    z -= haunchSwell * 0.022;
+
+    // Keep upper chest warmly rounded in front, while gently recessing lower belly behind the two forelegs
+    if (z > 0.04) {
+      const upperChestPuff =
+        Math.exp(-Math.pow((t - 0.68) / 0.20, 2)) *
+        Math.exp(-Math.pow(x / 0.28, 2));
+      z += upperChestPuff * 0.058;
+
+      if (t < 0.52) {
+        const behindLegsRecess = Math.sin((t / 0.52) * Math.PI) * Math.exp(-Math.pow(x / 0.24, 2));
+        z -= behindLegsRecess * 0.048;
+      }
     }
 
-    // Soft plush upper chest bib & throat ruff on upper front (+Z)
-    if (z > 0.06 && t > 0.46) {
-      const bibMask = Math.exp(-Math.pow((t - 0.72) / 0.22, 2)) * Math.min(1, z / 0.28);
-      z += bibMask * 0.056;
-    }
-
-    x *= 1.0 - 0.04 * t;
     pos.setXYZ(i, x, y, z);
+
+    const contactFade = smoothstep(0.02, 0.12, y);
+    const ruffBoost = z > 0.10 && t > 0.56 ? 1.16 : 1.0;
+    furWeights[i] = contactFade * ruffBoost;
   }
 
   geom.computeVertexNormals();
-  return geom;
+  return { geometry: geom, furWeights };
 }
 
 /**
- * Creates a more naturalistic domestic shorthair feline head with subtle cheekbones,
- * soft brow ridge, gentle forward snout taper, and cozy lower cheek fluff.
+ * Creates ONE unified, anatomically sculpted adult domestic shorthair feline head (Photo 3):
+ * - Balanced rounded-oval cranium (not flat/squashed!) with natural cheekbones & brow ridges
+ * - Recessed orbital eye sockets so glossy almond eyes nest authentically inside the skull
+ * - Continuous forward-protruding feline muzzle/snout with subtle whisker pads & compact chin
  */
-function createSculptedHeadGeometry(): THREE.BufferGeometry {
-  const geom = new THREE.SphereGeometry(0.355, 64, 48);
+function createAnatomicalHeadGeometry(): {
+  geometry: THREE.BufferGeometry;
+  furWeights: Float32Array;
+} {
+  const geom = new THREE.SphereGeometry(1, 72, 54);
   const pos = geom.attributes.position;
+  const furWeights = new Float32Array(pos.count);
 
   for (let i = 0; i < pos.count; i++) {
-    let x = pos.getX(i);
-    let y = pos.getY(i);
-    let z = pos.getZ(i);
+    const ux = pos.getX(i);
+    const uy = pos.getY(i);
+    const uz = pos.getZ(i);
+    const absX = Math.abs(ux);
 
-    // Realistic plump-cheeked domestic shorthair proportions
-    x *= 1.13;
-    y *= 0.93;
-    z *= 0.99;
+    // Balanced, fuller rounded-oval adult feline cranium matching Photo 3
+    let x = ux * 0.252;
+    let y = uy * 0.256;
+    let z = uz * 0.274;
 
-    // Subtle feline cheek ruff tufts on lower sides (softer & more natural than a wide saucer)
-    const cheekVert = Math.exp(-Math.pow((y + 0.07) / 0.125, 2));
-    const cheekSide = Math.max(0, (Math.abs(x) - 0.15) / 0.25);
-    x *= 1 + cheekVert * cheekSide * 0.085;
-
-    // Gently tapered jaw & chin
-    if (y < -0.13) {
-      const chinT = Math.min(1, (-0.13 - y) / 0.20);
-      x *= 1 - chinT * 0.15;
+    // Soft cranial dome taper between the ears
+    if (uy > 0.28) {
+      x *= 1 - smoothstep(0.28, 0.96, uy) * 0.11;
     }
 
-    // Natural feline forward muzzle / nose bridge contour facing +Z
-    if (z > 0.08) {
-      const bridgeMask =
-        Math.exp(-Math.pow(x / 0.105, 2)) *
-        Math.exp(-Math.pow((y + 0.03) / 0.14, 2));
-      z += bridgeMask * 0.046;
+    // Natural domestic shorthair lower cheek fluff ruff
+    const cheekMask =
+      Math.exp(-Math.pow((uy + 0.16) / 0.32, 2)) *
+      smoothstep(0.38, 0.85, absX) *
+      smoothstep(-0.35, 0.4, uz);
+    x *= 1 + cheekMask * 0.08;
+    y -= cheekMask * 0.012;
 
-      // Subtle brow ridge above eyes for authentic expressive feline gaze
-      const browMask =
-        Math.exp(-Math.pow((Math.abs(x) - 0.13) / 0.095, 2)) *
-        Math.exp(-Math.pow((y - 0.11) / 0.065, 2));
-      z += browMask * 0.018;
+    // Gently tapered jawline under cheeks
+    if (uy < -0.28) {
+      x *= 1 - smoothstep(-0.28, -0.92, uy) * 0.15;
     }
+
+    // Recessed orbital eye sockets at (±0.38, +0.06, +0.92)
+    const socketDist = Math.hypot((absX - 0.38) / 0.21, (uy - 0.06) / 0.175);
+    const socketMask = Math.exp(-socketDist * socketDist) * smoothstep(0.45, 0.86, uz);
+    z -= socketMask * 0.026;
+
+    // Subtle feline brow ridge above sockets
+    const browMask =
+      Math.exp(-Math.pow((absX - 0.33) / 0.22, 2)) *
+      Math.exp(-Math.pow((uy - 0.27) / 0.13, 2)) *
+      smoothstep(0.5, 0.88, uz);
+    z += browMask * 0.014;
+
+    // Continuous sculpted forward feline muzzle / snout
+    const snoutMask =
+      Math.exp(-Math.pow(ux / 0.34, 2)) *
+      Math.exp(-Math.pow((uy + 0.20) / 0.27, 2)) *
+      smoothstep(0.54, 0.94, uz);
+    z += snoutMask * 0.074;
+    x *= 1 - snoutMask * 0.10;
+
+    // Subtle organic twin whisker-pad contour with delicate central philtrum
+    const padLobe =
+      Math.exp(-Math.pow((absX - 0.155) / 0.125, 2)) *
+      Math.exp(-Math.pow((uy + 0.265) / 0.105, 2)) *
+      smoothstep(0.75, 0.96, uz);
+    z += padLobe * 0.016;
+
+    // Compact lower jaw & chin tucked cleanly under the muzzle
+    const chinMask =
+      Math.exp(-Math.pow(ux / 0.19, 2)) *
+      Math.exp(-Math.pow((uy + 0.44) / 0.12, 2)) *
+      smoothstep(0.64, 0.94, uz);
+    z += chinMask * 0.024;
 
     pos.setXYZ(i, x, y, z);
+
+    // Clear eye sockets & bare nose pad so volumetric fur shells never clip eyes/nose
+    const eyeClear = 1 - smoothstep(0.34, 0.16, Math.hypot(absX - 0.38, uy - 0.06)) * smoothstep(0.54, 0.82, uz);
+    const noseClear = 1 - smoothstep(0.18, 0.08, Math.hypot(ux, uy + 0.18)) * smoothstep(0.84, 0.96, uz);
+    const muzzleSleek = 1 - snoutMask * 0.56;
+    const cheekPlush = 1 + cheekMask * 0.42;
+    furWeights[i] = clamp(eyeClear * noseClear * muzzleSleek * cheekPlush, 0, 1.32);
   }
 
   geom.computeVertexNormals();
-  return geom;
+  return { geometry: geom, furWeights };
 }
 
-/** Creates a smooth full-length seated front leg descending gracefully from shoulder to wrist. */
-function createFrontLegGeometry(): THREE.BufferGeometry {
+/**
+ * Creates a full-length, visibly distinct seated anatomical feline foreleg (Photo 3!):
+ * fuller upper shoulder & arm curving gently through the elbow down a sleek tapered forearm to the wrist.
+ */
+function createAnatomicalForelegGeometry(sideSign: 1 | -1): THREE.BufferGeometry {
   const points: THREE.Vector2[] = [
     new THREE.Vector2(0.001, 0.0),
-    new THREE.Vector2(0.064, 0.015),
-    new THREE.Vector2(0.066, 0.14),
-    new THREE.Vector2(0.074, 0.30),
-    new THREE.Vector2(0.088, 0.46),
-    new THREE.Vector2(0.102, 0.58),
-    new THREE.Vector2(0.086, 0.65),
-    new THREE.Vector2(0.001, 0.68),
+    new THREE.Vector2(0.056, 0.02),
+    new THREE.Vector2(0.060, 0.18),
+    new THREE.Vector2(0.069, 0.35),
+    new THREE.Vector2(0.082, 0.50),
+    new THREE.Vector2(0.092, 0.62), // smooth upper arm tapering cleanly into chest shoulders
+    new THREE.Vector2(0.072, 0.70),
+    new THREE.Vector2(0.001, 0.74),
   ];
-  const geom = new THREE.LatheGeometry(points, 24);
-  geom.computeVertexNormals();
-  return geom;
-}
-
-/** Creates a soft tufted round cat cushion with subtle radial lobes and a seated center dip. */
-function createTuftedCushionGeometry(): THREE.BufferGeometry {
-  const profile: THREE.Vector2[] = [
-    new THREE.Vector2(0.001, -0.22),
-    new THREE.Vector2(0.76, -0.22),
-    new THREE.Vector2(0.90, -0.185),
-    new THREE.Vector2(0.96, -0.11),
-    new THREE.Vector2(0.92, -0.025),
-    new THREE.Vector2(0.74, 0.032),
-    new THREE.Vector2(0.46, 0.015),
-    new THREE.Vector2(0.18, -0.018),
-    new THREE.Vector2(0.001, -0.024),
-  ];
-
-  const geom = new THREE.LatheGeometry(profile, 64);
+  const geom = new THREE.LatheGeometry(points, 28);
   const pos = geom.attributes.position;
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
     const z = pos.getZ(i);
-    const r = Math.hypot(x, z);
-    if (r > 0.12) {
-      const ang = Math.atan2(z, x);
-      const lobeMask = Math.min(1, r / 0.85) * Math.max(0, 1 - Math.abs(y + 0.08) / 0.16);
-      const puff = 1 + Math.cos(ang * 6) * 0.022 * lobeMask;
-      pos.setXYZ(i, x * puff, y + Math.cos(ang * 6) * 0.006 * lobeMask, z * puff);
-    }
+    const t = clamp(y / 0.72, 0, 1);
+
+    // Shoulder tucks seamlessly inside the rounded chest while elbows & forearms stand proudly in front!
+    const curveX = sideSign * Math.pow(t, 1.35) * 0.044;
+    const curveZ = -Math.pow(t, 1.25) * 0.175 + Math.sin(t * Math.PI) * 0.022;
+    pos.setXYZ(i, x + curveX, y, z + curveZ);
   }
 
   geom.computeVertexNormals();
   return geom;
 }
 
+/** Creates a cozy sculpted felt cat perch cushion inspired by Photo 3's grey felt cat bed. */
+function createFeltPerchGeometry(): THREE.BufferGeometry {
+  const profile: THREE.Vector2[] = [
+    new THREE.Vector2(0.001, -0.22),
+    new THREE.Vector2(0.84, -0.22),
+    new THREE.Vector2(0.95, -0.19),
+    new THREE.Vector2(0.99, -0.11),
+    new THREE.Vector2(0.96, -0.02),
+    new THREE.Vector2(0.82, 0.028),
+    new THREE.Vector2(0.54, 0.014),
+    new THREE.Vector2(0.20, -0.015),
+    new THREE.Vector2(0.001, -0.02),
+  ];
+  const geom = new THREE.LatheGeometry(profile, 64);
+  geom.computeVertexNormals();
+  return geom;
+}
+
 /**
  * Single continuous smooth procedural tail mesh driven by an animated CatmullRomCurve3.
- * Eliminates all segment seams and polygon kinks while deforming in-place with zero per-frame allocations.
  */
 class SmoothAnimatedTail {
   readonly mesh: THREE.Mesh;
@@ -289,7 +355,6 @@ class SmoothAnimatedTail {
   private readonly controlPoints: THREE.Vector3[] = [];
   private readonly curve: THREE.CatmullRomCurve3;
 
-  // Reusable scratch vectors for zero-GC per-frame updates
   private readonly pt = new THREE.Vector3();
   private readonly tan = new THREE.Vector3();
   private readonly normal = new THREE.Vector3();
@@ -323,8 +388,9 @@ class SmoothAnimatedTail {
         const b = (i + 1) * cols + j;
         const c = (i + 1) * cols + (j + 1);
         const d = i * cols + (j + 1);
-        indices.push(a, b, d);
-        indices.push(b, c, d);
+        // Outward-facing CCW winding: (d - a) x (b - a) = binormal x tan = +normal
+        indices.push(a, d, b);
+        indices.push(b, d, c);
       }
     }
 
@@ -347,8 +413,7 @@ class SmoothAnimatedTail {
   }
 
   private radiusAt(t: number): number {
-    // Closed rounded base & softly rounded hemispherical tip (zero hollow ends from any orbit angle)
-    const baseBody = 0.064 + 0.018 * Math.sin(t * Math.PI * 0.85);
+    const baseBody = 0.060 + 0.015 * Math.sin(t * Math.PI * 0.85);
     if (t < 0.06) {
       const baseT = t / 0.06;
       return baseBody * Math.max(0.02, Math.sin(baseT * Math.PI * 0.5));
@@ -361,22 +426,22 @@ class SmoothAnimatedTail {
   }
 
   update(time: number, purrLevel: number, tailPlayPulse: number): void {
-    const speed = 1.7 + purrLevel * 1.4 + tailPlayPulse * 3.2;
-    const swayAmp = 0.075 + purrLevel * 0.065 + tailPlayPulse * 0.14;
-    const happyLift = purrLevel * 0.22;
+    const speed = 1.65 + purrLevel * 1.35 + tailPlayPulse * 3.1;
+    const swayAmp = 0.068 + purrLevel * 0.06 + tailPlayPulse * 0.13;
+    const happyLift = purrLevel * 0.2;
 
     const w1 = Math.sin(time * speed - 0.4) * swayAmp;
-    const w2 = Math.sin(time * speed - 1.1) * swayAmp * 1.35;
-    const w3 = Math.sin(time * speed - 1.9) * swayAmp * 1.65;
-    const tipBob = Math.cos(time * speed * 0.85 - 1.5) * swayAmp * 0.7;
+    const w2 = Math.sin(time * speed - 1.1) * swayAmp * 1.3;
+    const w3 = Math.sin(time * speed - 1.9) * swayAmp * 1.6;
+    const tipBob = Math.cos(time * speed * 0.85 - 1.5) * swayAmp * 0.65;
 
-    // Smooth S-curve anchored cleanly inside the lower rump and exiting rearward (zero rump-shell grazing)
-    this.controlPoints[0].set(0.0, 0.16, -0.22);
-    this.controlPoints[1].set(0.05, 0.15, -0.47);
-    this.controlPoints[2].set(0.36 + w1 * 0.6, 0.24 + happyLift * 0.3, -0.52 + w1 * 0.3);
-    this.controlPoints[3].set(0.60 + w2 * 0.8, 0.40 + happyLift * 0.75, -0.35 + w2 * 0.4);
-    this.controlPoints[4].set(0.70 + w3 * 0.95, 0.57 + happyLift * 1.15 + tipBob * 0.5, -0.14 + w3 * 0.5);
-    this.controlPoints[5].set(0.65 + w3 * 1.15, 0.72 + happyLift * 1.35 + tipBob, 0.03 + w3 * 0.65);
+    // Graceful low-resting S-curve emerging smoothly out of the lower rump
+    this.controlPoints[0].set(0.0, 0.16, -0.34);
+    this.controlPoints[1].set(0.08, 0.14, -0.60);
+    this.controlPoints[2].set(0.42 + w1 * 0.55, 0.17 + happyLift * 0.25, -0.58 + w1 * 0.3);
+    this.controlPoints[3].set(0.68 + w2 * 0.75, 0.30 + happyLift * 0.65, -0.38 + w2 * 0.4);
+    this.controlPoints[4].set(0.76 + w3 * 0.9, 0.47 + happyLift * 1.05 + tipBob * 0.5, -0.15 + w3 * 0.48);
+    this.controlPoints[5].set(0.70 + w3 * 1.1, 0.62 + happyLift * 1.25 + tipBob, 0.04 + w3 * 0.6);
 
     const posAttr = this.geometry.attributes.position as THREE.BufferAttribute;
     const posArr = posAttr.array as Float32Array;
@@ -389,21 +454,16 @@ class SmoothAnimatedTail {
       this.curve.getTangent(t, this.tan).normalize();
 
       if (i === 0) {
-        // Initial twist-free orthonormal frame
         this.normal.crossVectors(this.refUp, this.tan);
-        if (this.normal.lengthSq() < 1e-4) {
-          this.normal.set(1, 0, 0);
-        } else {
-          this.normal.normalize();
-        }
+        if (this.normal.lengthSq() < 1e-4) this.normal.set(1, 0, 0);
+        else this.normal.normalize();
         this.binormal.crossVectors(this.tan, this.normal).normalize();
       } else {
-        // Parallel-transport frame along the curve (eliminates Frenet flips)
         this.rotAxis.crossVectors(this.prevTan, this.tan);
         const sinA = this.rotAxis.length();
         if (sinA > 1e-5) {
           this.rotAxis.divideScalar(sinA);
-          const cosA = Math.max(-1, Math.min(1, this.prevTan.dot(this.tan)));
+          const cosA = clamp(this.prevTan.dot(this.tan), -1, 1);
           this.quat.setFromAxisAngle(this.rotAxis, Math.acos(cosA));
           this.normal.applyQuaternion(this.quat).normalize();
         }
@@ -433,8 +493,9 @@ class SmoothAnimatedTail {
 }
 
 /**
- * Builds the complete sculpted 3D calico cat, cozy cushion stage, articulated rig pivots,
- * smooth vertex-deformed calico tail, and tagged raycast targets.
+ * Builds the anatomically realistic 3D tabico cat with 6-layer volumetric alphaTest fur shells,
+ * unified continuous head & pear-body geometry, animated furry eyelids, heather-grey felt perch,
+ * and tagged raycast zones.
  */
 export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
   const geometries: THREE.BufferGeometry[] = [];
@@ -460,104 +521,105 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
     return obj;
   };
 
-  // --- Procedural Tabico & Stage Textures ---
+  // --- Procedural High-Res Tabico Coat & Volumetric Fur Heightfield Textures ---
   const furBump = trackTex(createFurBumpTexture());
-  const furShellAlphaInner = trackTex(createFurShellAlphaTexture(0.46));
-  const furShellAlphaOuter = trackTex(createFurShellAlphaTexture(0.64));
+  const furHeightAlpha = trackTex(createFurHeightAlphaTexture());
   const headTex = trackTex(createHeadCalicoTexture(palette));
   const torsoTex = trackTex(createTorsoCalicoTexture(palette));
+  const leftLegTex = trackTex(createForelegTexture(palette, 'left'));
+  const rightLegTex = trackTex(createForelegTexture(palette, 'right'));
   const tailTex = trackTex(createTailCalicoTexture(palette));
   const creamFurTex = trackTex(createSolidFurTexture(palette, 'cream'));
   const tabbyEarTex = trackTex(createSolidFurTexture(palette, 'tabbyEar'));
-  const leftHaunchTex = trackTex(createSolidFurTexture(palette, 'leftHaunchTabico'));
-  const rightHaunchTex = trackTex(createSolidFurTexture(palette, 'rightHaunchTabico'));
-  const leftWhiskerPadTex = trackTex(createWhiskerPadTexture(palette, 'left'));
-  const rightWhiskerPadTex = trackTex(createWhiskerPadTexture(palette, 'right'));
+  const eyelidFurTex = trackTex(createSolidFurTexture(palette, 'eyelidTabby'));
   const eyeTex = trackTex(createCatEyeTexture(palette));
-  const cushionTex = trackTex(createCushionFabricTexture(palette));
-  const blushTex = trackTex(createBlushTexture());
+  const perchTex = trackTex(createCushionFabricTexture(palette));
+  const contactShadowTex = trackTex(createContactShadowTexture());
 
-  const sheenTint = new THREE.Color('#fff1de');
+  const sheenTint = new THREE.Color('#fff0dc');
 
-  const makeFurMat = (map: THREE.CanvasTexture, sheenStrength = 0.62): THREE.MeshPhysicalMaterial =>
-    trackMat(
-      new THREE.MeshPhysicalMaterial({
-        map,
-        bumpMap: furBump,
-        bumpScale: 0.015,
-        roughness: 0.88,
-        metalness: 0.0,
-        sheen: sheenStrength,
-        sheenRoughness: 0.56,
-        sheenColor: sheenTint,
-      }),
-    );
-
-  const makeFurShellMat = (
+  /** Base undercoat fur material (slightly deepened for authentic fur-root ambient occlusion). */
+  const makeBaseFurMat = (
     map: THREE.CanvasTexture,
-    alphaMap: THREE.CanvasTexture,
-    opacity: number,
+    undercoatShade = 0.84,
+    sheenStrength = 0.55,
   ): THREE.MeshPhysicalMaterial =>
     trackMat(
       new THREE.MeshPhysicalMaterial({
         map,
-        alphaMap,
-        transparent: true,
-        opacity,
-        alphaTest: 0.08,
-        depthWrite: false,
+        color: new THREE.Color().setScalar(undercoatShade),
+        bumpMap: furBump,
+        bumpScale: 0.014,
         roughness: 0.9,
         metalness: 0.0,
-        sheen: 0.82,
-        sheenRoughness: 0.48,
+        sheen: sheenStrength,
+        sheenRoughness: 0.58,
         sheenColor: sheenTint,
       }),
     );
 
-  /** Wraps a primary fur mesh with two ultra-subtle fuzzy hair-tip shells for a plush realistic silhouette. */
-  const attachFurShells = (
+  /**
+   * Attaches N stacked Lengyel Volumetric Fur Shells (alphaTest cutout, depthWrite: true)
+   * with root-to-tip ambient occlusion and gentle downward fur-lay droop.
+   */
+  const attachVolumetricFur = (
     parent: THREE.Object3D,
     baseMesh: THREE.Mesh,
     map: THREE.CanvasTexture,
-    scaleInner = 0.008,
-    scaleOuter = 0.015,
+    layers: number,
+    maxLength: number,
+    maxDroop: number,
+    furWeights?: Float32Array,
   ) => {
-    const innerShell = new THREE.Mesh(
-      trackGeom(createExtrudedFurShellGeometry(baseMesh.geometry, scaleInner, 0.0025)),
-      makeFurShellMat(map, furShellAlphaInner, 0.72),
-    );
-    innerShell.position.copy(baseMesh.position);
-    innerShell.rotation.copy(baseMesh.rotation);
-    innerShell.scale.copy(baseMesh.scale);
-    parent.add(innerShell);
+    for (let l = 1; l <= layers; l++) {
+      const frac = l / layers; // 1/N .. 1.0
+      const offset = maxLength * frac;
+      const droop = maxDroop * frac * frac;
+      const alphaTest = 0.14 + frac * 0.58; // dense silky hair taper with zero shadow sparkle aliasing
+      const aoShade = 0.87 + frac * 0.18; // darker roots -> sunlit soft silky tips
 
-    const outerShell = new THREE.Mesh(
-      trackGeom(createExtrudedFurShellGeometry(baseMesh.geometry, scaleOuter, 0.0055)),
-      makeFurShellMat(map, furShellAlphaOuter, 0.44),
-    );
-    outerShell.position.copy(baseMesh.position);
-    outerShell.rotation.copy(baseMesh.rotation);
-    outerShell.scale.copy(baseMesh.scale);
-    parent.add(outerShell);
+      const shellGeom = trackGeom(
+        createFurShellGeometry(baseMesh.geometry, offset, droop, furWeights),
+      );
+      const shellMat = trackMat(
+        new THREE.MeshPhysicalMaterial({
+          map,
+          alphaMap: furHeightAlpha,
+          alphaTest,
+          color: new THREE.Color().setScalar(aoShade),
+          roughness: 0.88 - frac * 0.06,
+          metalness: 0.0,
+          sheen: 0.65 + frac * 0.3,
+          sheenRoughness: 0.5,
+          sheenColor: sheenTint,
+        }),
+      );
+
+      const shellMesh = new THREE.Mesh(shellGeom, shellMat);
+      shellMesh.position.copy(baseMesh.position);
+      shellMesh.rotation.copy(baseMesh.rotation);
+      shellMesh.scale.copy(baseMesh.scale);
+      shellMesh.receiveShadow = l <= 2;
+      parent.add(shellMesh);
+    }
   };
 
-  const headMat = makeFurMat(headTex, 0.64);
-  const torsoMat = makeFurMat(torsoTex, 0.65);
-  const tailMat = makeFurMat(tailTex, 0.68);
-  const creamFurMat = makeFurMat(creamFurTex, 0.58);
-  const tabbyEarMat = makeFurMat(tabbyEarTex, 0.66);
-  const leftHaunchMat = makeFurMat(leftHaunchTex, 0.65);
-  const rightHaunchMat = makeFurMat(rightHaunchTex, 0.65);
-  const leftWhiskerPadMat = makeFurMat(leftWhiskerPadTex, 0.52);
-  const rightWhiskerPadMat = makeFurMat(rightWhiskerPadTex, 0.52);
+  const headBaseMat = makeBaseFurMat(headTex, 0.88, 0.58);
+  const torsoBaseMat = makeBaseFurMat(torsoTex, 0.84, 0.56);
+  const leftLegBaseMat = makeBaseFurMat(leftLegTex, 0.86, 0.54);
+  const rightLegBaseMat = makeBaseFurMat(rightLegTex, 0.86, 0.54);
+  const tailMat = makeBaseFurMat(tailTex, 0.96, 0.68);
+  const creamPawMat = makeBaseFurMat(creamFurTex, 0.95, 0.58);
+  const tabbyEarMat = makeBaseFurMat(tabbyEarTex, 0.92, 0.62);
+  const eyelidMat = makeBaseFurMat(eyelidFurTex, 0.92, 0.45);
 
   const noseMat = trackMat(
     new THREE.MeshPhysicalMaterial({
       color: palette.nosePink,
-      roughness: 0.34,
+      roughness: 0.42,
       metalness: 0.0,
-      clearcoat: 0.35,
-      clearcoatRoughness: 0.3,
+      clearcoat: 0.38,
+      clearcoatRoughness: 0.28,
     }),
   );
 
@@ -566,52 +628,52 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
       color: palette.earPink,
       roughness: 0.88,
       metalness: 0.0,
-      sheen: 0.35,
-      sheenRoughness: 0.7,
-      sheenColor: new THREE.Color('#ffd9e0'),
+      sheen: 0.32,
+      sheenRoughness: 0.72,
+      sheenColor: new THREE.Color('#e6c9c8'),
     }),
   );
 
   const featureDarkMat = trackMat(
     new THREE.MeshStandardMaterial({
-      color: '#251e22',
-      roughness: 0.52,
+      color: '#1b1615',
+      roughness: 0.48,
       metalness: 0.0,
     }),
   );
 
   const whiskerMat = trackMat(
     new THREE.MeshStandardMaterial({
-      color: '#fbf6ef',
-      roughness: 0.45,
+      color: '#f8f4ec',
+      roughness: 0.42,
       transparent: true,
-      opacity: 0.78,
+      opacity: 0.72,
     }),
   );
 
   const eyeMat = trackMat(
     new THREE.MeshPhysicalMaterial({
       map: eyeTex,
-      roughness: 0.1,
+      roughness: 0.08,
       metalness: 0.0,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.04,
+      clearcoatRoughness: 0.03,
     }),
   );
 
   // --- Root Hierarchy ---
   const root = new THREE.Group();
 
-  // --- Stage: Sleek Dark Slate Plinth + Cozy Tufted Cushion ---
+  // --- Stage: Sleek Dark Slate Plinth + Heather-Grey Felt Cat Perch (Photo 3 inspired) ---
   const plinthMat = trackMat(
     new THREE.MeshStandardMaterial({
-      color: '#0e1628',
-      roughness: 0.55,
-      metalness: 0.25,
+      color: '#0e1525',
+      roughness: 0.6,
+      metalness: 0.22,
     }),
   );
   const plinthMesh = new THREE.Mesh(
-    trackGeom(new THREE.CylinderGeometry(1.06, 1.12, 0.075, 56)),
+    trackGeom(new THREE.CylinderGeometry(1.08, 1.14, 0.075, 56)),
     plinthMat,
   );
   plinthMesh.position.y = -0.258;
@@ -622,48 +684,66 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
     new THREE.MeshBasicMaterial({
       color: '#38bdf8',
       transparent: true,
-      opacity: 0.24,
+      opacity: 0.16,
     }),
   );
   const accentRing = new THREE.Mesh(
-    trackGeom(new THREE.TorusGeometry(1.065, 0.006, 10, 72)),
+    trackGeom(new THREE.TorusGeometry(1.085, 0.005, 10, 72)),
     accentRingMat,
   );
   accentRing.rotation.x = Math.PI / 2;
   accentRing.position.y = -0.222;
   root.add(accentRing);
 
-  const cushionMat = trackMat(
+  const perchMat = trackMat(
     new THREE.MeshPhysicalMaterial({
-      map: cushionTex,
+      map: perchTex,
       bumpMap: furBump,
-      bumpScale: 0.005,
-      roughness: 0.9,
+      bumpScale: 0.008,
+      roughness: 0.94,
       metalness: 0.0,
-      sheen: 0.5,
-      sheenRoughness: 0.72,
-      sheenColor: new THREE.Color('#6482ad'),
+      sheen: 0.35,
+      sheenRoughness: 0.8,
+      sheenColor: new THREE.Color('#8e96a8'),
     }),
   );
-  const cushionMesh = new THREE.Mesh(trackGeom(createTuftedCushionGeometry()), cushionMat);
-  cushionMesh.receiveShadow = true;
-  cushionMesh.castShadow = true;
-  root.add(cushionMesh);
+  const perchMesh = new THREE.Mesh(trackGeom(createFeltPerchGeometry()), perchMat);
+  perchMesh.receiveShadow = true;
+  perchMesh.castShadow = true;
+  root.add(perchMesh);
 
+  // Subtle felt seam trim around perch edge
   const pipingMat = trackMat(
     new THREE.MeshStandardMaterial({
-      color: '#324869',
-      roughness: 0.72,
-      metalness: 0.05,
+      color: '#464f61',
+      roughness: 0.84,
+      metalness: 0.0,
     }),
   );
   const pipingMesh = new THREE.Mesh(
-    trackGeom(new THREE.TorusGeometry(0.955, 0.015, 12, 64)),
+    trackGeom(new THREE.TorusGeometry(0.985, 0.013, 12, 64)),
     pipingMat,
   );
   pipingMesh.rotation.x = Math.PI / 2;
   pipingMesh.position.y = -0.105;
   root.add(pipingMesh);
+
+  // Soft contact AO shadow right beneath the cat on the felt perch
+  const contactShadowMat = trackMat(
+    new THREE.MeshBasicMaterial({
+      map: contactShadowTex,
+      transparent: true,
+      opacity: 0.85,
+      depthWrite: false,
+    }),
+  );
+  const contactShadow = new THREE.Mesh(
+    trackGeom(new THREE.PlaneGeometry(1.38, 1.38)),
+    contactShadowMat,
+  );
+  contactShadow.rotation.x = -Math.PI / 2;
+  contactShadow.position.set(0, 0.006, 0.04);
+  root.add(contactShadow);
 
   // --- Cat Assembly ---
   const catRoot = new THREE.Group();
@@ -673,190 +753,153 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
   const bodyGroup = new THREE.Group();
   catRoot.add(bodyGroup);
 
-  // 1. Seated Torso + soft volumetric fur shells
-  const torsoMesh = new THREE.Mesh(trackGeom(createSeatedTorsoGeometry()), torsoMat);
+  // 1. Unified Anatomical Seated Pear Body + 6-Layer Lengyel Volumetric Fur
+  const torsoData = createSeatedTorsoGeometry();
+  const torsoMesh = new THREE.Mesh(trackGeom(torsoData.geometry), torsoBaseMat);
   torsoMesh.castShadow = true;
   torsoMesh.receiveShadow = true;
   tagPettable(torsoMesh, 'back');
   bodyGroup.add(torsoMesh);
-  attachFurShells(bodyGroup, torsoMesh, torsoTex, 0.009, 0.017);
+  attachVolumetricFur(bodyGroup, torsoMesh, torsoTex, 6, 0.026, 0.009, torsoData.furWeights);
 
-  // Plush snowy-white chest ruff seamlessly bridging upper chest, shoulders & throat
-  const chestFluff = new THREE.Mesh(trackGeom(new THREE.SphereGeometry(0.24, 28, 22)), creamFurMat);
-  chestFluff.scale.set(1.12, 1.18, 0.72);
-  chestFluff.position.set(0, 0.79, 0.23);
-  chestFluff.castShadow = true;
-  tagPettable(chestFluff, 'chin');
-  bodyGroup.add(chestFluff);
-  attachFurShells(bodyGroup, chestFluff, creamFurTex, 0.007, 0.014);
+  // 2. Full-Length Anatomical Curved Forelegs seamlessly anchored into rounded shoulders (Photo 3!)
+  const leftLegMesh = new THREE.Mesh(
+    trackGeom(createAnatomicalForelegGeometry(1)),
+    leftLegBaseMat,
+  );
+  leftLegMesh.position.set(0.105, 0.036, 0.282);
+  leftLegMesh.castShadow = true;
+  leftLegMesh.receiveShadow = true;
+  tagPettable(leftLegMesh, 'chin');
+  bodyGroup.add(leftLegMesh);
+  attachVolumetricFur(bodyGroup, leftLegMesh, leftLegTex, 4, 0.014, 0.005);
 
-  // 2. Seamlessly Tucked Hind Haunches + plush fur shells
-  const haunchGeom = trackGeom(new THREE.SphereGeometry(0.24, 28, 22));
-  const leftHaunch = new THREE.Mesh(haunchGeom, leftHaunchMat);
-  leftHaunch.scale.set(0.78, 1.02, 1.34);
-  leftHaunch.position.set(0.215, 0.225, -0.06);
-  leftHaunch.rotation.set(0.16, 0.16, -0.06);
-  leftHaunch.castShadow = true;
-  leftHaunch.receiveShadow = true;
-  tagPettable(leftHaunch, 'back');
-  bodyGroup.add(leftHaunch);
-  attachFurShells(bodyGroup, leftHaunch, leftHaunchTex, 0.008, 0.015);
+  const rightLegMesh = new THREE.Mesh(
+    trackGeom(createAnatomicalForelegGeometry(-1)),
+    rightLegBaseMat,
+  );
+  rightLegMesh.position.set(-0.105, 0.036, 0.282);
+  rightLegMesh.castShadow = true;
+  rightLegMesh.receiveShadow = true;
+  tagPettable(rightLegMesh, 'chin');
+  bodyGroup.add(rightLegMesh);
+  attachVolumetricFur(bodyGroup, rightLegMesh, rightLegTex, 4, 0.014, 0.005);
 
-  const rightHaunch = new THREE.Mesh(haunchGeom, rightHaunchMat);
-  rightHaunch.scale.set(0.78, 1.02, 1.34);
-  rightHaunch.position.set(-0.215, 0.225, -0.06);
-  rightHaunch.rotation.set(0.16, -0.16, 0.06);
-  rightHaunch.castShadow = true;
-  rightHaunch.receiveShadow = true;
-  tagPettable(rightHaunch, 'back');
-  bodyGroup.add(rightHaunch);
-  attachFurShells(bodyGroup, rightHaunch, rightHaunchTex, 0.008, 0.015);
+  // Sleek realistic rounded feline paws (no bulbous cartoon toes)
+  const pawGeom = trackGeom(new THREE.SphereGeometry(0.080, 22, 16));
+  const pawToeGeom = trackGeom(new THREE.SphereGeometry(0.024, 12, 10));
 
-  // 3. Full-Length Graceful Front Legs & Dainty White Mittens
-  const frontLegGeom = trackGeom(createFrontLegGeometry());
-  const pawBaseGeom = trackGeom(new THREE.SphereGeometry(0.084, 20, 16));
-  const toeGeom = trackGeom(new THREE.SphereGeometry(0.031, 12, 10));
-
-  const createPaw = (isFront: boolean): THREE.Group => {
+  const createNaturalPaw = (isFront: boolean): THREE.Group => {
     const paw = new THREE.Group();
-    const pad = new THREE.Mesh(pawBaseGeom, creamFurMat);
-    pad.scale.set(1.0, 0.56, isFront ? 1.24 : 1.14);
-    pad.castShadow = true;
-    pad.receiveShadow = true;
-    paw.add(pad);
+    const body = new THREE.Mesh(pawGeom, creamPawMat);
+    body.scale.set(0.92, 0.50, isFront ? 1.32 : 1.15);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    paw.add(body);
 
-    const toeOffsets = [-0.04, 0, 0.04];
-    for (const tx of toeOffsets) {
-      const toe = new THREE.Mesh(toeGeom, creamFurMat);
-      toe.scale.set(0.95, 0.78, 1.15);
-      toe.position.set(tx, -0.008, isFront ? 0.08 : 0.07);
+    for (const tx of [-0.03, 0, 0.03]) {
+      const toe = new THREE.Mesh(pawToeGeom, creamPawMat);
+      toe.scale.set(0.96, 0.72, 1.35);
+      toe.position.set(tx, -0.01, isFront ? 0.07 : 0.06);
       toe.castShadow = true;
       paw.add(toe);
     }
     return paw;
   };
 
-  // Full front legs positioned cleanly in front of the recessed lower chest
-  const leftFrontLeg = new THREE.Mesh(frontLegGeom, creamFurMat);
-  leftFrontLeg.position.set(0.115, 0.042, 0.345);
-  leftFrontLeg.rotation.set(-0.15, 0, -0.04);
-  leftFrontLeg.castShadow = true;
-  leftFrontLeg.receiveShadow = true;
-  tagPettable(leftFrontLeg, 'chin');
-  bodyGroup.add(leftFrontLeg);
-
-  const rightFrontLeg = new THREE.Mesh(frontLegGeom, creamFurMat);
-  rightFrontLeg.position.set(-0.115, 0.042, 0.345);
-  rightFrontLeg.rotation.set(-0.15, 0, 0.04);
-  rightFrontLeg.castShadow = true;
-  rightFrontLeg.receiveShadow = true;
-  tagPettable(rightFrontLeg, 'chin');
-  bodyGroup.add(rightFrontLeg);
-
   const leftFrontPawPivot = new THREE.Group();
-  leftFrontPawPivot.position.set(0.112, 0.042, 0.388);
-  leftFrontPawPivot.rotation.y = 0.07;
-  leftFrontPawPivot.add(createPaw(true));
+  leftFrontPawPivot.position.set(0.103, 0.036, 0.328);
+  leftFrontPawPivot.rotation.y = 0.06;
+  leftFrontPawPivot.add(createNaturalPaw(true));
   bodyGroup.add(leftFrontPawPivot);
 
   const rightFrontPawPivot = new THREE.Group();
-  rightFrontPawPivot.position.set(-0.112, 0.042, 0.388);
-  rightFrontPawPivot.rotation.y = -0.07;
-  rightFrontPawPivot.add(createPaw(true));
+  rightFrontPawPivot.position.set(-0.103, 0.036, 0.328);
+  rightFrontPawPivot.rotation.y = -0.06;
+  rightFrontPawPivot.add(createNaturalPaw(true));
   bodyGroup.add(rightFrontPawPivot);
 
-  // Back paws peeking neatly out below the tucked haunches
-  const leftBackPaw = createPaw(false);
-  leftBackPaw.position.set(0.285, 0.04, 0.145);
-  leftBackPaw.rotation.y = 0.48;
+  // Subtle tucked hind paws nestled snugly beneath the lower haunches
+  const leftBackPaw = createNaturalPaw(false);
+  leftBackPaw.position.set(0.28, 0.034, 0.06);
+  leftBackPaw.rotation.y = 0.42;
   bodyGroup.add(leftBackPaw);
 
-  const rightBackPaw = createPaw(false);
-  rightBackPaw.position.set(-0.285, 0.04, 0.145);
-  rightBackPaw.rotation.y = -0.48;
+  const rightBackPaw = createNaturalPaw(false);
+  rightBackPaw.position.set(-0.28, 0.034, 0.06);
+  rightBackPaw.rotation.y = -0.42;
   bodyGroup.add(rightBackPaw);
 
-  // 4. Articulated Head Pivot (seated seamlessly over the blended plush neck)
+  // 3. Articulated Anatomical Head Pivot (seated naturally over the plush white neck)
   const headPivot = new THREE.Group();
-  headPivot.position.set(0, 0.90, 0.13);
+  headPivot.position.set(0, 0.94, 0.11);
   bodyGroup.add(headPivot);
 
   const headCenter = new THREE.Group();
-  headCenter.position.set(0, 0.20, 0.03);
+  headCenter.position.set(0, 0.195, 0.045);
   headPivot.add(headCenter);
 
-  const headMesh = new THREE.Mesh(trackGeom(createSculptedHeadGeometry()), headMat);
+  // Unified sculpted feline cranium + eye sockets + snout + 5-Layer Volumetric Fur
+  const headData = createAnatomicalHeadGeometry();
+  const headMesh = new THREE.Mesh(trackGeom(headData.geometry), headBaseMat);
   headMesh.castShadow = true;
   headMesh.receiveShadow = true;
   tagPettable(headMesh, 'head');
   headCenter.add(headMesh);
-  attachFurShells(headCenter, headMesh, headTex, 0.007, 0.014);
+  attachVolumetricFur(headCenter, headMesh, headTex, 5, 0.015, 0.004, headData.furWeights);
 
-  // Soft blended whisker pads carrying the signature asymmetric brown/taupe mustache smudges
-  const padGeom = trackGeom(new THREE.SphereGeometry(0.082, 22, 18));
-  const leftWhiskerPad = new THREE.Mesh(padGeom, leftWhiskerPadMat);
-  leftWhiskerPad.scale.set(0.98, 0.72, 0.72);
-  leftWhiskerPad.position.set(0.056, -0.078, 0.324);
-  leftWhiskerPad.castShadow = true;
-  tagPettable(leftWhiskerPad, 'chin');
-  headCenter.add(leftWhiskerPad);
+  // Invisible chin hit target for ergonomic chin-scratch detection
+  const chinHitProxy = new THREE.Mesh(
+    trackGeom(new THREE.SphereGeometry(0.13, 12, 10)),
+    trackMat(new THREE.MeshBasicMaterial({ visible: false })),
+  );
+  chinHitProxy.position.set(0, -0.085, 0.25);
+  tagPettable(chinHitProxy, 'chin');
+  headCenter.add(chinHitProxy);
 
-  const rightWhiskerPad = new THREE.Mesh(padGeom, rightWhiskerPadMat);
-  rightWhiskerPad.scale.set(0.98, 0.72, 0.72);
-  rightWhiskerPad.position.set(-0.056, -0.078, 0.324);
-  rightWhiskerPad.castShadow = true;
-  tagPettable(rightWhiskerPad, 'chin');
-  headCenter.add(rightWhiskerPad);
-
-  const chinMesh = new THREE.Mesh(trackGeom(new THREE.SphereGeometry(0.068, 18, 14)), creamFurMat);
-  chinMesh.scale.set(0.94, 0.62, 0.78);
-  chinMesh.position.set(0, -0.136, 0.298);
-  tagPettable(chinMesh, 'chin');
-  headCenter.add(chinMesh);
-
-  // Realistic sculpted dark espresso-chocolate nose leather
-  const noseGeom = trackGeom(new THREE.SphereGeometry(0.031, 18, 14));
+  // Realistic dark espresso-chocolate sculpted feline nose leather embedded flush on the snout tip
+  const noseGeom = trackGeom(new THREE.SphereGeometry(0.025, 18, 14));
   const nosePos = noseGeom.attributes.position;
   for (let i = 0; i < nosePos.count; i++) {
     let x = nosePos.getX(i);
     const y = nosePos.getY(i);
     const z = nosePos.getZ(i);
-    const t = (y / 0.031 + 1) * 0.5;
-    x *= 0.66 + t * 0.62;
-    nosePos.setXYZ(i, x, y * 0.74, z * 0.68);
+    const t = (y / 0.025 + 1) * 0.5;
+    x *= 0.58 + t * 0.72;
+    nosePos.setXYZ(i, x, y * 0.68, z * 0.58);
   }
   noseGeom.computeVertexNormals();
   const noseMesh = new THREE.Mesh(noseGeom, noseMat);
-  noseMesh.position.set(0, -0.034, 0.382);
+  noseMesh.position.set(0, -0.045, 0.343);
   tagPettable(noseMesh, 'chin');
   headCenter.add(noseMesh);
 
-  // Delicate feline mouth curve tucked cleanly under the nose
-  const makeSmileSide = (sign: 1 | -1): THREE.Mesh => {
+  // Subtle realistic feline mouth cleft (delicate & understated — NOT a thick cartoon :3 wire!)
+  const makeLipLine = (sign: 1 | -1): THREE.Mesh => {
     const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, -0.052, 0.382),
-      new THREE.Vector3(sign * 0.012, -0.08, 0.384),
-      new THREE.Vector3(sign * 0.048, -0.106, 0.376),
-      new THREE.Vector3(sign * 0.086, -0.097, 0.362),
+      new THREE.Vector3(0, -0.058, 0.338),
+      new THREE.Vector3(sign * 0.011, -0.076, 0.336),
+      new THREE.Vector3(sign * 0.036, -0.087, 0.326),
+      new THREE.Vector3(sign * 0.062, -0.082, 0.310),
     ]);
     return new THREE.Mesh(
-      trackGeom(new THREE.TubeGeometry(curve, 14, 0.0046, 8, false)),
+      trackGeom(new THREE.TubeGeometry(curve, 12, 0.0028, 6, false)),
       featureDarkMat,
     );
   };
-  headCenter.add(makeSmileSide(1));
-  headCenter.add(makeSmileSide(-1));
+  headCenter.add(makeLipLine(1));
+  headCenter.add(makeLipLine(-1));
 
-  // Fine natural multi-length feline cheek whiskers (5 slender drooping hairs per cheek)
+  // Ultra-fine natural drooping white feline whiskers (5 per cheek + 2 tiny brow hairs)
   const addWhisker = (
     p0: THREE.Vector3,
     p1: THREE.Vector3,
     p2: THREE.Vector3,
-    radius = 0.0021,
+    radius: number,
   ) => {
     const curve = new THREE.QuadraticBezierCurve3(p0, p1, p2);
     const whisker = new THREE.Mesh(
-      trackGeom(new THREE.TubeGeometry(curve, 10, radius, 6, false)),
+      trackGeom(new THREE.TubeGeometry(curve, 10, radius, 5, false)),
       whiskerMat,
     );
     headCenter.add(whisker);
@@ -864,159 +907,132 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
 
   for (const sign of [1, -1] as const) {
     addWhisker(
-      new THREE.Vector3(sign * 0.092, -0.056, 0.346),
-      new THREE.Vector3(sign * 0.23, -0.048, 0.326),
-      new THREE.Vector3(sign * 0.375, -0.068, 0.27),
-      0.0019,
+      new THREE.Vector3(sign * 0.068, -0.056, 0.312),
+      new THREE.Vector3(sign * 0.19, -0.054, 0.292),
+      new THREE.Vector3(sign * 0.33, -0.078, 0.235),
+      0.0014,
     );
     addWhisker(
-      new THREE.Vector3(sign * 0.096, -0.068, 0.348),
-      new THREE.Vector3(sign * 0.255, -0.066, 0.324),
-      new THREE.Vector3(sign * 0.425, -0.095, 0.255),
-      0.0022,
-    );
-    addWhisker(
-      new THREE.Vector3(sign * 0.096, -0.081, 0.345),
-      new THREE.Vector3(sign * 0.26, -0.092, 0.318),
-      new THREE.Vector3(sign * 0.435, -0.132, 0.245),
-      0.0022,
-    );
-    addWhisker(
-      new THREE.Vector3(sign * 0.088, -0.094, 0.338),
-      new THREE.Vector3(sign * 0.23, -0.118, 0.312),
-      new THREE.Vector3(sign * 0.38, -0.168, 0.242),
-      0.0019,
-    );
-    addWhisker(
-      new THREE.Vector3(sign * 0.082, -0.104, 0.328),
-      new THREE.Vector3(sign * 0.195, -0.138, 0.302),
-      new THREE.Vector3(sign * 0.315, -0.186, 0.248),
+      new THREE.Vector3(sign * 0.072, -0.066, 0.314),
+      new THREE.Vector3(sign * 0.21, -0.068, 0.288),
+      new THREE.Vector3(sign * 0.365, -0.104, 0.222),
       0.0016,
+    );
+    addWhisker(
+      new THREE.Vector3(sign * 0.070, -0.076, 0.310),
+      new THREE.Vector3(sign * 0.215, -0.090, 0.282),
+      new THREE.Vector3(sign * 0.365, -0.135, 0.212),
+      0.0016,
+    );
+    addWhisker(
+      new THREE.Vector3(sign * 0.064, -0.086, 0.302),
+      new THREE.Vector3(sign * 0.19, -0.112, 0.275),
+      new THREE.Vector3(sign * 0.32, -0.162, 0.210),
+      0.0014,
+    );
+    addWhisker(
+      new THREE.Vector3(sign * 0.058, -0.094, 0.294),
+      new THREE.Vector3(sign * 0.16, -0.128, 0.268),
+      new THREE.Vector3(sign * 0.265, -0.175, 0.215),
+      0.0012,
     );
   }
 
-  // --- Expressive Almond-Framed Eyes (Luminous Celadon-Green Open Eyes + Happy ^ ^ Squint Arcs) ---
-  const eyeballGeom = trackGeom(new THREE.SphereGeometry(0.077, 28, 22));
-  const lashCurve = new THREE.QuadraticBezierCurve3(
-    new THREE.Vector3(-0.076, 0.006, 0.028),
-    new THREE.Vector3(0.004, 0.066, 0.052),
-    new THREE.Vector3(0.078, 0.024, 0.022),
+  // --- Recessed Glossy Eyes with Real Animated Furry Upper & Lower Eyelids ---
+  const eyeballGeom = trackGeom(new THREE.SphereGeometry(0.059, 28, 22));
+  const upperLidGeom = trackGeom(
+    new THREE.SphereGeometry(0.064, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.52),
   );
-  const lashGeom = trackGeom(new THREE.TubeGeometry(lashCurve, 16, 0.0085, 8, false));
-
-  const lowerLidCurve = new THREE.QuadraticBezierCurve3(
-    new THREE.Vector3(-0.070, -0.018, 0.025),
-    new THREE.Vector3(0, -0.062, 0.047),
-    new THREE.Vector3(0.070, -0.006, 0.025),
+  const lowerLidGeom = trackGeom(
+    new THREE.SphereGeometry(0.0635, 22, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5),
   );
-  const lowerLidGeom = trackGeom(new THREE.TubeGeometry(lowerLidCurve, 14, 0.0042, 8, false));
+  const lidRimGeom = trackGeom(new THREE.TorusGeometry(0.064, 0.0028, 8, 28));
 
-  const squintCurve = new THREE.QuadraticBezierCurve3(
-    new THREE.Vector3(-0.072, -0.014, 0.059),
-    new THREE.Vector3(0, 0.047, 0.072),
-    new THREE.Vector3(0.072, -0.014, 0.059),
-  );
-  const squintGeom = trackGeom(new THREE.TubeGeometry(squintCurve, 16, 0.0108, 10, false));
+  const buildRealisticEye = (sign: 1 | -1) => {
+    const socket = new THREE.Group();
+    socket.position.set(sign * 0.097, 0.016, 0.214);
+    socket.rotation.set(-0.03, sign * 0.33, sign * 0.05);
+    headCenter.add(socket);
 
-  const buildEyeAssembly = (sign: 1 | -1) => {
-    const eyePivot = new THREE.Group();
-    eyePivot.position.set(sign * 0.138, 0.026, 0.292);
-    eyePivot.rotation.set(-0.04, sign * 0.33, sign * 0.05);
-    headCenter.add(eyePivot);
-
-    const openEye = new THREE.Group();
-    eyePivot.add(openEye);
+    const eyeBallGroup = new THREE.Group();
+    socket.add(eyeBallGroup);
 
     const eyeball = new THREE.Mesh(eyeballGeom, eyeMat);
-    eyeball.scale.set(1.06, 0.98, 0.72);
+    eyeball.scale.set(1.06, 0.98, 0.86);
     tagPettable(eyeball, 'head');
-    openEye.add(eyeball);
+    eyeBallGroup.add(eyeball);
 
-    const lash = new THREE.Mesh(lashGeom, featureDarkMat);
-    if (sign === -1) lash.scale.x = -1;
-    openEye.add(lash);
+    // Animated furry upper eyelid (alert open at -0.82 -> soft blissful close at +0.12)
+    const upperLid = new THREE.Group();
+    const upperCap = new THREE.Mesh(upperLidGeom, eyelidMat);
+    upperCap.scale.set(1.08, 0.99, 0.92);
+    upperLid.add(upperCap);
 
-    const lowerLid = new THREE.Mesh(lowerLidGeom, featureDarkMat);
-    if (sign === -1) lowerLid.scale.x = -1;
-    openEye.add(lowerLid);
+    const upperRim = new THREE.Mesh(lidRimGeom, featureDarkMat);
+    upperRim.rotation.x = Math.PI / 2;
+    upperRim.scale.set(1.08, 0.92, 1.0);
+    upperLid.add(upperRim);
+    upperLid.rotation.x = -0.82;
+    socket.add(upperLid);
 
-    const squintArc = new THREE.Mesh(squintGeom, featureDarkMat);
-    squintArc.visible = false;
-    eyePivot.add(squintArc);
+    // Animated furry lower eyelid
+    const lowerLid = new THREE.Group();
+    const lowerCap = new THREE.Mesh(lowerLidGeom, eyelidMat);
+    lowerCap.scale.set(1.07, 0.98, 0.91);
+    lowerLid.add(lowerCap);
 
-    return { eyePivot, openEye, squintArc };
+    const lowerRim = new THREE.Mesh(lidRimGeom, featureDarkMat);
+    lowerRim.rotation.x = Math.PI / 2;
+    lowerRim.scale.set(1.07, 0.91, 0.72);
+    lowerLid.add(lowerRim);
+    lowerLid.rotation.x = 0.78;
+    socket.add(lowerLid);
+
+    return { eyeBallGroup, upperLid, lowerLid };
   };
 
-  const leftEye = buildEyeAssembly(1);
-  const rightEye = buildEyeAssembly(-1);
+  const leftEye = buildRealisticEye(1);
+  const rightEye = buildRealisticEye(-1);
 
-  // Rosy cheek blush decals fading in smoothly while purring
-  const blushGeom = trackGeom(new THREE.PlaneGeometry(0.12, 0.078));
-  const leftBlushMat = trackMat(
-    new THREE.MeshBasicMaterial({
-      map: blushTex,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-    }),
-  );
-  const rightBlushMat = trackMat(
-    new THREE.MeshBasicMaterial({
-      map: blushTex,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-    }),
-  );
-
-  const leftBlush = new THREE.Mesh(blushGeom, leftBlushMat);
-  leftBlush.position.set(0.218, -0.06, 0.282);
-  leftBlush.rotation.set(0.08, 0.56, -0.06);
-  headCenter.add(leftBlush);
-
-  const rightBlush = new THREE.Mesh(blushGeom, rightBlushMat);
-  rightBlush.position.set(-0.218, -0.06, 0.282);
-  rightBlush.rotation.set(0.08, -0.56, 0.06);
-  headCenter.add(rightBlush);
-
-  // --- Articulated Pointed Tabico Ears with Delicate Pale Cream Inner Ear Furnishings ---
+  // --- Natural Domestic Shorthair Tabby Ears + Fine Pale Cream Ear Furnishings ---
   const outerEarGeom = trackGeom(createSculptedEarGeometry());
   const innerEarGeom = trackGeom(createInnerEarGeometry());
   const earHairMat = trackMat(
     new THREE.MeshStandardMaterial({
-      color: '#efe7d8',
-      roughness: 0.75,
+      color: '#ede5d6',
+      roughness: 0.76,
       transparent: true,
-      opacity: 0.76,
+      opacity: 0.78,
     }),
   );
 
-  const buildEar = (sign: 1 | -1, outerMat: THREE.Material): THREE.Group => {
+  const buildEar = (sign: 1 | -1): THREE.Group => {
     const pivot = new THREE.Group();
-    pivot.position.set(sign * 0.212, 0.215, 0.012);
-    pivot.rotation.set(0.11, sign * 0.24, -sign * 0.43);
+    pivot.position.set(sign * 0.142, 0.184, 0.008);
+    pivot.rotation.set(0.08, sign * 0.20, -sign * 0.28);
     headCenter.add(pivot);
 
-    const outer = new THREE.Mesh(outerEarGeom, outerMat);
+    const outer = new THREE.Mesh(outerEarGeom, tabbyEarMat);
     outer.castShadow = true;
     outer.receiveShadow = true;
     tagPettable(outer, 'head');
     pivot.add(outer);
+    attachVolumetricFur(pivot, outer, tabbyEarTex, 3, 0.007, 0.002);
 
     const inner = new THREE.Mesh(innerEarGeom, innerEarMat);
     tagPettable(inner, 'head');
     pivot.add(inner);
 
-    // Subtle wispy pale cream inner-ear hair furnishings (Photo 2 hallmark!)
+    // Subtle wispy pale cream inner-ear hair furnishings
     for (let k = 0; k < 4; k++) {
-      const yBase = 0.045 + k * 0.032;
+      const yBase = 0.034 + k * 0.022;
       const curve = new THREE.QuadraticBezierCurve3(
-        new THREE.Vector3(-sign * 0.058, yBase, 0.024),
-        new THREE.Vector3(-sign * 0.012, yBase + 0.014, 0.036),
-        new THREE.Vector3(sign * 0.022, yBase + 0.026, 0.028),
+        new THREE.Vector3(-sign * 0.044, yBase, 0.018),
+        new THREE.Vector3(-sign * 0.009, yBase + 0.010, 0.028),
+        new THREE.Vector3(sign * 0.016, yBase + 0.018, 0.021),
       );
       const wisp = new THREE.Mesh(
-        trackGeom(new THREE.TubeGeometry(curve, 8, 0.0028 - k * 0.0003, 5, false)),
+        trackGeom(new THREE.TubeGeometry(curve, 7, 0.002 - k * 0.0002, 5, false)),
         earHairMat,
       );
       pivot.add(wisp);
@@ -1025,10 +1041,10 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
     return pivot;
   };
 
-  const leftEarPivot = buildEar(1, tabbyEarMat);
-  const rightEarPivot = buildEar(-1, tabbyEarMat);
+  const leftEarPivot = buildEar(1);
+  const rightEarPivot = buildEar(-1);
 
-  // --- 5. Seamless Continuous Animated Tricolor Calico Tail ---
+  // --- 4. Seamless Continuous Animated Ringed Tabico Tail ---
   const animatedTail = new SmoothAnimatedTail(tailMat);
   tagPettable(animatedTail.mesh, 'tail');
   bodyGroup.add(animatedTail.mesh);
@@ -1047,14 +1063,12 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
     headPivot,
     leftEarPivot,
     rightEarPivot,
-    leftEyePivot: leftEye.eyePivot,
-    rightEyePivot: rightEye.eyePivot,
-    leftOpenEye: leftEye.openEye,
-    rightOpenEye: rightEye.openEye,
-    leftSquintArc: leftEye.squintArc,
-    rightSquintArc: rightEye.squintArc,
-    leftBlushMat,
-    rightBlushMat,
+    leftEyeBall: leftEye.eyeBallGroup,
+    rightEyeBall: rightEye.eyeBallGroup,
+    leftUpperLid: leftEye.upperLid,
+    rightUpperLid: rightEye.upperLid,
+    leftLowerLid: leftEye.lowerLid,
+    rightLowerLid: rightEye.lowerLid,
     leftFrontPawPivot,
     rightFrontPawPivot,
     pettableMeshes,
