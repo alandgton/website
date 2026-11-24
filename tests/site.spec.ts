@@ -144,7 +144,7 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
     const profile = page.getByRole('region', { name: 'Profile' });
     await expect(profile.getByRole('img', { name: 'Alan Ton portrait placeholder' })).toBeVisible();
     await expect(profile.getByRole('heading', { name: 'Alan Ton' })).toBeVisible();
-    await expect(profile.getByText('Software engineer living in NYC')).toBeVisible();
+    await expect(profile.getByText('Software Engineer in NYC')).toBeVisible();
 
     for (const social of HOME_PROFILE_CONFIG.socialLinks) {
       const link = profile.getByRole('link', { name: social.label });

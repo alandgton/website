@@ -52,7 +52,7 @@ export interface HomeCatConfig {
  */
 export const HOME_PROFILE_CONFIG: HomeProfileConfig = {
   name: 'Alan Ton',
-  subtitle: 'Software engineer living in NYC',
+  subtitle: 'Software Engineer in NYC',
   photoAlt: 'Alan Ton portrait placeholder',
   socialLinks: [
     {
