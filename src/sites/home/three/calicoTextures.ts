@@ -606,11 +606,11 @@ export function createTorsoCalicoTexture(
       const hairFeather = (strandVal - 0.5) * 0.088 + (tickVal - 0.5) * 0.032;
       const n = macroNoise + hairFeather;
 
-      // 1. Crisp snowy-white chest bib (+Z), iconic bright white right-neck & nape collar (Photo 3 & Aerial!), & lower white belly trims
+      // 1. Crisp snowy-white chest bib (+Z), iconic bright white right-neck & nape collar (Photos 3, 6 & Aerial!), & lower white belly trims
       const chestBib = smoothstep(0.46, 0.72, nz + n * 0.30);
       const rightNeckCollar =
-        smoothstep(0.42, 0.68, ny + n * 0.24) *
-        smoothstep(0.10, -0.42, nx) *
+        smoothstep(0.46, 0.70, ny + n * 0.22) *
+        smoothstep(0.10, -0.44, nx) *
         smoothstep(-0.78, 0.18, nz + n * 0.24);
       // Aerial photo hallmark: crisp bright white nape collar peeking cleanly on right & left neck right behind the orange head cap!
       const leftNeckWhitePeek =
@@ -622,11 +622,14 @@ export function createTorsoCalicoTexture(
         smoothstep(0.66, 0.86, ny + n * 0.16) *
         smoothstep(0.35, -0.88, nz + n * 0.18) *
         (0.78 + smoothstep(0.35, -0.55, nx) * 0.22);
+
+      // Diagonal snowy-white lower-flank band sweeping smoothly from behind right elbow toward lower-rear flank (Photo 3 & 6!)
+      const rightWhiteDiagY = ny - nz * 0.22;
       const rightLowerWhiteBand =
-        smoothstep(-0.28, -0.56, ny + n * 0.28) *
-        smoothstep(-0.84, -0.58, ny + n * 0.22) *
-        smoothstep(-0.20, -0.62, nx) *
-        smoothstep(-0.55, 0.65, nz + n * 0.26);
+        smoothstep(-0.22, -0.46, rightWhiteDiagY + n * 0.24) *
+        smoothstep(-0.84, -0.58, rightWhiteDiagY + n * 0.20) *
+        smoothstep(-0.18, -0.58, nx) *
+        smoothstep(-0.68, 0.62, nz + n * 0.24);
       const leftLowerWhiteTrim =
         smoothstep(-0.46, -0.78, ny + n * 0.34) *
         smoothstep(-0.05, 0.45, nx) *
@@ -635,7 +638,18 @@ export function createTorsoCalicoTexture(
       const dLeftShoulderDrop = Math.hypot((nx - 0.62) * 1.45, (ny + 0.44) * 1.32, (nz - 0.58) * 1.35);
       const leftShoulderDrop = smoothstep(0.0, 0.11, 0.34 - dLeftShoulderDrop + n * 0.6);
 
-      const dRightLowerHip = Math.hypot((nx + 0.78) * 1.12, (ny + 0.72) * 1.28, (nz + 0.12) * 1.05);
+      // Photo 6 + Photo 3 signature: CONTINUOUS dark charcoal-brown mackerel tabby arm-shoulder sleeve
+      // flowing unbroken from Candy's right upper back/shoulder (-X) down across her outer-front shoulder directly onto her right forearm!
+      const sleeveLowerY = -0.36 + smoothstep(0.18, -0.55, nz) * 0.24;
+      const sleeveUpperY = 0.44 + smoothstep(0.45, -0.55, nz) * 0.14;
+      const rightArmSleeveBridge =
+        smoothstep(-0.26, -0.56, nx + n * 0.20) *
+        smoothstep(0.90, 0.62, nz - n * 0.22) *
+        smoothstep(-0.66, -0.18, nz + n * 0.24) *
+        smoothstep(sleeveLowerY - 0.14, sleeveLowerY + 0.08, ny + n * 0.22) *
+        smoothstep(sleeveUpperY + 0.14, sleeveUpperY - 0.08, ny - n * 0.20);
+
+      const dRightLowerHip = Math.hypot((nx + 0.78) * 1.12, (ny + 0.72) * 1.28, (nz + 0.18) * 1.05);
       const rightLowerHipTabby = smoothstep(0.0, 0.12, 0.48 - dRightLowerHip + n * 0.65);
 
       const whiteMask = clamp(
@@ -644,10 +658,11 @@ export function createTorsoCalicoTexture(
           rightNeckCollar * 0.98,
           leftNeckWhitePeek,
           napeWhiteTrim,
-          rightLowerWhiteBand * 0.94,
+          rightLowerWhiteBand * 0.95,
           leftLowerWhiteTrim * 0.94,
         ) -
           leftShoulderDrop * 0.88 -
+          rightArmSleeveBridge * 0.96 -
           rightLowerHipTabby * 0.95,
         0,
         1,
@@ -657,7 +672,7 @@ export function createTorsoCalicoTexture(
       const dBlackSpineDiamond = Math.hypot((nx - 0.02) * 1.32, (ny - 0.08) * 1.38, (nz + 0.94) * 1.25);
       const blackSpineDiamond = smoothstep(0.0, 0.15, 0.46 - dBlackSpineDiamond + n * 0.68);
 
-      // 3. Vibrant FIERY MARMALADE / APRICOT-GINGER patchwork across ALL 5 photos:
+      // 3. Vibrant FIERY MARMALADE / APRICOT-GINGER patchwork across ALL 6 photos:
       // (a) Aerial + Photo 2: Broad fiery orange saddle right beside the black spine diamond (+X, mid-back)
       //     curving seamlessly down into the bold vertical golden-orange mid-flank sash!
       const dLeftBackOrangeSaddle = Math.hypot((nx - 0.42) * 1.05, (ny + 0.06) * 1.12, (nz + 0.80) * 1.04);
@@ -673,15 +688,16 @@ export function createTorsoCalicoTexture(
       const dLeftGingerRump = Math.hypot((nx - 0.72) * 0.94, (ny + 0.42) * 1.02, (nz + 0.48) * 0.92);
       const leftGingerRump = smoothstep(0.0, 0.15, 0.46 - dLeftGingerRump + n * 0.78);
 
-      // (c) Aerial + Photo 3: Vibrant apricot-orange diagonal RIGHT upper-shoulder blaze (-X, right behind white collar!)
-      const dRightShoulderBlaze = Math.hypot((nx + 0.50) * 1.10, (ny - 0.44) * 1.30, (nz + 0.56) * 1.12);
-      const rightShoulderBlaze = smoothstep(0.0, 0.14, 0.46 - dRightShoulderBlaze + n * 0.72);
+      // (c) Aerial + Photo 6: Vibrant apricot-orange diagonal RIGHT upper-shoulder blaze (-X, right behind white collar & above dark arm sleeve!)
+      const dRightShoulderBlaze = Math.hypot((nx + 0.52) * 1.08, (ny - 0.48) * 1.32, (nz + 0.54) * 1.10);
+      const rightShoulderBlaze = smoothstep(0.0, 0.14, 0.48 - dRightShoulderBlaze + n * 0.72);
 
-      // (d) Photo 3: Rich warm golden-amber right SIDE flank patch (-X side, keeping lower-right aerial rump silver-frosted tabby!)
-      const dRightGingerFlank = Math.hypot((nx + 0.92) * 0.95, (ny - 0.02) * 0.96, (nz - 0.04) * 0.98);
+      // (d) Photo 3 & 6: Rich warm golden-amber right SIDE flank patch nestled cleanly BEHIND the dark tabby right arm sleeve!
+      const dRightGingerFlank = Math.hypot((nx + 0.84) * 0.90, (ny + 0.04) * 0.96, (nz + 0.34) * 0.92);
       const rightGingerFlank =
-        smoothstep(0.0, 0.14, 0.56 - dRightGingerFlank + n * 0.82) *
-        smoothstep(-0.52, -0.20, ny + n * 0.25);
+        smoothstep(0.0, 0.14, 0.56 - dRightGingerFlank + n * 0.80) *
+        smoothstep(-0.50, -0.18, rightWhiteDiagY + n * 0.24) *
+        (1 - rightArmSleeveBridge * 0.96);
 
       // (e) Aerial Photo: Tiny warm amber-chestnut fleck right at top-center tail base & tiny left neck fleck
       const dTailBaseFleck = Math.hypot((nx - 0.04) * 2.0, (ny + 0.78) * 1.9, (nz + 0.92) * 1.6);
@@ -701,12 +717,13 @@ export function createTorsoCalicoTexture(
         ) *
           (1 - whiteMask) *
           (1 - blackSpineDiamond * 0.96) *
+          (1 - rightArmSleeveBridge * 0.92) *
           (1 - rightLowerHipTabby * 0.9),
         0,
         1,
       );
 
-      // 4. Rich multi-tone torbie tabby covers shoulders, dorsal spine, marbled flanks & silver-frosted lower rump
+      // 4. Rich multi-tone torbie tabby covers shoulders, continuous right arm sleeve, dorsal spine, marbled flanks & silver-frosted lower rump
       const tabbyW = clamp((1 - whiteMask) * (1 - gingerW * 0.90), 0, 1);
 
       // 5. ORGANIC domain-warped feline mackerel & classic tabby blotches + transverse curved ribs (NO rigid vertical zebra bars!)
@@ -716,6 +733,9 @@ export function createTorsoCalicoTexture(
       const ribCoord = ny * 18.5 + nz * 4.2 - Math.abs(nx) * 3.5 + warpX * 3.4 + warpY * 2.2;
       const ribBreakup = smoothstep(0.28, 0.72, fbm3(nx * 8.5 + warpX, ny * 7.5 + warpY, nz * 8.5));
       const transverseRibs = smoothstep(0.18, 0.80, Math.sin(ribCoord)) * (0.45 + 0.55 * ribBreakup);
+      // Crisp horizontal dark tabby sleeve bars along the continuous right shoulder/arm bridge
+      const sleeveBars =
+        smoothstep(0.05, 0.72, Math.sin(ny * 28.0 + nz * 3.8 + warpX * 2.4)) * rightArmSleeveBridge;
       // Organic irregular dark classic-tabby rosettes / blotches seen across Candy's aerial shoulders & rump
       const classicBlotches = smoothstep(
         0.50,
@@ -731,6 +751,7 @@ export function createTorsoCalicoTexture(
           dorsalSpine +
           blackSpineDiamond * 0.88 +
           leftShoulderDrop * 0.48 +
+          rightArmSleeveBridge * (0.18 + sleeveBars * 0.46) +
           rightLowerHipTabby * 0.44,
         0.12,
         0.97,
@@ -844,13 +865,18 @@ export function createForelegTexture(
       let stripeDark = 0.55;
 
       if (side === 'right') {
-        // Photo 3 signature: bold dark brown-black tabby upper-arm sleeve wrapping visibly over outer-front right arm down to mid-forearm!
-        const outerFront = smoothstep(-0.35, 0.30, -nx + nz * 0.65);
-        const sleeveHeight = smoothstep(0.32, 0.52, v + n * 0.36) * outerFront;
+        // Photo 6 + Photo 3 signature: bold continuous dark charcoal-brown mackerel tabby sleeve
+        // connecting directly from Candy's right shoulder/back across the entire outer, back & front-outer upper right arm
+        // tapering diagonally into a crisp chevron point just above her snowy-white wrist & paw!
+        const armWrapMask = smoothstep(0.56, -0.06, nx - Math.max(0, nz) * 0.14 + n * 0.26);
+        const chevronBottom = 0.26 + smoothstep(-0.45, 0.45, nx) * 0.24 + smoothstep(0.45, -0.55, nz) * 0.08;
+        const sleeveHeight = smoothstep(chevronBottom - 0.06, chevronBottom + 0.14, v + n * 0.28) * armWrapMask;
         tabbyW = sleeveHeight;
-        const stripe = smoothstep(0.05, 0.72, Math.sin(v * 24 + nz * 4 + n * 3.8));
-        stripeDark = 0.48 + stripe * 0.48;
-        gingerW = smoothstep(0.52, 0.84, v + n * 0.3) * smoothstep(-0.05, -0.65, nz) * 0.55;
+        // Crisp horizontal mackerel tabby bars across her dark brown-black arm sleeve
+        const stripe = smoothstep(0.02, 0.72, Math.sin(v * 34.0 + nz * 3.5 + n * 4.4));
+        const fineTick = smoothstep(0.35, 0.78, fbm3(nx * 7.2, v * 12.0, nz * 7.2));
+        stripeDark = clamp(0.36 + stripe * 0.56 + fineTick * 0.14, 0.24, 0.96);
+        gingerW = 0;
       }
 
       // Soft ambient darkening on the inner/rear side of each foreleg so they ground naturally against the chest
