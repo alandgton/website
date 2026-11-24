@@ -275,19 +275,50 @@ export function createHeadCalicoTexture(palette: CalicoCoatPalette): THREE.Canva
       // Preserve snowy white blaze & chin except where the iconic mustache smudges sit
       const whiteMask = clamp(rawWhiteMask * (1 - mustacheMask), 0, 1);
 
-      // 3. Signature warm apricot-ginger left-eye flame (+X, viewer's right)
-      //    + warm apricot-ginger crown spot between/behind the ears (Photo 2!)
-      const dGingerLeftFlame = Math.hypot((nx - 0.22) * 2.15, (ny - 0.21) * 1.45, (nz - 0.82) * 1.25);
-      const dGingerCrownSpot = Math.hypot((nx + 0.04) * 1.12, (ny - 0.86) * 1.32, (nz - 0.04) * 1.02);
-      const dGingerEarTrail = Math.hypot((nx - 0.36) * 1.5, (ny - 0.36) * 1.1, (nz + 0.56) * 1.15);
-      const gingerField =
-        Math.max(0.40 - dGingerLeftFlame, 0.46 - dGingerCrownSpot, 0.36 - dGingerEarTrail) +
-        macroNoise * 0.75 +
-        hairFeather * 1.15;
+      // 3. Rich warm orange-ginger facial markings modeled directly after Candy's front closeup (Photo 5!):
+      // (a) Broad, tall vibrant apricot-orange patch sweeping from above the left eye (+X)
+      //     up along the white blaze and curving across the upper left eyelid & brow!
+      const dGingerLeftMain = Math.hypot((nx - 0.24) * 1.48, (ny - 0.21) * 1.12, (nz - 0.84) * 1.18);
+      const dGingerLeftOuterLid = Math.hypot((nx - 0.42) * 1.55, (ny - 0.14) * 1.65, (nz - 0.76) * 1.25);
+      // (b) Prominent warm bright apricot-orange crown band visible right between the ears from the front!
+      const dGingerCrownBand = Math.hypot((nx + 0.08) * 0.92, (ny - 0.78) * 1.18, (nz - 0.36) * 0.92);
+      // (c) Warm orange-amber inner-brow highlight hugging the right side (-X) of the white blaze
+      const dGingerRightInnerBrow = Math.hypot((nx + 0.18) * 1.95, (ny - 0.12) * 1.55, (nz - 0.88) * 1.2);
+      // (d) Soft warm golden-orange warmth woven into the cheeks beneath both eyes & behind the ears
+      const dGingerLeftCheekWarm = Math.hypot((nx - 0.46) * 1.35, (ny + 0.07) * 1.65, (nz - 0.74) * 1.25);
+      const dGingerRightCheekWarm = Math.hypot((nx + 0.44) * 1.45, (ny + 0.09) * 1.7, (nz - 0.74) * 1.25);
+      const dGingerEarTrail = Math.hypot((nx - 0.40) * 1.25, (ny - 0.38) * 1.0, (nz + 0.46) * 1.08);
 
-      const gingerW = smoothstep(0.0, 0.09, gingerField) * (1 - rawWhiteMask);
+      const gingerPrimaryField =
+        Math.max(
+          0.46 - dGingerLeftMain,
+          0.35 - dGingerLeftOuterLid,
+          0.52 - dGingerCrownBand,
+          0.39 - dGingerEarTrail,
+        ) +
+        macroNoise * 0.72 +
+        hairFeather * 1.12;
+
+      const gingerSecondaryField =
+        Math.max(
+          0.31 - dGingerRightInnerBrow,
+          0.36 - dGingerLeftCheekWarm,
+          0.33 - dGingerRightCheekWarm,
+        ) +
+        macroNoise * 0.65 +
+        hairFeather * 1.0;
+
+      const primaryGingerW = smoothstep(0.0, 0.10, gingerPrimaryField) * (1 - rawWhiteMask);
+      const secondaryGingerW = smoothstep(0.0, 0.14, gingerSecondaryField) * 0.62 * (1 - rawWhiteMask);
+      const gingerW = clamp(Math.max(primaryGingerW, secondaryGingerW), 0, 1);
+
       const tabbyBaseField = Math.max(1.0 - rawWhiteMask * 1.14, mustacheMask);
-      const tabbyW = clamp(smoothstep(0.04, 0.2, tabbyBaseField) * (1 - gingerW * 0.86), 0, 1);
+      // Keep primary orange patches vibrant & pure; allow delicate tabby mascara/brow stripes to weave over warm cheek glows
+      const tabbyW = clamp(
+        smoothstep(0.04, 0.2, tabbyBaseField) * (1 - primaryGingerW * 0.92) * (1 - secondaryGingerW * 0.45),
+        0,
+        1,
+      );
 
       // 4. Authentic domestic-shorthair tabby facial markings
       const warp = (fbm3(nx * 6.8, ny * 6.8, nz * 6.8) - 0.5) * 0.92;
@@ -316,22 +347,28 @@ export function createHeadCalicoTexture(palette: CalicoCoatPalette): THREE.Canva
         Math.exp(-Math.pow((ny - (-0.115 - (absX - 0.35) * 0.16) + warp * 0.04) / 0.042, 2)) *
         cheekZone;
 
-      // Crisp dark espresso lower cheek trim meeting the snowy white neck ruff (Photos 2 & 3!)
+      // Crisp dark espresso lower cheek trim meeting the snowy white neck ruff (Photos 2, 3 & 5!)
       const cheekBottomRim =
         Math.exp(-Math.pow((ny + 0.25 + warp * 0.04) / 0.055, 2)) *
         smoothstep(0.26, 0.54, absX) *
         smoothstep(-0.2, 0.45, nz);
 
-      const warmCheekLift = cheekZone * (1 - Math.max(mascara1, mascara2) * 0.9) * 0.24;
+      const warmCheekLift = cheekZone * (1 - Math.max(mascara1, mascara2) * 0.9) * 0.26;
 
       const backMottle =
         smoothstep(0.24, 0.72, fbm3(nx * 8.2 + 1.3, ny * 6.5, nz * 8.2 - 0.7)) *
         smoothstep(0.25, -0.4, nz);
-      const crownDark = smoothstep(0.48, 0.85, ny) * 0.34;
+      const crownDark = smoothstep(0.48, 0.85, ny) * 0.30;
 
-      // Darker espresso tone on the left mustache smudge, warmer taupe on the right mustache smudge
-      const mustacheDarkness =
-        leftMustache > rightMustache ? 0.78 : 0.34;
+      // Left smudge (+X, viewer's right) dark espresso; right smudge (-X, viewer's left) warm golden-ginger tan (Photo 5!)
+      const mustacheDarkness = leftMustache > rightMustache ? 0.74 : 0.22;
+      const rightMustacheGinger = rightMustache > leftMustache ? rightMustache * 0.65 : 0;
+      const finalGingerW = clamp(Math.max(gingerW, rightMustacheGinger), 0, 1);
+      const finalTabbyW = clamp(
+        rightMustacheGinger > 0.1 ? tabbyW * (1 - rightMustacheGinger * 0.65) : tabbyW,
+        0,
+        1,
+      );
 
       let stripeDarkness = clamp(
         0.24 -
@@ -401,8 +438,8 @@ export function createHeadCalicoTexture(palette: CalicoCoatPalette): THREE.Canva
         data,
         idx,
         c,
-        gingerW,
-        tabbyW,
+        finalGingerW,
+        finalTabbyW,
         stripeDarkness,
         strandVal,
         tickVal,
@@ -675,14 +712,19 @@ export function createSolidFurTexture(
       let stripeDark = 0.45;
 
       if (tone === 'tabbyEar') {
-        tabbyW = 1.0;
-        gingerW = smoothstep(0.75, 0.14, v + n * 0.32) * 0.4;
-        const rimDark = smoothstep(0.56, 0.94, v) * 0.45 + smoothstep(0.45, 0.92, Math.abs(nx)) * 0.35;
-        stripeDark = clamp(0.32 + rimDark, 0.22, 0.95);
+        // Photo 5: Candy's ears are predominantly warm russet-orange / cinnamon-ginger
+        // with just a subtle dark espresso pencil trim along the very top tip & outer edge!
+        const tipTrim = smoothstep(0.76, 0.97, v + n * 0.14);
+        const outerEdgeTrim = smoothstep(0.68, 0.96, Math.abs(nx)) * smoothstep(0.25, 0.85, v);
+        const darkTrim = clamp(Math.max(tipTrim * 0.62, outerEdgeTrim * 0.42), 0, 0.72);
+        gingerW = 0.96;
+        tabbyW = 0.10 + darkTrim * 0.72; // kept low across the ear body so warm orange dominates!
+        stripeDark = clamp(0.45 + darkTrim * 0.48, 0.35, 0.92);
       } else if (tone === 'eyelidTabby') {
-        // Warm ticked brown-tabby eyelid fur darkening gently toward the lash rim
-        tabbyW = 1.0;
-        stripeDark = clamp(0.34 + smoothstep(0.45, 0.05, v) * 0.46, 0.24, 0.88);
+        // Warm amber-tinted brown-tabby eyelid fur darkening gently toward the lash rim
+        gingerW = 0.32;
+        tabbyW = 0.78;
+        stripeDark = clamp(0.32 + smoothstep(0.45, 0.05, v) * 0.46, 0.22, 0.88);
       }
 
       const idx = (py * size + px) * 4;
