@@ -323,17 +323,23 @@ export function createHeadCalicoTexture(
       const hairFeather = (strandVal - 0.5) * 0.085 + (tickVal - 0.5) * 0.032;
       const n = macroNoise + hairFeather;
 
-      // 1. Snowy-white muzzle, chin, narrow nose blaze & crisp white nape collar edge (Aerial Photo!)
-      const blazeCenterX = 0.01 - Math.max(0, ny) * 0.024;
-      const blazeHalfWidth =
-        ny < -0.18
-          ? 0.42
-          : 0.132 * (1 - smoothstep(-0.1, 0.48, ny)) + 0.022;
-      const distFromBlaze = Math.abs(nx - blazeCenterX);
+      // 1. Asymmetric snowy-white muzzle, chin, nose blaze (wrapping left inner eye corner while keeping dark tabby tight to right inner eye corner!) & crisp white nape edge
+      const rightSideEdge =
+        -0.02 -
+        smoothstep(0.42, -0.05, ny) * 0.11 -
+        smoothstep(-0.08, -0.25, ny) * 0.30;
+      const leftSideEdge =
+        0.06 +
+        smoothstep(0.44, 0.02, ny) * 0.21 +
+        smoothstep(0.04, -0.16, ny) * 0.08 +
+        smoothstep(-0.14, -0.28, ny) * 0.12;
+      const insideRight = smoothstep(rightSideEdge - 0.038, rightSideEdge + 0.024, nx + n * 0.20);
+      const insideLeft = smoothstep(leftSideEdge + 0.038, leftSideEdge - 0.024, nx + n * 0.20);
       const whiteBlazeMask =
         smoothstep(0.32, 0.56, nz + n * 0.2) *
-        smoothstep(blazeHalfWidth + 0.052, blazeHalfWidth - 0.022, distFromBlaze - n * 0.24) *
-        smoothstep(0.52, 0.26, ny - n * 0.26);
+        insideRight *
+        insideLeft *
+        smoothstep(0.48, 0.30, ny - n * 0.24);
 
       const whiteChinMask =
         smoothstep(-0.28, -0.48, ny - n * 0.26) * smoothstep(-0.18, 0.28, nz + n * 0.24);
@@ -364,9 +370,9 @@ export function createHeadCalicoTexture(
 
       // Prominent bright apricot crown band extending forward behind the dark forehead wedge
       const dGingerCrownBand = Math.hypot((nx + 0.06) * 0.82, (ny - 0.76) * 1.02, (nz + 0.18) * 0.68);
-      // Broad tall vibrant apricot-orange patch sweeping above her left eye (+X)
-      const dGingerLeftMain = Math.hypot((nx - 0.24) * 1.48, (ny - 0.21) * 1.12, (nz - 0.84) * 1.18);
-      const dGingerLeftOuterLid = Math.hypot((nx - 0.42) * 1.55, (ny - 0.14) * 1.65, (nz - 0.76) * 1.25);
+      // Vibrant apricot-orange brow flame strictly ABOVE her left eye (+X), resting along the white blaze's upper-right edge
+      const dGingerLeftMain = Math.hypot((nx - 0.28) * 1.45, (ny - 0.27) * 1.48, (nz - 0.84) * 1.15);
+      const dGingerLeftOuterLid = Math.hypot((nx - 0.44) * 1.60, (ny - 0.22) * 1.85, (nz - 0.74) * 1.25);
 
       // Continuous feathered JET-BLACK CROWN WEDGE connecting seamlessly from dark forehead M-stripes
       // straight back between her ears into a jagged fur-feathered point (Aerial + Box Photo — ZERO floating dot!)
@@ -380,35 +386,35 @@ export function createHeadCalicoTexture(
         smoothstep(-0.08, 0.36, nz + crownFeather * 0.85) *
         smoothstep(0.95, 0.68, nz);
 
-      // Secondary warm golden-amber highlights on right inner brow & cheeks
-      const dGingerRightInnerBrow = Math.hypot((nx + 0.18) * 1.95, (ny - 0.12) * 1.55, (nz - 0.88) * 1.2);
+      // Subtle warm golden-amber cheek highlights (keeping right inner brow & eye corner dark brown-black tabby!)
       const dGingerLeftCheekWarm = Math.hypot((nx - 0.46) * 1.35, (ny + 0.07) * 1.65, (nz - 0.74) * 1.25);
       const dGingerRightCheekWarm = Math.hypot((nx + 0.44) * 1.45, (ny + 0.09) * 1.7, (nz - 0.74) * 1.25);
 
-      const gingerPrimaryField =
-        Math.max(
-          0.46 - dGingerLeftMain,
-          0.35 - dGingerLeftOuterLid,
-          0.60 - dGingerCrownBand,
-        ) +
-        macroNoise * 0.68 +
-        hairFeather * 1.1;
+      const leftEyeOrangeFlame =
+        smoothstep(
+          0.0,
+          0.10,
+          Math.max(0.40 - dGingerLeftMain, 0.30 - dGingerLeftOuterLid) +
+            macroNoise * 0.65 +
+            hairFeather * 1.1,
+        ) * smoothstep(0.02, 0.12, ny + n * 0.16);
+      const crownOrangeBand = smoothstep(
+        0.0,
+        0.10,
+        0.60 - dGingerCrownBand + macroNoise * 0.68 + hairFeather * 1.1,
+      );
 
       const gingerSecondaryField =
-        Math.max(
-          0.31 - dGingerRightInnerBrow,
-          0.36 - dGingerLeftCheekWarm,
-          0.33 - dGingerRightCheekWarm,
-        ) +
+        Math.max(0.36 - dGingerLeftCheekWarm, 0.33 - dGingerRightCheekWarm) +
         macroNoise * 0.65 +
         hairFeather * 1.0;
 
       const primaryGingerW =
-        clamp(Math.max(smoothstep(0.0, 0.10, gingerPrimaryField), backOrangeCapField * 0.96), 0, 1) *
+        clamp(Math.max(leftEyeOrangeFlame, crownOrangeBand, backOrangeCapField * 0.96), 0, 1) *
         (1 - rawWhiteMask) *
         (1 - blackCrownWedge * 0.96);
       const secondaryGingerW =
-        smoothstep(0.0, 0.14, gingerSecondaryField) * 0.62 * (1 - rawWhiteMask);
+        smoothstep(0.0, 0.14, gingerSecondaryField) * 0.58 * (1 - rawWhiteMask);
       const gingerW = clamp(Math.max(primaryGingerW, secondaryGingerW), 0, 1);
 
       // Dark brown-black tabby covers front forehead, cheeks, temples, continuous black crown wedge & left ear-side temple (+X)
@@ -461,6 +467,13 @@ export function createHeadCalicoTexture(
         smoothstep(0.26, 0.54, absX) *
         smoothstep(-0.2, 0.45, nz);
 
+      // Dark espresso tear-line accent hugging her right eye's inner corner (-X, viewer's left)
+      const rightInnerTearLine =
+        Math.exp(-Math.pow((nx + 0.17) / 0.055, 2)) *
+        Math.exp(-Math.pow((ny + 0.01) / 0.095, 2)) *
+        smoothstep(0.74, 0.94, nz) *
+        (1 - rawWhiteMask);
+
       const warmCheekLift = cheekZone * (1 - Math.max(mascara1, mascara2) * 0.9) * 0.26;
       const leftMustacheGinger = leftMustache * 0.34;
       const leftMustacheTabby = leftMustache * 0.54;
@@ -479,6 +492,7 @@ export function createHeadCalicoTexture(
           mascara1 * 0.76 +
           mascara2 * 0.72 +
           cheekBottomRim * 0.64 +
+          rightInnerTearLine * 0.52 +
           blackCrownWedge * 0.84,
         0.06,
         0.97,
