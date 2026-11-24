@@ -344,13 +344,7 @@ export function createHeadCalicoTexture(
       const whiteChinMask =
         smoothstep(-0.28, -0.48, ny - n * 0.26) * smoothstep(-0.18, 0.28, nz + n * 0.24);
 
-      // Aerial photo hallmark: crisp bright white nape trim peeking neatly along lower back & right-side neck!
-      const whiteNapeEdge =
-        smoothstep(-0.36, -0.62, ny + n * 0.20) *
-        smoothstep(0.22, -0.35, nz + n * 0.20) *
-        (0.75 + smoothstep(0.1, -0.6, nx) * 0.25);
-
-      const rawWhiteMask = Math.max(whiteBlazeMask, whiteChinMask, whiteNapeEdge);
+      const rawWhiteMask = Math.max(whiteBlazeMask, whiteChinMask);
 
       // 2. Signature asymmetric mustache smudges painted directly onto the unified snout
       const dLeftMustache = Math.hypot((nx - 0.145) * 0.78, (ny + 0.255) * 1.18, (nz - 0.945) * 1.1);
@@ -362,10 +356,10 @@ export function createHeadCalicoTexture(
       const whiteMask = clamp(rawWhiteMask * (1 - mustacheMask), 0, 1);
 
       // 3. AERIAL PHOTO BREAKTHROUGH: Candy's HUGE luminous golden-apricot / marmalade BACK-OF-HEAD CAP!
-      //    Covers the entire occiput & upper crown behind her ears, softly mottled with silky hair grain!
+      //    Covers the entire occiput & lower-back of her head continuously right into the upper neck/nape!
       const backOrangeCapField =
         smoothstep(0.22, -0.20, nz + n * 0.28) *
-        smoothstep(-0.56, -0.18, ny + n * 0.25) *
+        smoothstep(-0.88, -0.34, ny + n * 0.22) *
         smoothstep(0.96, 0.44, Math.abs(nx) - smoothstep(0.0, -0.6, nz) * 0.36);
 
       // Prominent bright apricot crown band extending forward behind the dark forehead wedge
@@ -507,7 +501,7 @@ export function createHeadCalicoTexture(
       // 4+ organic fur-feathered darker cinnamon-mahogany tabby stripes running front-to-back across Candy's orange scalp
       const scalpZone =
         backOrangeCapField *
-        smoothstep(-0.46, -0.14, ny) *
+        smoothstep(-0.68, -0.22, ny) *
         (1 - rawWhiteMask) *
         (1 - blackCrownWedge * 0.9);
       const scalpFan = 1 + smoothstep(0.65, -0.35, ny) * 0.26;
@@ -637,22 +631,17 @@ export function createTorsoCalicoTexture(
       const hairFeather = (strandVal - 0.5) * 0.088 + (tickVal - 0.5) * 0.032;
       const n = macroNoise + hairFeather;
 
-      // 1. Crisp snowy-white chest bib (+Z), iconic bright white right-neck & nape collar (Photos 3, 6 & Aerial!), & lower white belly trims
+      // 1. Crisp snowy-white chest bib (+Z), side-throat neck collar (never wrapping behind nape!), & lower white belly trims
       const chestBib = smoothstep(0.46, 0.72, nz + n * 0.30);
       const rightNeckCollar =
-        smoothstep(0.48, 0.72, ny + n * 0.22) *
+        smoothstep(0.46, 0.72, ny + n * 0.22) *
         smoothstep(0.10, -0.44, nx) *
-        smoothstep(-0.78, 0.18, nz + n * 0.24);
-      // Aerial photo hallmark: crisp bright white nape collar peeking cleanly on right & left neck right behind the orange head cap!
+        smoothstep(-0.34, 0.22, nz + n * 0.22);
       const leftNeckWhitePeek =
-        smoothstep(0.58, 0.80, ny + n * 0.20) *
+        smoothstep(0.54, 0.78, ny + n * 0.20) *
         smoothstep(0.25, 0.72, nx) *
-        smoothstep(-0.58, 0.22, nz + n * 0.22) *
-        0.92;
-      const napeWhiteTrim =
-        smoothstep(0.66, 0.86, ny + n * 0.16) *
-        smoothstep(0.35, -0.88, nz + n * 0.18) *
-        (0.78 + smoothstep(0.35, -0.55, nx) * 0.22);
+        smoothstep(-0.22, 0.26, nz + n * 0.20) *
+        0.90;
 
       // Diagonal snowy-white lower-flank band sweeping smoothly from behind right elbow toward lower-rear flank (Photos 3 & 6)
       const rightWhiteDiagY = ny - nz * 0.24;
@@ -691,7 +680,6 @@ export function createTorsoCalicoTexture(
           chestBib,
           rightNeckCollar * 0.98,
           leftNeckWhitePeek,
-          napeWhiteTrim,
           rightLowerWhiteBand * 0.95,
           leftLowerWhiteTrim * 0.94,
         ) -
@@ -733,7 +721,14 @@ export function createTorsoCalicoTexture(
         smoothstep(-0.48, -0.16, rightWhiteDiagY + n * 0.24) *
         (1 - rightArmSleeveBridge * 0.96);
 
-      // (e) Aerial Photo: Tiny warm amber-chestnut fleck right at top-center tail base & tiny left neck fleck
+      // (e) Smooth golden-orange nape fur flowing seamlessly from Candy's orange occiput cap
+      //     down the back of her neck & feathering naturally into her dark tabby upper shoulders
+      const backNapeOrangeBlend =
+        smoothstep(0.28, 0.58, ny + n * 0.30) *
+        smoothstep(0.08, -0.32, nz + n * 0.22) *
+        smoothstep(0.96, 0.36, Math.abs(nx) - smoothstep(0.0, -0.65, nz) * 0.38);
+
+      // (f) Aerial Photo: Tiny warm amber-chestnut fleck right at top-center tail base & tiny left neck fleck
       const dTailBaseFleck = Math.hypot((nx - 0.04) * 2.0, (ny + 0.78) * 1.9, (nz + 0.92) * 1.6);
       const tailBaseFleck = smoothstep(0.0, 0.1, 0.30 - dTailBaseFleck + n * 0.52);
       const dNeckFleck = Math.hypot((nx - 0.56) * 1.9, (ny - 0.50) * 1.6, (nz - 0.58) * 1.7);
@@ -746,6 +741,7 @@ export function createTorsoCalicoTexture(
           leftGingerRump,
           rightShoulderBlaze,
           rightGingerFlank,
+          backNapeOrangeBlend,
           tailBaseFleck * 0.85,
           neckGingerFleck,
         ) *
@@ -808,6 +804,16 @@ export function createTorsoCalicoTexture(
 
       //    (b) Deep burnt-mahogany / roasted-chestnut shading ONLY on dark tabby rear flanks & orange-to-tabby borders
       //        (strictly masked off from snowy-white borders so orange->white transitions stay crisp and clean!)
+      // Softly echo the lower tips of Candy's dorsal cinnamon scalp stripes into the torso nape
+      // so there is zero texture break across the back of her neck
+      const napeStripeZone =
+        smoothstep(0.44, 0.90, ny) * smoothstep(-0.25, -0.78, nz) * backNapeOrangeBlend;
+      const napeSx = nx / 1.24 + warpX * 0.04;
+      const nsInner = Math.exp(-Math.pow((Math.abs(napeSx) - 0.115) / 0.048, 2));
+      const nsMid = Math.exp(-Math.pow((Math.abs(napeSx) - 0.285) / 0.055, 2));
+      const nsOuter = Math.exp(-Math.pow((Math.abs(napeSx) - 0.455) / 0.058, 2)) * 0.72;
+      const napeStripeEcho = clamp(Math.max(nsInner, nsMid, nsOuter) * napeStripeZone, 0, 1);
+
       const nonWhiteGuard = smoothstep(0.28, 0.0, whiteMask);
       const rearOuterMahogany =
         smoothstep(-0.18, -0.74, ny) *
@@ -816,7 +822,11 @@ export function createTorsoCalicoTexture(
         0.58 *
         nonWhiteGuard;
       const gingerBorderMahogany = gingerW * tabbyW * 1.65 * nonWhiteGuard;
-      const mahoganyW = clamp(Math.max(rearOuterMahogany, gingerBorderMahogany), 0, 0.68);
+      const mahoganyW = clamp(
+        Math.max(rearOuterMahogany, gingerBorderMahogany, napeStripeEcho * 0.42 * nonWhiteGuard),
+        0,
+        0.68,
+      );
 
       //    (c) Fine tortoiseshell orange-gold brindle speckling woven naturally inside the dark tabby coat!
       const brindleNoise = valueNoise3(nx * 24 + 7.3, ny * 20 - 4.1, nz * 24 + 2.9);
@@ -829,7 +839,8 @@ export function createTorsoCalicoTexture(
       // Soft organic dappled warmth across orange patches (zero mechanical sine-bar stripes!)
       const gingerWave =
         (fbm3(nx * 6.5 + warpX * 0.7, ny * 6.5 + warpY * 0.7, nz * 6.5) - 0.44) * 1.5 +
-        (transverseRibs - 0.5) * 0.42;
+        (transverseRibs - 0.5) * 0.42 -
+        napeStripeEcho * 1.12;
 
       const baseOcclusion = smoothstep(0.0, 0.18, v);
       const chestFurPart =
@@ -997,9 +1008,10 @@ export function createSolidFurTexture(
         tabbyW = clamp(0.08 + outerBackDark * 0.78 + tipTrim * 0.44, 0.08, 0.88);
         stripeDark = clamp(0.45 + outerBackDark * 0.44 + tipTrim * 0.38, 0.35, 0.94);
       } else if (tone === 'eyelidTabby') {
-        gingerW = 0.34;
-        tabbyW = 0.76;
-        stripeDark = clamp(0.30 + smoothstep(0.45, 0.05, v) * 0.46, 0.22, 0.88);
+        // Soft light golden-buff / pale tawny eyelid fur matching Candy's closed eyes (never heavy dark brown domes!)
+        gingerW = 0.44;
+        tabbyW = 0.46;
+        stripeDark = clamp(0.14 + smoothstep(0.30, 0.02, v) * 0.24, 0.10, 0.42);
       }
 
       const idx = (py * size + px) * 4;

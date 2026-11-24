@@ -182,11 +182,11 @@ function createSeatedTorsoGeometry(): { geometry: THREE.BufferGeometry; furWeigh
     new THREE.Vector2(0.415, 0.25),
     new THREE.Vector2(0.402, 0.41),
     new THREE.Vector2(0.372, 0.57), // soft rounded feline ribcage & mid-torso
-    new THREE.Vector2(0.342, 0.71), // broad plush rounded shoulders (NO straight A-frame cone!)
-    new THREE.Vector2(0.292, 0.83), // smooth organic curve into plush white chest ruff
-    new THREE.Vector2(0.242, 0.94), // seamless plush neck cradling jaw & nape
-    new THREE.Vector2(0.214, 1.05),
-    new THREE.Vector2(0.001, 1.13),
+    new THREE.Vector2(0.342, 0.71), // broad plush rounded shoulders
+    new THREE.Vector2(0.304, 0.84), // smooth muscular neck-shoulder arch
+    new THREE.Vector2(0.262, 0.96), // plush continuous nape meeting back of head
+    new THREE.Vector2(0.212, 1.07), // smooth gentle taper tucked cleanly inside skull
+    new THREE.Vector2(0.001, 1.17),
   ];
 
   const geom = new THREE.LatheGeometry(profilePoints, 72);
@@ -198,10 +198,10 @@ function createSeatedTorsoGeometry(): { geometry: THREE.BufferGeometry; furWeigh
     const y = pos.getY(i);
     let z = pos.getZ(i);
 
-    const t = clamp(y / 1.05, 0, 1);
+    const t = clamp(y / 1.08, 0, 1);
 
-    // True seated feline spine posture: pelvis & haunches sit BACK (-0.15), chest & neck curve smoothly FORWARD (+0.11)
-    const spineShiftZ = -0.15 * (1 - smoothstep(0.0, 0.85, t)) + 0.115 * smoothstep(0.28, 0.96, t);
+    // True seated feline spine posture: pelvis & haunches sit BACK (-0.15), neck tapers forward (+0.125) inside skull
+    const spineShiftZ = -0.15 * (1 - smoothstep(0.0, 0.82, t)) + 0.125 * smoothstep(0.28, 0.96, t);
 
     // C-infinity smooth front-to-back depth modulation (eliminates any z=0 vertical side crease!)
     const rearT = smoothstep(0.32, -0.32, z);
@@ -216,11 +216,12 @@ function createSeatedTorsoGeometry(): { geometry: THREE.BufferGeometry; furWeigh
     x += Math.sign(x) * haunchSwell * 0.072;
     z -= haunchSwell * 0.026;
 
-    // Subtle anatomical upper-back / shoulder-blade fullness & plush nape transition for aerial & rear realism
-    const napeFlow =
-      Math.exp(-Math.pow((t - 0.78) / 0.16, 2)) *
-      smoothstep(0.05, -0.22, z);
-    z -= napeFlow * 0.028;
+    // Plush dorsal & rear-side neck arch filling back-of-neck smoothly into occiput (keeps front throat tucked neatly under chin)
+    const napeVert = Math.exp(-Math.pow((t - 0.89) / 0.17, 2));
+    const napeBackMask = smoothstep(0.08, -0.18, z);
+    const napeSideMask = smoothstep(0.22, -0.06, z);
+    z -= napeVert * napeBackMask * 0.056;
+    x *= 1 + napeVert * napeSideMask * 0.11;
 
     // Keep upper chest warmly rounded in front, gently recessing only slightly behind the forearms
     if (z > 0.04) {
@@ -238,9 +239,12 @@ function createSeatedTorsoGeometry(): { geometry: THREE.BufferGeometry; furWeigh
     pos.setXYZ(i, x, y, z);
 
     const contactFade = smoothstep(0.02, 0.12, y);
+    const neckCapFade = 1 - smoothstep(0.92, 1.0, t);
+    const rearNapeMatch =
+      1 - smoothstep(0.72, 0.90, t) * smoothstep(0.08, -0.16, z) * 0.34;
     const ruffBoost = z > 0.08 && t > 0.54 ? 1.18 : 1.0;
-    const dorsalPlush = z < -0.10 && t > 0.22 && t < 0.88 ? 1.10 : 1.0;
-    furWeights[i] = contactFade * ruffBoost * dorsalPlush;
+    const dorsalPlush = z < -0.10 && t > 0.22 && t < 0.78 ? 1.10 : 1.0;
+    furWeights[i] = contactFade * neckCapFade * rearNapeMatch * ruffBoost * dorsalPlush;
   }
 
   geom.computeVertexNormals();
@@ -266,6 +270,8 @@ function createAnatomicalHeadGeometry(): {
     const uy = pos.getY(i);
     const uz = pos.getZ(i);
     const absX = Math.abs(ux);
+    const horizR = Math.hypot(ux, uz);
+    const dirZ = horizR > 1e-5 ? uz / horizR : 0;
 
     // Balanced, plush domestic shorthair cranium with Candy's soft wide lower cheeks (Photos 3 & 4!)
     let x = ux * 0.265;
@@ -277,23 +283,24 @@ function createAnatomicalHeadGeometry(): {
       x *= 1 - smoothstep(0.28, 0.96, uy) * 0.12;
     }
 
-    // Natural domestic shorthair lower cheek fluff ruff
+    // Natural domestic shorthair lower cheek fluff ruff (front/mid cheeks only so rear flows smoothly into neck)
     const cheekMask =
       Math.exp(-Math.pow((uy + 0.16) / 0.32, 2)) *
       smoothstep(0.36, 0.85, absX) *
-      smoothstep(-0.35, 0.42, uz);
+      smoothstep(0.02, 0.48, dirZ);
     x *= 1 + cheekMask * 0.11;
     y -= cheekMask * 0.013;
 
-    // Gently tapered jawline under cheeks
+    // Gently tapered jawline under front/mid cheeks (preserves continuous rear nape collar)
+    const frontJawTaper = smoothstep(-0.12, 0.34, dirZ);
     if (uy < -0.28) {
-      x *= 1 - smoothstep(-0.28, -0.92, uy) * 0.15;
+      x *= 1 - smoothstep(-0.28, -0.92, uy) * 0.15 * frontJawTaper;
     }
 
-    // Recessed orbital eye sockets sized generously for Candy's large expressive eyes
-    const socketDist = Math.hypot((absX - 0.40) / 0.25, (uy - 0.08) / 0.215);
-    const socketMask = Math.exp(-socketDist * socketDist) * smoothstep(0.42, 0.86, uz);
-    z -= socketMask * 0.032;
+    // Deeper recessed orbital eye sockets so shallow flush eyes & closed eyelids never bulge out of the face
+    const socketDist = Math.hypot((absX - 0.40) / 0.26, (uy - 0.08) / 0.22);
+    const socketMask = Math.exp(-socketDist * socketDist) * smoothstep(0.40, 0.86, uz);
+    z -= socketMask * 0.044;
 
     // Subtle feline brow ridge above sockets
     const browMask =
@@ -335,14 +342,43 @@ function createAnatomicalHeadGeometry(): {
       z = 0.294 + (z - 0.294) * 0.42;
     }
 
+    // Continuous tangent nape collar across the lower-rear hemisphere: separates gentle lateral width
+    // flare from dorsal -Z spine flare so every rear angle crosses smoothly into torso at y=1.01..1.03
+    // well above the internal tuck rim (zero diagonal corner lip even during head sway/tilts)
+    const rearWeight = smoothstep(0.16, -0.26, dirZ);
+    const backCenterBoost = smoothstep(-0.35, -0.92, dirZ);
+    const belowStart = Math.max(0, 0.14 - uy);
+    const smoothStart = smoothstep(0.18, -0.06, uy);
+    const tuckInside = smoothstep(-0.94, -0.64, uy);
+    const skirtMask = rearWeight * smoothStart * tuckInside;
+
+    const rearSideTrim = 1 - smoothstep(0.10, -0.30, dirZ) * 0.065;
+    const invR = 1 / Math.max(0.40, horizR);
+    const scaleX = 1 + ((1.0 + belowStart * 0.11) * invR - 1) * skirtMask;
+    const scaleZ = 1 + ((1.0 + belowStart * (0.14 + backCenterBoost * 0.31)) * invR - 1) * skirtMask;
+    x *= scaleX * rearSideTrim;
+    z *= scaleZ;
+    y -= skirtMask * backCenterBoost * belowStart * 0.028;
+
     pos.setXYZ(i, x, y, z);
 
     // Clear eye sockets & bare nose pad so volumetric fur shells never clip eyes/nose
     const eyeClear = 1 - smoothstep(0.41, 0.21, Math.hypot(absX - 0.40, uy - 0.08)) * smoothstep(0.52, 0.82, uz);
     const noseClear = 1 - smoothstep(0.18, 0.08, Math.hypot(ux, uy + 0.18)) * smoothstep(0.84, 0.96, uz);
+    const underNeckFade = smoothstep(-0.84, -0.58, uy);
+    const napePlush =
+      1 +
+      smoothstep(0.12, -0.26, uy) *
+        smoothstep(-0.68, -0.44, uy) *
+        smoothstep(0.06, -0.32, dirZ) *
+        0.18;
     const muzzleSleek = 1 - snoutMask * 0.56;
     const cheekPlush = 1 + cheekMask * 0.42;
-    furWeights[i] = clamp(eyeClear * noseClear * muzzleSleek * cheekPlush, 0, 1.32);
+    furWeights[i] = clamp(
+      eyeClear * noseClear * underNeckFade * napePlush * muzzleSleek * cheekPlush,
+      0,
+      1.32,
+    );
   }
 
   geom.computeVertexNormals();
@@ -763,14 +799,14 @@ export function buildCalicoCat(
   };
 
   const headBaseMat = makeBaseFurMat(headTex, 0.87, 0.58, 0.014);
-  const torsoBaseMat = makeBaseFurMat(torsoTex, 0.84, 0.56, 0.016);
+  const torsoBaseMat = makeBaseFurMat(torsoTex, 0.86, 0.56, 0.016);
   const leftLegBaseMat = makeBaseFurMat(leftLegTex, 0.84, 0.55, 0.015);
   const rightLegBaseMat = makeBaseFurMat(rightLegTex, 0.84, 0.55, 0.015);
   const tailMat = makeBaseFurMat(tailTex, 0.93, 0.78, 0.024);
   const creamPawMat = makeBaseFurMat(creamFurTex, 0.92, 0.56, 0.014);
   const leftEarMat = makeBaseFurMat(leftEarTex, 0.91, 0.62, 0.014);
   const rightEarMat = makeBaseFurMat(rightEarTex, 0.91, 0.62, 0.014);
-  const eyelidMat = makeBaseFurMat(eyelidFurTex, 0.90, 0.45, 0.012);
+  const eyelidMat = makeBaseFurMat(eyelidFurTex, 0.95, 0.42, 0.010);
 
   const eyelidRimMat = trackMat(
     new THREE.MeshStandardMaterial({
@@ -1116,55 +1152,57 @@ export function buildCalicoCat(
     );
   }
 
-  // --- Large Expressive Recessed Glossy Almond Eyes with Animated Furry Upper & Lower Eyelids ---
+  // --- Large Expressive Recessed Glossy Almond Eyes with Flush Non-Bulging Furry Eyelids ---
   const eyeballGeom = trackGeom(new THREE.SphereGeometry(0.072, 28, 22));
   const upperLidGeom = trackGeom(
-    new THREE.SphereGeometry(0.0775, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.52),
+    new THREE.SphereGeometry(0.0755, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.52),
   );
   const lowerLidGeom = trackGeom(
-    new THREE.SphereGeometry(0.077, 22, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5),
+    new THREE.SphereGeometry(0.0750, 22, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5),
   );
-  const lidRimGeom = trackGeom(new THREE.TorusGeometry(0.0775, 0.0018, 8, 28));
+  const lidRimGeom = trackGeom(new THREE.TorusGeometry(0.0755, 0.0018, 8, 28));
 
   const buildRealisticEye = (sign: 1 | -1) => {
     const socket = new THREE.Group();
-    socket.position.set(sign * 0.105, 0.020, 0.194);
+    socket.position.set(sign * 0.105, 0.020, 0.186);
     socket.rotation.set(-0.02, sign * 0.34, sign * 0.05);
     headCenter.add(socket);
 
+    // Shallow lens scale on parent assembly keeps eyeball & rotating eyelids strictly concentric and flush with face!
+    const eyeAssembly = new THREE.Group();
+    eyeAssembly.scale.set(1.06, 1.0, 0.56);
+    socket.add(eyeAssembly);
+
     const eyeBallGroup = new THREE.Group();
-    socket.add(eyeBallGroup);
+    eyeAssembly.add(eyeBallGroup);
 
     const eyeball = new THREE.Mesh(eyeballGeom, eyeMat);
-    eyeball.scale.set(1.06, 1.0, 0.84);
     tagPettable(eyeball, 'head');
     eyeBallGroup.add(eyeball);
 
-    // Animated furry upper eyelid (natural relaxed feline almond open at -0.64 -> soft blissful close at +0.16)
+    // Animated furry upper eyelid (glides flush along eye contour from open -0.64 -> soft closed +0.16)
     const upperLid = new THREE.Group();
     const upperCap = new THREE.Mesh(upperLidGeom, eyelidMat);
-    upperCap.scale.set(1.08, 1.01, 0.90);
+    upperCap.receiveShadow = true;
     upperLid.add(upperCap);
 
     const upperRim = new THREE.Mesh(lidRimGeom, eyelidRimMat);
     upperRim.rotation.x = Math.PI / 2;
-    upperRim.scale.set(1.08, 0.90, 1.0);
     upperLid.add(upperRim);
     upperLid.rotation.x = -0.64;
-    socket.add(upperLid);
+    eyeAssembly.add(upperLid);
 
     // Animated furry lower eyelid
     const lowerLid = new THREE.Group();
     const lowerCap = new THREE.Mesh(lowerLidGeom, eyelidMat);
-    lowerCap.scale.set(1.07, 1.0, 0.89);
+    lowerCap.receiveShadow = true;
     lowerLid.add(lowerCap);
 
     const lowerRim = new THREE.Mesh(lidRimGeom, eyelidRimMat);
     lowerRim.rotation.x = Math.PI / 2;
-    lowerRim.scale.set(1.07, 0.89, 0.72);
     lowerLid.add(lowerRim);
     lowerLid.rotation.x = 0.68;
-    socket.add(lowerLid);
+    eyeAssembly.add(lowerLid);
 
     return { eyeBallGroup, upperLid, lowerLid };
   };
