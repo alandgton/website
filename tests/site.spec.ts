@@ -195,6 +195,61 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
     expect(errors).toEqual([]);
   });
 
+  test('home page renders interactive Three.js calico cat card and responds to petting & orbit', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const errors = trackRuntimeErrors(page);
+    await page.goto('/home/');
+
+    const profile = page.getByRole('region', { name: 'Profile' });
+    const catCard = page.getByRole('region', { name: 'Interactive Calico Cat' });
+    const canvas = catCard.locator('canvas');
+
+    await expect(catCard).toBeVisible();
+    await expect(canvas).toBeVisible();
+    await expect(catCard).toHaveAttribute('data-cat-mood', 'relaxed');
+
+    // Cat card aligns with the Profile column directly beneath it
+    const profileBox = await profile.boundingBox();
+    const catBox = await catCard.boundingBox();
+    const canvasBox = await canvas.boundingBox();
+    expect(profileBox).not.toBeNull();
+    expect(catBox).not.toBeNull();
+    expect(canvasBox).not.toBeNull();
+    expect(catBox!.y).toBeGreaterThan(profileBox!.y + profileBox!.height);
+    expect(Math.abs(catBox!.width - profileBox!.width)).toBeLessThan(2);
+    expect(canvasBox!.width).toBeGreaterThan(300);
+    expect(canvasBox!.height).toBeGreaterThan(300);
+
+    // Stroking directly across the cat's head triggers purring / blissful mood
+    const cx = canvasBox!.x + canvasBox!.width * 0.5;
+    const headY = canvasBox!.y + canvasBox!.height * 0.4;
+    await page.mouse.move(cx - 35, headY);
+    await page.mouse.down();
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.move(cx + 40, headY + 10, { steps: 8 });
+      await page.mouse.move(cx - 40, headY - 6, { steps: 8 });
+    }
+    await page.mouse.up();
+    await expect(catCard).toHaveAttribute('data-cat-mood', /purring|blissful/);
+
+    // Dragging starting outside the cat orbits the camera and reveals the Reset button
+    const resetBtn = catCard.getByRole('button', { name: 'Reset camera view' });
+    const orbitStartX = canvasBox!.x + 24;
+    const orbitStartY = canvasBox!.y + canvasBox!.height * 0.5;
+    await page.mouse.move(orbitStartX, orbitStartY);
+    await page.mouse.down();
+    await page.mouse.move(orbitStartX + 180, orbitStartY - 12, { steps: 10 });
+    await page.mouse.up();
+    await expect(resetBtn).toHaveCSS('opacity', '1');
+
+    await resetBtn.click();
+    await expect(resetBtn).toHaveCSS('opacity', '0');
+
+    expect(errors).toEqual([]);
+  });
+
   test('gardenleave page aligns document title and keeps horizontal map panning enabled', async ({
     page,
   }) => {

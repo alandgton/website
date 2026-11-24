@@ -2,8 +2,11 @@ import React from 'react';
 import { Home, Instagram, Linkedin, User } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { CenteredSubsiteHeader } from '../shared/FloatingHeader';
+import { CalicoCatCard } from './components/CalicoCatCard';
 import {
+  HOME_CAT_CONFIG,
   HOME_PROFILE_CONFIG,
+  HomeCatConfig,
   HomeProfileConfig,
   SocialPlatformId,
 } from './config/home.config';
@@ -42,14 +45,16 @@ const ProfileAvatar: React.FC<ProfileAvatarProps> = ({ photoUrl, photoAlt }) => 
 
 interface HomePageProps {
   profile?: HomeProfileConfig;
+  cat?: HomeCatConfig;
 }
 
 /**
- * Alan Ton @ Home — Minimal personal profile card matching the site's dark
- * slate/sky aesthetic.
+ * Alan Ton @ Home — Minimal personal profile card and interactive 3D calico cat
+ * matching the site's dark slate/sky aesthetic.
  */
 export const HomePage: React.FC<HomePageProps> = ({
   profile = HOME_PROFILE_CONFIG,
+  cat = HOME_CAT_CONFIG,
 }) => {
   return (
     <div className="relative min-h-screen bg-slate-950 text-slate-100 selection:bg-sky-500/30 selection:text-sky-200 overflow-x-hidden">
@@ -61,7 +66,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       <CenteredSubsiteHeader section="Home" icon={Home} position="sticky" />
 
-      <main className="relative z-10 mx-auto w-full max-w-[624px] px-3.5 pt-4 pb-14 sm:px-6 sm:pt-6">
+      <main className="relative z-10 mx-auto w-full max-w-[624px] space-y-4 px-3.5 pt-4 pb-14 sm:px-6 sm:pt-6">
         <section
           aria-label="Profile"
           className="w-full rounded-2xl border border-slate-800/90 bg-slate-900/75 px-4 py-4 sm:px-5 sm:py-4 backdrop-blur-md shadow-2xl shadow-black/40"
@@ -118,6 +123,8 @@ export const HomePage: React.FC<HomePageProps> = ({
             </nav>
           </div>
         </section>
+
+        <CalicoCatCard config={cat} />
       </main>
     </div>
   );
