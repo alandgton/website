@@ -59,12 +59,12 @@ export const HomePage: React.FC<HomePageProps> = ({
         aria-hidden="true"
       />
 
-      <CenteredSubsiteHeader section="Home" icon={Home} />
+      <CenteredSubsiteHeader section="Home" icon={Home} position="sticky" />
 
-      <main className="relative z-10 min-h-screen flex items-center justify-center px-3.5 pt-20 pb-12 sm:px-6">
+      <main className="relative z-10 mx-auto w-full max-w-[624px] px-3.5 pt-4 pb-14 sm:px-6 sm:pt-6">
         <section
           aria-label="Profile"
-          className="w-full max-w-xl -mt-4 rounded-2xl border border-slate-800/90 bg-slate-900/75 px-4 py-4 sm:px-5 sm:py-4 backdrop-blur-md shadow-2xl shadow-black/40"
+          className="w-full rounded-2xl border border-slate-800/90 bg-slate-900/75 px-4 py-4 sm:px-5 sm:py-4 backdrop-blur-md shadow-2xl shadow-black/40"
         >
           <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="flex items-center gap-3.5 min-w-0">

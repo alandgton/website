@@ -51,6 +51,8 @@ interface CenteredSubsiteHeaderProps {
   subtitle?: string;
   /** Icon rendered inside the header title badge. */
   icon: LucideIcon;
+  /** Positioning mode: 'absolute' for full-viewport centered pages, 'sticky' for top-aligned flows. */
+  position?: 'absolute' | 'sticky';
 }
 
 /**
@@ -61,11 +63,14 @@ export const CenteredSubsiteHeader: React.FC<CenteredSubsiteHeaderProps> = ({
   section,
   subtitle,
   icon: Icon,
+  position = 'absolute',
 }) => {
   const heading = `Alan Ton @ ${section}`;
+  const positionClass =
+    position === 'sticky' ? 'sticky top-0' : 'absolute top-0 left-0 right-0';
 
   return (
-    <header className="pointer-events-none absolute top-0 left-0 right-0 z-20 flex justify-center px-3 pt-3 sm:px-4 sm:pt-4">
+    <header className={`pointer-events-none ${positionClass} z-20 flex justify-center px-3 pt-3 sm:px-4 sm:pt-4`}>
       <div
         className={`${FLOATING_ISLAND_BASE_CLASS} w-full max-w-[390px] sm:w-auto sm:max-w-none grid grid-cols-[1fr_auto_1fr] sm:flex items-center justify-center gap-2 sm:gap-2.5 px-3.5 py-2 sm:px-4`}
       >

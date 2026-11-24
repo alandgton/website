@@ -165,18 +165,25 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
     expect(errors).toEqual([]);
   });
 
-  test('home page centers single horizontal profile pill cleanly on desktop', async ({
+  test('home page positions single horizontal profile pill near the top on desktop', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = trackRuntimeErrors(page);
     await page.goto('/home/');
 
+    const headerBox = await page.locator('header').boundingBox();
     const profile = page.getByRole('region', { name: 'Profile' });
+    const profileBox = await profile.boundingBox();
     const avatarBox = await profile.getByRole('img', { name: 'Alan Ton portrait placeholder' }).boundingBox();
     const linksBox = await profile.getByRole('navigation', { name: 'Social links' }).boundingBox();
+    expect(headerBox).not.toBeNull();
+    expect(profileBox).not.toBeNull();
     expect(avatarBox).not.toBeNull();
     expect(linksBox).not.toBeNull();
+    // Profile pill sits cleanly below the header near the top of the viewport, leaving space below
+    expect(profileBox!.y).toBeGreaterThan(headerBox!.y + headerBox!.height);
+    expect(profileBox!.y - (headerBox!.y + headerBox!.height)).toBeLessThan(40);
     // On sm+ desktop viewports, social links sit beside the identity block without overlapping
     expect(avatarBox!.x + avatarBox!.width).toBeLessThan(linksBox!.x);
     expect(Math.abs((avatarBox!.y + avatarBox!.height / 2) - (linksBox!.y + linksBox!.height / 2))).toBeLessThan(8);
