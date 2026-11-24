@@ -350,7 +350,7 @@ export function createHeadCalicoTexture(
       const dLeftMustache = Math.hypot((nx - 0.145) * 0.78, (ny + 0.255) * 1.18, (nz - 0.945) * 1.1);
       const leftMustache = smoothstep(0.0, 0.055, 0.115 - dLeftMustache + n * 0.16);
       const dRightMustache = Math.hypot((nx + 0.125) * 0.88, (ny + 0.275) * 1.25, (nz - 0.945) * 1.1);
-      const rightMustache = smoothstep(0.0, 0.055, 0.095 - dRightMustache + n * 0.16) * 0.88;
+      const rightMustache = smoothstep(0.0, 0.055, 0.095 - dRightMustache + n * 0.16) * 0.72;
       const mustacheMask = Math.max(leftMustache, rightMustache);
 
       const whiteMask = clamp(rawWhiteMask * (1 - mustacheMask), 0, 1);
@@ -418,7 +418,7 @@ export function createHeadCalicoTexture(
         smoothstep(0.55, 0.05, nz) *
         smoothstep(-0.22, 0.38, ny) *
         0.88;
-      const tabbyBaseField = Math.max(1.0 - rawWhiteMask * 1.14, mustacheMask, blackCrownWedge);
+      const tabbyBaseField = Math.max(1.0 - rawWhiteMask * 1.14, blackCrownWedge);
       const tabbyW = clamp(
         Math.max(
           smoothstep(0.04, 0.2, tabbyBaseField) *
@@ -462,15 +462,15 @@ export function createHeadCalicoTexture(
         smoothstep(-0.2, 0.45, nz);
 
       const warmCheekLift = cheekZone * (1 - Math.max(mascara1, mascara2) * 0.9) * 0.26;
-      const mustacheDarkness = leftMustache > rightMustache ? 0.74 : 0.22;
-      const rightMustacheGinger = rightMustache > leftMustache ? rightMustache * 0.65 : 0;
-      const finalGingerW = clamp(Math.max(gingerW, rightMustacheGinger), 0, 1);
-      const finalTabbyW = clamp(
-        rightMustacheGinger > 0.1 ? tabbyW * (1 - rightMustacheGinger * 0.65) : tabbyW,
-        0,
-        1,
-      );
+      const leftMustacheGinger = leftMustache * 0.34;
+      const leftMustacheTabby = leftMustache * 0.54;
+      const rightMustacheGinger = rightMustache * 0.26;
+      const rightMustacheTabby = rightMustache * 0.22;
 
+      const finalGingerW = clamp(Math.max(gingerW, leftMustacheGinger, rightMustacheGinger), 0, 1);
+      const finalTabbyW = clamp(Math.max(tabbyW, leftMustacheTabby, rightMustacheTabby), 0, 1);
+
+      const mustacheDarkness = leftMustache > rightMustache ? 0.32 : 0.08;
       let stripeDarkness = clamp(
         0.24 -
           warmCheekLift +
