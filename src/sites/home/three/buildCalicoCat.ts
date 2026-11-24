@@ -270,7 +270,7 @@ function createAnatomicalHeadGeometry(): {
     // Balanced, plush domestic shorthair cranium with Candy's soft wide lower cheeks (Photos 3 & 4!)
     let x = ux * 0.265;
     let y = uy * 0.254;
-    let z = uz * 0.274;
+    let z = uz * 0.268;
 
     // Soft cranial dome taper between the ears
     if (uy > 0.28) {
@@ -302,27 +302,38 @@ function createAnatomicalHeadGeometry(): {
       smoothstep(0.5, 0.88, uz);
     z += browMask * 0.015;
 
-    // Continuous sculpted forward feline muzzle / snout
-    const snoutMask =
-      Math.exp(-Math.pow(ux / 0.34, 2)) *
-      Math.exp(-Math.pow((uy + 0.20) / 0.27, 2)) *
-      smoothstep(0.54, 0.94, uz);
-    z += snoutMask * 0.074;
-    x *= 1 - snoutMask * 0.10;
+    // Short, compact, softly blunt feline muzzle matching Candy's real side profile (NO pointy snout!)
+    const snoutHoriz = Math.exp(-Math.pow(ux / 0.40, 2));
+    const snoutVert = smoothstep(-0.55, -0.32, uy) * smoothstep(0.08, -0.14, uy);
+    const snoutMask = snoutHoriz * snoutVert * smoothstep(0.52, 0.92, uz);
+    z += snoutMask * 0.034;
+    x *= 1 - snoutMask * 0.04;
 
-    // Subtle organic twin whisker-pad contour with delicate central philtrum
+    // Short gentle nasal stop/bridge slope between the eyes
+    const bridgeMask =
+      Math.exp(-Math.pow(ux / 0.20, 2)) *
+      Math.exp(-Math.pow((uy + 0.06) / 0.12, 2)) *
+      smoothstep(0.66, 0.94, uz);
+    z += bridgeMask * 0.005;
+
+    // Plush rounded twin whisker pads sitting nearly flush with the nose tip (blunts the profile!)
     const padLobe =
-      Math.exp(-Math.pow((absX - 0.155) / 0.125, 2)) *
-      Math.exp(-Math.pow((uy + 0.265) / 0.105, 2)) *
-      smoothstep(0.75, 0.96, uz);
-    z += padLobe * 0.016;
+      Math.exp(-Math.pow((absX - 0.15) / 0.135, 2)) *
+      Math.exp(-Math.pow((uy + 0.27) / 0.125, 2)) *
+      smoothstep(0.68, 0.94, uz);
+    z += padLobe * 0.020;
 
-    // Compact lower jaw & chin tucked cleanly under the muzzle
+    // Soft compact lower jaw & chin tucked cleanly under the whisker pads
     const chinMask =
-      Math.exp(-Math.pow(ux / 0.19, 2)) *
-      Math.exp(-Math.pow((uy + 0.44) / 0.12, 2)) *
-      smoothstep(0.64, 0.94, uz);
-    z += chinMask * 0.024;
+      Math.exp(-Math.pow(ux / 0.23, 2)) *
+      Math.exp(-Math.pow((uy + 0.43) / 0.125, 2)) *
+      smoothstep(0.60, 0.92, uz);
+    z += chinMask * 0.025;
+
+    // Gently flatten the extreme front muzzle plane so the profile stays softly blunt rather than conical
+    if (z > 0.294) {
+      z = 0.294 + (z - 0.294) * 0.42;
+    }
 
     pos.setXYZ(i, x, y, z);
 
@@ -1011,7 +1022,7 @@ export function buildCalicoCat(
   tagPettable(chinHitProxy, 'chin');
   headCenter.add(chinHitProxy);
 
-  // Realistic dark espresso-chocolate sculpted feline nose leather embedded flush on the snout tip
+  // Realistic dark espresso-chocolate sculpted feline nose leather embedded flush on the blunt snout front
   const noseGeom = trackGeom(new THREE.SphereGeometry(0.025, 18, 14));
   const nosePos = noseGeom.attributes.position;
   for (let i = 0; i < nosePos.count; i++) {
@@ -1020,21 +1031,21 @@ export function buildCalicoCat(
     const z = nosePos.getZ(i);
     const t = (y / 0.025 + 1) * 0.5;
     x *= 0.58 + t * 0.72;
-    nosePos.setXYZ(i, x, y * 0.68, z * 0.58);
+    nosePos.setXYZ(i, x, y * 0.68, z * 0.42);
   }
   noseGeom.computeVertexNormals();
   const noseMesh = new THREE.Mesh(noseGeom, noseMat);
-  noseMesh.position.set(0, -0.045, 0.343);
+  noseMesh.position.set(0, -0.044, 0.299);
   tagPettable(noseMesh, 'chin');
   headCenter.add(noseMesh);
 
   // Subtle realistic feline mouth cleft (delicate & understated — NOT a thick cartoon :3 wire!)
   const makeLipLine = (sign: 1 | -1): THREE.Mesh => {
     const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0, -0.058, 0.338),
-      new THREE.Vector3(sign * 0.011, -0.076, 0.336),
-      new THREE.Vector3(sign * 0.036, -0.087, 0.326),
-      new THREE.Vector3(sign * 0.062, -0.082, 0.310),
+      new THREE.Vector3(0, -0.058, 0.299),
+      new THREE.Vector3(sign * 0.011, -0.076, 0.298),
+      new THREE.Vector3(sign * 0.036, -0.085, 0.294),
+      new THREE.Vector3(sign * 0.062, -0.081, 0.281),
     ]);
     return new THREE.Mesh(
       trackGeom(new THREE.TubeGeometry(curve, 12, 0.0028, 6, false)),
@@ -1061,33 +1072,33 @@ export function buildCalicoCat(
 
   for (const sign of [1, -1] as const) {
     addWhisker(
-      new THREE.Vector3(sign * 0.068, -0.056, 0.312),
-      new THREE.Vector3(sign * 0.19, -0.054, 0.292),
-      new THREE.Vector3(sign * 0.33, -0.078, 0.235),
+      new THREE.Vector3(sign * 0.064, -0.056, 0.285),
+      new THREE.Vector3(sign * 0.188, -0.054, 0.268),
+      new THREE.Vector3(sign * 0.33, -0.078, 0.220),
       0.0014,
     );
     addWhisker(
-      new THREE.Vector3(sign * 0.072, -0.066, 0.314),
-      new THREE.Vector3(sign * 0.21, -0.068, 0.288),
-      new THREE.Vector3(sign * 0.365, -0.104, 0.222),
+      new THREE.Vector3(sign * 0.068, -0.066, 0.286),
+      new THREE.Vector3(sign * 0.208, -0.068, 0.264),
+      new THREE.Vector3(sign * 0.365, -0.104, 0.208),
       0.0016,
     );
     addWhisker(
-      new THREE.Vector3(sign * 0.070, -0.076, 0.310),
-      new THREE.Vector3(sign * 0.215, -0.090, 0.282),
-      new THREE.Vector3(sign * 0.365, -0.135, 0.212),
+      new THREE.Vector3(sign * 0.066, -0.076, 0.283),
+      new THREE.Vector3(sign * 0.212, -0.090, 0.258),
+      new THREE.Vector3(sign * 0.365, -0.135, 0.198),
       0.0016,
     );
     addWhisker(
-      new THREE.Vector3(sign * 0.064, -0.086, 0.302),
-      new THREE.Vector3(sign * 0.19, -0.112, 0.275),
-      new THREE.Vector3(sign * 0.32, -0.162, 0.210),
+      new THREE.Vector3(sign * 0.060, -0.086, 0.278),
+      new THREE.Vector3(sign * 0.188, -0.112, 0.252),
+      new THREE.Vector3(sign * 0.32, -0.162, 0.196),
       0.0014,
     );
     addWhisker(
-      new THREE.Vector3(sign * 0.058, -0.094, 0.294),
-      new THREE.Vector3(sign * 0.16, -0.128, 0.268),
-      new THREE.Vector3(sign * 0.265, -0.175, 0.215),
+      new THREE.Vector3(sign * 0.055, -0.094, 0.274),
+      new THREE.Vector3(sign * 0.158, -0.128, 0.246),
+      new THREE.Vector3(sign * 0.265, -0.175, 0.200),
       0.0012,
     );
     // Delicate feline superciliary brow whiskers rising above each eye
@@ -1117,7 +1128,7 @@ export function buildCalicoCat(
 
   const buildRealisticEye = (sign: 1 | -1) => {
     const socket = new THREE.Group();
-    socket.position.set(sign * 0.105, 0.020, 0.197);
+    socket.position.set(sign * 0.105, 0.020, 0.194);
     socket.rotation.set(-0.02, sign * 0.34, sign * 0.05);
     headCenter.add(socket);
 
