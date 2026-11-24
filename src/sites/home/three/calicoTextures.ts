@@ -207,9 +207,11 @@ function finalizeTexture(canvas: HTMLCanvasElement, colorSpace: THREE.ColorSpace
  * - Multi-tone forehead tabby M-stripes, sandy-buff ticked cheeks with 2 sweeping black mascara lines,
  *   and crisp dark espresso lower-cheek rim bordering the plush white neck ruff
  */
-export function createHeadCalicoTexture(palette: CalicoCoatPalette): THREE.CanvasTexture {
-  const width = 1024;
-  const height = 512;
+export function createHeadCalicoTexture(
+  palette: CalicoCoatPalette,
+  width = 1024,
+  height = 512,
+): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -465,9 +467,11 @@ export function createHeadCalicoTexture(palette: CalicoCoatPalette): THREE.Canva
  *   with curved black stripes + signature diagonal dark tabby drop into white chest -> vibrant golden-apricot
  *   vertical mid-flank sash -> marbled dark tabby loin & spine -> broad warm ginger rear thigh over snowy-white lower trim!
  */
-export function createTorsoCalicoTexture(palette: CalicoCoatPalette): THREE.CanvasTexture {
-  const width = 1024;
-  const height = 512;
+export function createTorsoCalicoTexture(
+  palette: CalicoCoatPalette,
+  width = 1024,
+  height = 512,
+): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -618,8 +622,8 @@ export function createTorsoCalicoTexture(palette: CalicoCoatPalette): THREE.Canv
 export function createForelegTexture(
   palette: CalicoCoatPalette,
   side: 'left' | 'right',
+  size = 256,
 ): THREE.CanvasTexture {
-  const size = 512;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -807,8 +811,7 @@ export function createTailCalicoTexture(palette: CalicoCoatPalette): THREE.Canva
 /**
  * Generates a tileable directional hair-strand bump map for plush micro-fur light scattering.
  */
-export function createFurBumpTexture(): THREE.CanvasTexture {
-  const size = 512;
+export function createFurBumpTexture(size = 256): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -855,8 +858,7 @@ export function createFurBumpTexture(): THREE.CanvasTexture {
  * to 0.0 (gaps between hairs); stacked alphaTest shells sample this texture at increasing
  * thresholds so every hair physically tapers to a crisp point in 3D with zero depth-sorting glitches!
  */
-export function createFurHeightAlphaTexture(): THREE.CanvasTexture {
-  const size = 512;
+export function createFurHeightAlphaTexture(size = 256): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -925,9 +927,11 @@ export function createFurHeightAlphaTexture(): THREE.CanvasTexture {
  * intricate radial iris stroma fibers, dark eyeliner limbal border, vertical-oval feline pupil,
  * subtle upper eyelid shadow, and natural wet corneal catchlights.
  */
-export function createCatEyeTexture(palette: CalicoCoatPalette): THREE.CanvasTexture {
-  const width = 512;
-  const height = 256;
+export function createCatEyeTexture(
+  palette: CalicoCoatPalette,
+  width = 512,
+  height = 256,
+): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;

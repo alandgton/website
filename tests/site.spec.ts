@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { HOME_PROFILE_CONFIG } from '../src/sites/home/config/home.config';
 import { trackRuntimeErrors } from './helpers';
 
 test.describe('alanton.at — Landing, Home & Document Titles', () => {
@@ -145,13 +146,13 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
     await expect(profile.getByRole('heading', { name: 'Alan Ton' })).toBeVisible();
     await expect(profile.getByText('Software engineer living in NYC')).toBeVisible();
 
-    const linkedin = profile.getByRole('link', { name: 'LinkedIn' });
-    const instagram = profile.getByRole('link', { name: 'Instagram' });
-    await expect(linkedin).toHaveAttribute('href', '#linkedin');
-    await expect(instagram).toHaveAttribute('href', '#instagram');
-    await linkedin.click();
-    await instagram.click();
-    await expect(page).toHaveURL(/\/home\/$/);
+    for (const social of HOME_PROFILE_CONFIG.socialLinks) {
+      const link = profile.getByRole('link', { name: social.label });
+      await expect(link).toHaveAttribute('href', social.href);
+      if (!social.isPlaceholder) {
+        await expect(link).toHaveAttribute('target', '_blank');
+      }
+    }
 
     // No WIP placeholder, hobbies, Garden Leave copy, or map SVG on /home/
     const bodyText = await page.locator('main').innerText();
@@ -208,6 +209,8 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
 
     await expect(catCard).toBeVisible();
     await expect(catCard.getByRole('heading', { name: 'Candy' })).toBeVisible();
+    await expect(catCard).toHaveAttribute('data-cat-state', 'ready');
+    await expect(catCard.getByTestId('cat-loading-overlay')).toHaveCount(0);
     await expect(canvas).toBeVisible();
     await expect(catCard).toHaveAttribute('data-cat-mood', 'relaxed');
 
@@ -248,6 +251,41 @@ test.describe('alanton.at — Landing, Home & Document Titles', () => {
     await resetBtn.click();
     await expect(resetBtn).toHaveCSS('opacity', '0');
 
+    expect(errors).toEqual([]);
+  });
+
+  test('home page shows loading screen while Candy 3D layer initializes on mobile and fades into ready canvas', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const errors = trackRuntimeErrors(page);
+
+    let releaseSceneChunk: (() => void) | null = null;
+    const sceneChunkGate = new Promise<void>((resolve) => {
+      releaseSceneChunk = resolve;
+    });
+
+    await page.route(/CalicoCatScene/, async (route) => {
+      await sceneChunkGate;
+      await route.continue();
+    });
+
+    await page.goto('/home/');
+
+    const catCard = page.getByRole('region', { name: /Candy — Interactive Calico Cat/ });
+    const loadingOverlay = catCard.getByTestId('cat-loading-overlay');
+
+    await expect(catCard).toHaveAttribute('data-cat-state', 'loading');
+    await expect(loadingOverlay).toBeVisible();
+    await expect(loadingOverlay.getByText('Waking up Candy…')).toBeVisible();
+    await expect(catCard.getByTestId('cat-mood-badge')).toHaveText('Loading');
+
+    releaseSceneChunk?.();
+
+    await expect(catCard).toHaveAttribute('data-cat-state', 'ready', { timeout: 10_000 });
+    await expect(loadingOverlay).toHaveCount(0);
+    await expect(catCard.locator('canvas')).toBeVisible();
+    await expect(catCard.getByTestId('cat-mood-badge')).toHaveText('Relaxed');
     expect(errors).toEqual([]);
   });
 

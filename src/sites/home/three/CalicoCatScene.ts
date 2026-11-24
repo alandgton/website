@@ -124,6 +124,7 @@ export class CalicoCatScene {
 
     const width = Math.max(1, this.container.clientWidth);
     const height = Math.max(1, this.container.clientHeight);
+    const isCompactViewport = window.innerWidth < 640;
     this.camera = new THREE.PerspectiveCamera(34, width / height, 0.1, 30);
     this.updateCameraDistanceForAspect(width / height);
 
@@ -132,7 +133,9 @@ export class CalicoCatScene {
       alpha: true,
       powerPreference: 'high-performance',
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setPixelRatio(
+      Math.min(window.devicePixelRatio || 1, isCompactViewport ? 1.5 : 2),
+    );
     this.renderer.setSize(width, height, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -184,7 +187,8 @@ export class CalicoCatScene {
     const keyLight = new THREE.DirectionalLight('#fff8ef', 1.85);
     keyLight.position.set(2.4, 3.6, 3.2);
     keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(1024, 1024);
+    const shadowSize = isCompactViewport ? 512 : 1024;
+    keyLight.shadow.mapSize.set(shadowSize, shadowSize);
     keyLight.shadow.camera.near = 1.0;
     keyLight.shadow.camera.far = 10.0;
     keyLight.shadow.camera.left = -1.8;
@@ -210,7 +214,7 @@ export class CalicoCatScene {
     this.scene.add(this.touchGlowLight);
 
     // --- Build Sculpted Calico Cat & Feedback Pool ---
-    this.rig = buildCalicoCat(options.palette);
+    this.rig = buildCalicoCat(options.palette, isCompactViewport);
     this.scene.add(this.rig.root);
 
     this.feedback = new PetFeedbackSystem(24, 4);

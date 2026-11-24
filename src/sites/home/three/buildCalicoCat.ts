@@ -544,7 +544,10 @@ class SmoothAnimatedTail {
  * unified continuous head & pear-body geometry, animated furry eyelids, heather-grey felt perch,
  * and tagged raycast zones.
  */
-export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
+export function buildCalicoCat(
+  palette: CalicoCoatPalette,
+  isCompactViewport = false,
+): CalicoCatRig {
   const geometries: THREE.BufferGeometry[] = [];
   const materials: THREE.Material[] = [];
   const textures: THREE.Texture[] = [];
@@ -568,18 +571,24 @@ export function buildCalicoCat(palette: CalicoCoatPalette): CalicoCatRig {
     return obj;
   };
 
-  // --- Procedural High-Res Tabico Coat & Volumetric Fur Heightfield Textures ---
-  const furBump = trackTex(createFurBumpTexture());
-  const furHeightAlpha = trackTex(createFurHeightAlphaTexture());
-  const headTex = trackTex(createHeadCalicoTexture(palette));
-  const torsoTex = trackTex(createTorsoCalicoTexture(palette));
-  const leftLegTex = trackTex(createForelegTexture(palette, 'left'));
-  const rightLegTex = trackTex(createForelegTexture(palette, 'right'));
+  // --- Procedural Tabico Coat & Volumetric Fur Heightfield Textures ---
+  // Compact/mobile viewports bake 512x256 coat textures (~4x faster CPU init with crisp visual fidelity)
+  const coatW = isCompactViewport ? 512 : 1024;
+  const coatH = isCompactViewport ? 256 : 512;
+  const eyeW = isCompactViewport ? 256 : 512;
+  const eyeH = isCompactViewport ? 128 : 256;
+
+  const furBump = trackTex(createFurBumpTexture(256));
+  const furHeightAlpha = trackTex(createFurHeightAlphaTexture(256));
+  const headTex = trackTex(createHeadCalicoTexture(palette, coatW, coatH));
+  const torsoTex = trackTex(createTorsoCalicoTexture(palette, coatW, coatH));
+  const leftLegTex = trackTex(createForelegTexture(palette, 'left', 256));
+  const rightLegTex = trackTex(createForelegTexture(palette, 'right', 256));
   const tailTex = trackTex(createTailCalicoTexture(palette));
   const creamFurTex = trackTex(createSolidFurTexture(palette, 'cream'));
   const tabbyEarTex = trackTex(createSolidFurTexture(palette, 'tabbyEar'));
   const eyelidFurTex = trackTex(createSolidFurTexture(palette, 'eyelidTabby'));
-  const eyeTex = trackTex(createCatEyeTexture(palette));
+  const eyeTex = trackTex(createCatEyeTexture(palette, eyeW, eyeH));
   const perchTex = trackTex(createCushionFabricTexture(palette));
   const contactShadowTex = trackTex(createContactShadowTexture());
 
